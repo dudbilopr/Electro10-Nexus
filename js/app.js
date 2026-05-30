@@ -317,7 +317,8 @@ window.evaluarQuizDinamico = async () => {
 window._loadContent = (leccion, modTitulo) => {
     // ── Lógica de Bloqueo por Presaberes ──
     const examId = 'm0_l1';
-    if (leccion.id !== examId && (!evalData[examId] || evalData[examId] < 65)) {
+    const isAdmin = window.currentUserEmail === 'dudbilopr@gmail.com' || window.currentUserRole === 'admin';
+    if (!isAdmin && leccion.id !== examId && (!evalData[examId] || evalData[examId] < 65)) {
         Swal.fire({
             title: 'Acceso Restringido',
             html: 'Debes completar el <b>Examen Diagnóstico de Presaberes</b> (Módulo 0) con al menos 65% para desbloquear el resto del curso.',

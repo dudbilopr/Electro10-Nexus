@@ -176,6 +176,21 @@ export function loadContent(leccion, modTitulo, progressData, evalData) {
             iframe.style.display = 'none';
             enlacesContainer.style.display = 'block';
             enlacesContainer.innerHTML = window.renderizarQuizDinamico(leccion);
+            
+            // Renderizar matemáticas con KaTeX
+            setTimeout(() => {
+                if (window.renderMathInElement) {
+                    renderMathInElement(enlacesContainer, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ],
+                        throwOnError: false
+                    });
+                }
+            }, 100);
         } else {
             iframe.src = leccion.recurso;
             iframeWrapper.style.aspectRatio = 'auto'; iframeWrapper.style.height = '75vh'; iframeWrapper.style.minHeight = '500px';
