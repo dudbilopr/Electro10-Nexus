@@ -1,5 +1,4 @@
-# Configuración sensible — NO subir a GitHub
-config/firebase.config.js
+# Configuración sensible (Asegurada por Firebase Rules en producción)
 
 # Archivos de sistema
 .DS_Store
