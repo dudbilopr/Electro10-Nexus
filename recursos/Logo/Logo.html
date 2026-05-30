@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>physics10.easy - Micro Render HD</title>
+    
+    <style>
+        /* ESTILOS BASE */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            /* Fondo totalmente transparente para embeber sin problemas */
+            background-color: transparent; 
+        }
+
+        /* Contenedor del lienzo 3D */
+        #logo-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* Le damos un sutil cursor de interacción */
+            cursor: pointer;
+        }
+
+        /* Solo para la vista previa en pantalla completa (ignorar al embeber) */
+        @media (min-width: 600px) {
+            body { background-color: #03060f; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Contenedor donde se inyectará el render 3D -->
+    <div id="logo-container"></div>
+
+    <!-- Importamos Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // ==========================================
+        // 1. CONFIGURACIÓN DE ALTA DEFINICIÓN
+        // ==========================================
+        const container = document.getElementById('logo-container');
+        
+        const scene = new THREE.Scene();
+        
+        // Cámara ajustada para encuadrar perfectamente el logo en espacios pequeños
+        const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 22; // Distancia de seguridad para evitar recortes
+
+        // Renderizador con antialiasing activado y fondo transparente
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        // Forzamos el Pixel Ratio al del dispositivo para máxima nitidez (HD real)
+        renderer.setPixelRatio(window.devicePixelRatio);
+        // Tone mapping cinematográfico para que las luces brillen sin quemarse
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.5;
+        container.appendChild(renderer.domElement);
+
+        // Grupo principal que contendrá todas las piezas
+        const artifactGroup = new THREE.Group();
+        scene.add(artifactGroup);
+
+        // ==========================================
+        // 2. MATERIALES PREMIUM (Alto Impacto)
+        // ==========================================
+        
+        // Material del núcleo: Luz pura
+        const coreMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff 
+        });
+
+        // Material del aura: Resplandor holográfico
+        const auraMat = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.15,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        });
+
+        // Material de los anillos: Cristal Cuántico (Alta refracción e interacción de luz)
+        const glassMat = new THREE.MeshPhysicalMaterial({
+            color: 0xffffff, // Color base neutro, la refracción y las luces le darán el color
+            metalness: 0.05, // Casi nulo para que sea cristal puro, no metal
+            roughness: 0.02, // Superficie extremadamente pulida
+            transmission: 1.0, // Transmisión total para dejar pasar la luz
+            ior: 2.4, // Índice de Refracción (tipo diamante) para curvar la luz y dar volumen 3D
+            thickness: 2.5, // Volumen masivo virtual para atrapar y distorsionar la luz
+            dispersion: 1.0, // Separa la luz en espectros (efecto cuántico)
+            iridescence: 1.0, // Interferencia cuántica en la superficie (tonos cambiantes)
+            iridescenceIOR: 1.5,
+            clearcoat: 1.0, // Capa de brillo exterior para definir perfectamente las curvas 3D
+            clearcoatRoughness: 0.05,
+            transparent: true,
+            side: THREE.DoubleSide // Asegura que veamos el interior del cristal
+        });
+
+        // Material de la jaula exterior: Metal tecnológico
+        const cageMat = new THREE.MeshPhysicalMaterial({
+            color: 0x00ffff,
+            metalness: 1.0,
+            roughness: 0.2,
+            emissive: 0x002244,
+            wireframe: true // Usamos wireframe pero sobre una geometría sólida
+        });
+
+        // ==========================================
+        // 3. CONSTRUCCIÓN DE LA GEOMETRÍA
+        // ==========================================
+
+        // A. Núcleo de Energía (Un Octaedro brillante)
+        const coreGeo = new THREE.OctahedronGeometry(1.2, 0);
+        const core = new THREE.Mesh(coreGeo, coreMat);
+        artifactGroup.add(core);
+
+        // B. Aura de Plasma (Esfera suave superpuesta)
+        const auraGeo = new THREE.SphereGeometry(1.8, 32, 32);
+        const aura = new THREE.Mesh(auraGeo, auraMat);
+        artifactGroup.add(aura);
+
+        // C. Anillos Giratorios de Cristal (Con grosor real para HD)
+        const rings = [];
+        for (let i = 0; i < 3; i++) {
+            // TorusGeometry(radio, grosor_tubo, segmentos_radiales, segmentos_tubulares)
+            // El grosor de 0.15 asegura que atrapen luz y se vean definidos, no como líneas planas
+            const ringGeo = new THREE.TorusGeometry(3.2 + (i * 0.4), 0.15, 16, 64);
+            
+            // Alternamos colores para mayor impacto (Cian y Magenta)
+            const ringMat = glassMat.clone();
+            ringMat.color.setHex(i % 2 === 0 ? 0x00ffff : 0xff00ff);
+            
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            
+            // Inclinaciones iniciales únicas
+            ring.rotation.x = Math.random() * Math.PI;
+            ring.rotation.y = Math.random() * Math.PI;
+            
+            artifactGroup.add(ring);
+            
+            // Guardamos velocidades de rotación únicas para cada anillo
+            rings.push({
+                mesh: ring,
+                speedX: (Math.random() - 0.5) * 0.04,
+                speedY: (Math.random() - 0.5) * 0.04
+            });
+        }
+
+        // D. Jaula Hiperdimensional (Icosaedro exterior que contiene el sistema)
+        const cageGeo = new THREE.IcosahedronGeometry(4.8, 1);
+        const cage = new THREE.Mesh(cageGeo, cageMat);
+        artifactGroup.add(cage);
+
+        // E. Electrones y Estados Cuánticos (¡NUEVO!)
+        const electronGroup = new THREE.Group();
+        artifactGroup.add(electronGroup);
+        const electronGeo = new THREE.SphereGeometry(0.08, 16, 16);
+        const electronMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+        
+        const electronList = [];
+        // Creamos 4 partículas que orbitarán de forma discontinua
+        for(let i = 0; i < 4; i++) {
+            const el = new THREE.Mesh(electronGeo, electronMat);
+            electronGroup.add(el);
+            electronList.push({
+                mesh: el,
+                radius: 3.2,
+                angle1: 0,
+                angle2: 0,
+                nextLeap: Math.random() * 2 // Temporizador asíncrono para el primer salto
+            });
+        }
+
+        // ==========================================
+        // 4. ILUMINACIÓN (Para resaltar el cristal)
+        // ==========================================
+        
+        // Luz ambiental oscura
+        scene.add(new THREE.AmbientLight(0x111122));
+
+        // Luces puntuales intensas para generar reflejos en los anillos
+        const light1 = new THREE.PointLight(0x00ffff, 100, 50);
+        light1.position.set(5, 5, 5);
+        scene.add(light1);
+
+        const light2 = new THREE.PointLight(0xff00ff, 100, 50);
+        light2.position.set(-5, -5, 5);
+        scene.add(light2);
+        
+        // Luz desde dentro del núcleo
+        const innerLight = new THREE.PointLight(0xffffff, 20, 10);
+        scene.add(innerLight);
+
+        // ==========================================
+        // 5. ANIMACIÓN Y RESPONSIVIDAD
+        // ==========================================
+
+        window.addEventListener('resize', () => {
+            // Mantiene el logo proporcionado sin importar la forma del iframe
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Interacción: Acelera al pasar el ratón
+        let speedMultiplier = 1;
+        container.addEventListener('mouseenter', () => speedMultiplier = 3);
+        container.addEventListener('mouseleave', () => speedMultiplier = 1);
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta() * speedMultiplier;
+            const time = clock.getElapsedTime();
+
+            // Rotación general de todo el artefacto en 3D ("¡ahora rota!")
+            artifactGroup.rotation.x += 0.5 * delta;
+            artifactGroup.rotation.y += 0.8 * delta;
+
+            // Animación independiente de cada pieza interior
+            core.rotation.y -= 2.0 * delta;
+            core.rotation.z += 1.0 * delta;
+            
+            // Pulsación del aura
+            const pulse = 1 + Math.sin(time * 3) * 0.1;
+            aura.scale.set(pulse, pulse, pulse);
+
+            // Rotación caótica de los anillos de cristal + Saltos de Fase
+            rings.forEach(r => {
+                r.mesh.rotation.x += r.speedX * (speedMultiplier === 3 ? 3 : 1);
+                r.mesh.rotation.y += r.speedY * (speedMultiplier === 3 ? 3 : 1);
+                
+                // SALTO CUÁNTICO MACRO: Cambio instantáneo de 90 grados (Baja probabilidad por frame)
+                if (Math.random() > 0.998) {
+                    r.mesh.rotation.x += Math.PI / 2;
+                }
+            });
+
+            // LÓGICA DE SALTOS CUÁNTICOS (Partículas/Electrones)
+            electronList.forEach(e => {
+                if (time > e.nextLeap) {
+                    // 1. Teletransportación a nuevas coordenadas angulares (Sin pasar por el espacio intermedio)
+                    e.angle1 = Math.random() * Math.PI * 2;
+                    e.angle2 = Math.random() * Math.PI * 2;
+                    
+                    // 2. Salto a niveles de energía discretos (Órbitas: n=1, n=2, n=3)
+                    const nivelesEnergia = [2.5, 3.2, 4.0];
+                    e.radius = nivelesEnergia[Math.floor(Math.random() * nivelesEnergia.length)];
+                    
+                    // 3. Programar el siguiente salto (entre 0.1 y 2.5 segundos)
+                    e.nextLeap = time + 0.1 + Math.random() * 2.4;
+                    
+                    // 4. Emisión de Fotones: El núcleo y la luz destellan violentamente
+                    innerLight.intensity = 200; 
+                    core.scale.set(1.8, 1.8, 1.8); 
+                }
+                
+                // Aplicar posición cartesiana basada en coordenadas esféricas 3D
+                e.mesh.position.x = e.radius * Math.cos(e.angle1) * Math.sin(e.angle2);
+                e.mesh.position.y = e.radius * Math.sin(e.angle1) * Math.sin(e.angle2);
+                e.mesh.position.z = e.radius * Math.cos(e.angle2);
+            });
+
+            // Relajación/Decaimiento: La luz y el núcleo vuelven a su estado base de forma natural tras el salto
+            innerLight.intensity += (20 - innerLight.intensity) * 0.1;
+            const currentScale = core.scale.x;
+            const targetScale = 1.0;
+            const newScale = currentScale + (targetScale - currentScale) * 0.15;
+            core.scale.set(newScale, newScale, newScale);
+
+            // Rotación lenta de la jaula protectora
+            cage.rotation.z -= 0.2 * delta;
+            cage.rotation.x += 0.1 * delta;
+
+            renderer.render(scene, camera);
+        }
+
+        // Iniciar el bucle
+        animate();
+    </script>
+</body>
+</html>

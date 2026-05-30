@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Universitaria: Distribuciones Continuas y Trabajo Eléctrico</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- KaTeX for Beautiful Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f8fafc; }
+        
+        /* Draggable items styles */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone.dragover { background-color: #ccfbf1; border-color: #0d9488; } /* Teal-50 and Teal-600 */
+        .math-input { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; }
+        
+        /* Navigation Grid Styles */
+        .nav-btn { transition: all 0.2s ease; }
+        .nav-answered { background-color: #0d9488; color: white; border-color: #0f766e; }
+        .nav-flagged { background-color: #f59e0b; color: white; border-color: #d97706; }
+        .nav-active { box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.4); transform: scale(1.1); z-index: 10; }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        .correct-card { border: 2px solid #22c55e !important; background-color: #f0fdf4 !important; }
+        .incorrect-card { border: 2px solid #ef4444 !important; background-color: #fef2f2 !important; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center border border-slate-200">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-warning text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">¿Evaluar examen?</h3>
+            <p class="text-slate-600 mb-6" id="confirm-message">Aún tienes preguntas sin responder.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-cancel-eval" class="px-5 py-2.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button id="btn-confirm-eval" class="px-5 py-2.5 rounded-lg font-bold text-white bg-teal-600 hover:bg-teal-700 transition-colors">Sí, evaluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm shrink-0 z-40 relative border-b-2 border-teal-100">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-teal-600 p-2 rounded-lg text-white shadow-md">
+                    <i class="ph ph-chart-line-up text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">Física Electromagnética</h1>
+                    <p class="text-xs md:text-sm text-teal-600 font-bold tracking-wide uppercase">Módulo 4: Distribuciones de Carga y Trabajo</p>
+                </div>
+            </div>
+            <div class="flex gap-3 items-center">
+                <div id="auth-status" class="text-sm font-medium text-slate-500 hidden md:flex items-center gap-1 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                    <i class="ph ph-spinner animate-spin"></i> Conectando plataforma...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <!-- Sidebar: Navigation Panel -->
+        <aside class="w-full md:w-1/4 lg:w-1/5 flex flex-col gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-full max-h-[calc(100vh-120px)] overflow-y-auto">
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="ph ph-squares-four text-teal-600"></i> Navegación
+                </h3>
+                
+                <div id="nav-grid" class="grid grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-6">
+                    <!-- Buttons injected via JS -->
+                </div>
+
+                <!-- Legend -->
+                <div class="text-xs text-slate-600 space-y-2 mb-6 border-t border-slate-100 pt-4">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded border border-slate-300 bg-slate-50"></div> Sin responder</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-teal-500 shadow-sm"></div> Respondida</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-amber-500 shadow-sm"></div> Bandera (Revisar)</div>
+                </div>
+
+                <div class="mt-auto space-y-3">
+                    <button id="btn-export" class="w-full hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200">
+                        <i class="ph ph-file-pdf text-lg text-red-500"></i> Exportar PDF
+                    </button>
+                    <button id="btn-evaluate" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="ph ph-check-circle text-lg"></i> Evaluar Examen
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Area: Question Display -->
+        <section class="w-full md:w-3/4 lg:w-4/5 flex flex-col h-full max-h-[calc(100vh-120px)]">
+            
+            <!-- Instructions -->
+            <div id="instructions-panel" class="bg-teal-50 border border-teal-200 rounded-xl p-6 mb-4 shadow-sm shrink-0 fade-in">
+                <h2 class="text-lg font-bold text-teal-900 mb-2 flex items-center gap-2">
+                    <i class="ph ph-info text-xl"></i> Instrucciones de la Evaluación
+                </h2>
+                <p class="text-sm text-teal-800 mb-2 leading-relaxed">Resuelve los 20 problemas integrando todos los conceptos: distribuciones continuas (cálculo integral de campo/potencial), fuerzas electrostáticas y conservación de energía (trabajo). Utiliza los <strong>dos gráficos interactivos</strong> incluidos para deducir las respuestas de simetría y trayectoria.</p>
+                <p class="text-sm text-teal-800 font-semibold bg-teal-100/50 p-2 rounded inline-block">Tu progreso se respaldará automáticamente en el Módulo 4 de Firebase si tu nota supera el 70%.</p>
+            </div>
+
+            <!-- Question Container -->
+            <div id="questions-container" class="flex-grow overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 relative p-6 md:p-10">
+                <!-- Questions injected here via JS -->
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="mt-4 flex justify-between items-center shrink-0">
+                <button id="btn-prev" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    <i class="ph ph-caret-left text-lg"></i> Anterior
+                </button>
+                
+                <button id="btn-flag" class="px-4 py-2.5 bg-white border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="ph-fill ph-flag"></i> <span class="hidden sm:inline">Marcar con Bandera</span>
+                </button>
+
+                <button id="btn-next" class="px-5 py-2.5 bg-teal-600 border border-teal-600 text-white rounded-lg hover:bg-teal-700 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    Siguiente <i class="ph ph-caret-right text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="results-panel" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-8 rounded-xl border border-slate-200 shadow-2xl fade-in">
+                <div class="bg-teal-100 text-teal-600 p-4 rounded-full mb-4">
+                    <i class="ph ph-medal text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Resultados Finales</h2>
+                <div class="text-6xl font-black mb-4 tracking-tighter text-teal-900" id="score-display">0%</div>
+                <p id="feedback-message" class="text-lg font-medium mb-8 text-center max-w-lg"></p>
+                
+                <div class="w-full max-w-md bg-slate-200 rounded-full h-4 mb-10 shadow-inner overflow-hidden">
+                  <div id="score-bar" class="bg-teal-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="btn-review" class="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+                        <i class="ph ph-magnifying-glass"></i> Revisar Respuestas
+                    </button>
+                    <button id="btn-save" class="hidden px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                        <i class="ph ph-cloud-arrow-up text-lg"></i> Guardar en la Nube
+                    </button>
+                </div>
+            </div>
+            
+        </section>
+    </main>
+
+    <script type="module">
+        // =========================================================================
+        // === INTEGRACIÓN FIREBASE (COMPATIBLE CON DASHBOARD UNAB) ===
+        // =========================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+        import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+            authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+            databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",
+            projectId: "laboratorio-de-coulomb",
+            storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+            messagingSenderId: "525944850850",
+            appId: "1:525944850850:web:eca9c0b79809358e8d8afb",
+            measurementId: "G-SZECJNG25E"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const statusEl = document.getElementById('auth-status');
+            if (user) {
+                const userName = user.email ? user.email.split('@')[0] : 'Estudiante';
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></div> <span class="truncate max-w-[100px]">${userName}</span>`;
+                statusEl.classList.remove('hidden');
+                loadProgress();
+            } else {
+                statusEl.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Debes iniciar sesión en la plataforma`;
+                statusEl.classList.remove('hidden');
+            }
+        });
+
+        // --- 2. DATA DEL EXAMEN: MÓDULO 4 (CONTINUAS Y TRABAJO) ---
+        const questions = [
+            { 
+                type: 'mcq', 
+                text: "Para calcular el campo eléctrico o potencial creado por un cuerpo macroscópico continuo (como una barra o disco), utilizamos la integración. Esto se debe fundamentalmente a que:", 
+                options: ["La constante de Coulomb depende del material.", "La Ley de Coulomb y $V=kq/r$ solo son válidas rigurosamente para cargas puntuales.", "El campo eléctrico dentro del cuerpo siempre es infinito.", "La carga siempre se acumula en el centro geométrico del objeto."], 
+                answer: 1, 
+                tip: "Al dividir el cuerpo en elementos infinitesimales $dq$, podemos tratarlos como cargas puntuales y aplicar la Ley de Coulomb a cada uno, sumando todos mediante una integral." 
+            },
+            { 
+                type: 'equation', 
+                text: "Para una distribución LINEAL continua de carga con densidad $\\lambda$, expresa matemáticamente el elemento de carga infinitesimal $dq$ en términos de $\\lambda$ y el diferencial de longitud $dx$. (Ej: lambda*dx)", 
+                answer: "lambda*dx", 
+                tip: "La densidad lineal es la carga por unidad de longitud ($\\lambda = dq/dx$). Simplemente despeja $dq$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "(Del PDF modificado) Tienes un conductor esférico de radio $r=0.1\\text{m}$ a un potencial superficial de $270\\text{V}$. Si la magnitud del campo en su superficie es $2700\\text{N/C}$, ¿cuál es la magnitud de la FUERZA electrostática que experimentaría una carga puntual de prueba de $1\\mu C$ apoyada ahí?", 
+                options: ["2.7 N", "0.27 N", "0.0027 N", "Cero"], 
+                answer: 2, 
+                tip: "Recuerda que $\\vec{F} = q\\vec{E}$. Multiplica la carga ($1 \\times 10^{-6}\\text{C}$) por el campo ($2700\\text{N/C}$). El resultado es $0.0027\\text{N}$ o $2.7\\text{mN}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "(Del PDF modificado) Un conductor esférico tiene un potencial superficial de $270\\text{V}$. A 30 cm de su superficie, el potencial cae a $67.5\\text{V}$. ¿Qué TRABAJO realiza el campo eléctrico externo al mover un protón (carga $+e$) desde la superficie hasta esos 30 cm?", 
+                options: ["$-202.5\\text{ eV}$", "$+202.5\\text{ eV}$", "$+337.5\\text{ eV}$", "Cero"], 
+                answer: 1, 
+                tip: "El trabajo del campo es $W = -\\Delta U = -q(V_f - V_i)$. Sustituye: $- (+1e) (67.5 - 270) = -e(-202.5) = +202.5\\text{ eV}$. El campo realiza trabajo positivo al alejar cargas repulsivas." 
+            },
+            { 
+                type: 'fill', 
+                text: "(Del PDF modificado) Si se requiere que el campo eléctrico realice un TRABAJO externo (cambio en energía potencial) de exactamente $63 \\mu\\text{J}$ al traer una carga de $7 \\mu\\text{C}$ desde el infinito hasta un punto P. ¿De cuántos Voltios debe ser el potencial en P?", 
+                answer: "9", 
+                tip: "Aplica $W = \\Delta U = U_P - U_{\\infty}$. Sabemos $U_{\\infty} = 0$, así que $U_P = 63\\mu\\text{J}$. Como $V_P = U_P/q$, divide 63 entre 7." 
+            },
+            { 
+                type: 'drag', 
+                text: "Asocia cada tipo de distribución continua de carga con su símbolo y unidades correspondientes en el Sistema Internacional:", 
+                pairs: [
+                    { id: 'p1', question: "Distribución Lineal (hilos, barras)", answer: "Símbolo $\\lambda$, unidades C/m" },
+                    { id: 'p2', question: "Distribución Superficial (placas, discos)", answer: "Símbolo $\\sigma$, unidades C/m²" },
+                    { id: 'p3', question: "Distribución Volumétrica (esferas sólidas)", answer: "Símbolo $\\rho$, unidades C/m³" }
+                ],
+                tip: "Piensa en las dimensiones de cada geometría: 1D (longitud), 2D (área), y 3D (volumen)."
+            },
+            { 
+                type: 'mcq', 
+                text: "Se tiene un anillo circular delgado con una carga total $Q$ distribuida uniformemente. Por el principio de superposición y simetría, el **campo eléctrico** en el centro exacto del anillo es:", 
+                options: ["$kQ/R^2$", "Cero", "Infinito", "$kQ/R$"], 
+                answer: 1, 
+                tip: "Para cada elemento de carga $dq$ en un lado del anillo, existe otro diametralmente opuesto que crea un campo de igual magnitud pero dirección contraria, anulando el vector $\\vec{E}$ total." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Para el mismo anillo cargado del problema anterior, el **potencial eléctrico** escalar neto en el centro exacto del anillo es:", 
+                options: ["$kQ/R^2$", "Cero", "$kQ/R$", "Depende del grosor del anillo."], 
+                answer: 2, 
+                tip: "El potencial es escalar, no se cancelan direcciones. Todos los elementos de carga $dq$ están a la misma distancia $R$. Al integrar $\\int k\\frac{dq}{R}$, se saca $k/R$ y la integral de $dq$ es $Q$." 
+            },
+            { 
+                type: 'fill', 
+                text: "El trabajo neto que realiza una fuerza electrostática para mover una carga puntual a lo largo de cualquier trayectoria CERRADA (volver al punto de origen) es siempre ______ Julios.", 
+                answer: "0", 
+                tip: "La fuerza electrostática es una fuerza conservativa. En caminos cerrados, $\\Delta V = 0$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Una línea recta infinita tiene una densidad lineal de carga $\\lambda$. Integrando todos sus diferenciales $dq$, se demuestra que la magnitud de su campo eléctrico depende de la distancia perpendicular $r$ de forma proporcional a:", 
+                options: ["$1/r^2$", "$1/r$", "Es constante", "$1/r^3$"], 
+                answer: 1, 
+                tip: "A diferencia de una carga puntual ($1/r^2$), la línea infinita decae más lentamente ($E = \\frac{2k\\lambda}{r}$) por su extensión geométrica en una dimensión." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Se tienen dos placas planas paralelas infinitas, una con densidad superficial $+\\sigma$ y otra con $-\\sigma$. La fuerza sobre un electrón que se encuentra en la región entre ellas es:", 
+                options: ["Cero.", "Proporcional a la distancia de las placas.", "Constante y apunta hacia la placa positiva.", "Constante y apunta hacia la placa negativa."], 
+                answer: 2, 
+                tip: "El campo eléctrico entre placas paralelas es uniforme ($E = \\sigma/\\epsilon_0$) y va de + a -. El electrón (carga negativa) experimenta fuerza opuesta al campo, por lo que viaja acelerado hacia el +." 
+            },
+            { 
+                type: 'equation', 
+                text: "Según el teorema del Trabajo y la Energía, si un protón parte del reposo y es acelerado por un campo eléctrico, su energía cinética final $K$ es igual al trabajo realizado por el campo. Expresa este trabajo $W$ en términos de su carga $q$ y la diferencia de potencial $V_A$ y $V_B$. (Ej: q*(VA-VB))", 
+                answer: "q*(VA-VB)", 
+                tip: "El trabajo del campo es $q(V_{\\text{inicial}} - V_{\\text{final}})$. Si el campo lo acelera, $V_A$ debe ser mayor a $V_B$ para que el resultado de energía cinética sea positivo." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Al calcular el campo eléctrico de un disco uniformemente cargado sobre su eje central, si nos acercamos mucho a su superficie ($z \\rightarrow 0$), la fórmula se aproxima matemáticamente a la de:", 
+                options: ["Una carga puntual.", "Una esfera conductora.", "Una placa plana infinita de carga.", "Un dipolo eléctrico."], 
+                answer: 2, 
+                tip: "Desde la perspectiva de una hormiga muy cerca de la superficie del disco, el disco parece extenderse hacia el infinito en todas direcciones." 
+            },
+            { 
+                type: 'drag', 
+                text: "Empareja la ecuación integral con su correspondiente significado físico en el electromagnetismo:", 
+                pairs: [
+                    { id: 'i1', question: "$\\vec{E} = \\int k \\frac{dq}{r^2} \\hat{r}$", answer: "Principio de superposición vectorial para el Campo." },
+                    { id: 'i2', question: "$V = \\int k \\frac{dq}{r}$", answer: "Superposición escalar para el Potencial Eléctrico." },
+                    { id: 'i3', question: "$W = \\int_A^B \\vec{F} \\cdot d\\vec{s}$", answer: "Definición general del Trabajo a lo largo de un camino." }
+                ],
+                tip: "Observa los vectores (flechitas o negritas). El potencial y el trabajo resultan en escalares, mientras que el campo es un vector direccional."
+            },
+            { 
+                type: 'mcq', 
+                text: "¿Por qué decimos que la fuerza eléctrica es una fuerza 'conservativa'?", 
+                options: ["Porque no permite que los electrones se escapen del átomo.", "Porque la energía potencial es igual a la energía cinética.", "Porque el trabajo realizado para mover una carga entre dos puntos es independiente de la trayectoria recorrida.", "Porque la carga total del universo se conserva."], 
+                answer: 2, 
+                tip: "Esta es la definición estricta de una fuerza conservativa en física (como la gravedad). El trabajo solo depende de la posición final e inicial, no de los zigzags que se hagan en el camino." 
+            },
+            { 
+                type: 'fill', 
+                text: "En una región donde existe un campo eléctrico uniforme dirigido hacia la DERECHA, la magnitud de la fuerza sobre un electrón también es constante, pero el vector fuerza apunta hacia la ________.", 
+                answer: "izquierda", 
+                tip: "Para cargas negativas ($q < 0$), $\\vec{F} = q\\vec{E}$. El signo negativo invierte la dirección del vector fuerza respecto al campo." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Una varilla se dobla formando un semicírculo y posee carga positiva uniforme. ¿Hacia dónde apunta el campo eléctrico neto en el centro geométrico del arco?", 
+                options: ["Hacia el centro exacto del arco.", "Radialmente hacia afuera alejándose de la parte cóncava.", "Hacia la curva del semicírculo.", "Es nulo."], 
+                answer: 1, 
+                tip: "Por simetría, las componentes perpendiculares al eje de simetría se anulan. Todos los vectores $dE$ tienen una componente que apunta rectamente 'alejándose' de la varilla abierta hacia el infinito." 
+            },
+            { 
+                type: 'canvas', 
+                text: "**Gráfico 1 - Integración Vectorial:** La barra roja es una distribución continua (discretizada). Sus vectores campo $d\\vec{E}$ apuntan en múltiples direcciones. **Arrastra la carga azul ($+q$) sobre la línea blanca punteada**. Comprobarás que solo en el **eje de simetría** las componentes verticales (Y) se anulan perfectamente, resultando en un Campo Eléctrico 100% horizontal.", 
+                tip: "Ubica la carga azul exactamente a la altura del punto amarillo en la barra (el centro geométrico Y=0). El indicador te dirá cuando $E_y = 0$." 
+            },
+            { 
+                type: 'canvas', 
+                text: "**Gráfico 2 - Trabajo Conservativo:** Arrastra la partícula desde la Zona A hasta la Zona B en el campo uniforme. Nota cómo el medidor de Trabajo Total se acumula sin importar cuántas vueltas des (el trabajo en Y es cero). **Déjala dentro de la Zona B para verificar que $W_{AB}$ siempre es el mismo.**", 
+                tip: "Esto demuestra visualmente por qué $\\int_A^B \\vec{E} \\cdot d\\vec{s}$ no depende de la trayectoria (conservación de la energía). Lleva la carga de A hasta B." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En conclusión de ambos simuladores y el módulo: Para resolver distribuciones asimétricas donde las componentes vectoriales no se cancelan fácilmente, los físicos prefieren calcular primero el ________ y luego derivarlo para hallar el campo.", 
+                options: ["Momento de inercia", "Flujo Eléctrico", "Potencial Eléctrico Escalar ($V$)", "Campo magnético"], 
+                answer: 2, 
+                tip: "Sumar números (escalares) es infinitamente más fácil que sumar vectores tridimensionales. Una vez hallado el $V_{total}$ con $\\int k dq/r$, aplicamos $\\vec{E} = -\\nabla V$." 
+            }
+        ];
+
+        let currentQuestion = 0;
+        let userState = questions.map(() => ({ answered: false, flagged: false, value: null }));
+        let examSubmitted = false;
+
+        function initUI() {
+            renderNavGrid();
+            renderAllQuestions();
+            showQuestion(0);
+            
+            document.getElementById('btn-prev').addEventListener('click', () => { if(currentQuestion > 0) showQuestion(currentQuestion - 1); });
+            document.getElementById('btn-next').addEventListener('click', () => { if(currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1); });
+            document.getElementById('btn-flag').addEventListener('click', () => toggleFlag(currentQuestion));
+            
+            document.getElementById('btn-evaluate').addEventListener('click', showConfirmModal);
+            document.getElementById('btn-cancel-eval').addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden'));
+            document.getElementById('btn-confirm-eval').addEventListener('click', () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                evaluateExam();
+            });
+
+            document.getElementById('btn-review').addEventListener('click', hideResultsPanel);
+            document.getElementById('btn-export').addEventListener('click', exportToPDF);
+            document.getElementById('btn-save').addEventListener('click', saveProgress);
+
+            renderMathInElement(document.body, {
+              delimiters: [
+                  {left: '$$', right: '$$', display: true},
+                  {left: '$', right: '$', display: false},
+                  {left: '\\(', right: '\\)', display: false},
+                  {left: '\\[', right: '\\]', display: true}
+              ],
+              throwOnError: false
+            });
+        }
+
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid');
+            grid.innerHTML = '';
+            questions.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = `nav-btn w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-200 cursor-pointer shadow-sm`;
+                btn.id = `nav-btn-${i}`;
+                btn.textContent = i + 1;
+                btn.addEventListener('click', () => showQuestion(i));
+                grid.appendChild(btn);
+            });
+            updateNavStyles();
+        }
+
+        function updateNavStyles() {
+            questions.forEach((_, i) => {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(!btn) return;
+                btn.classList.remove('nav-answered', 'nav-flagged', 'nav-active', 'bg-slate-50', 'text-slate-500', 'border-slate-200');
+                if (userState[i].flagged) btn.classList.add('nav-flagged');
+                else if (userState[i].answered) btn.classList.add('nav-answered');
+                else btn.classList.add('bg-slate-50', 'text-slate-500', 'border-slate-200');
+
+                if (i === currentQuestion) btn.classList.add('nav-active');
+            });
+        }
+
+        function renderAllQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = `q-card hidden flex flex-col h-full`;
+                card.id = `q-card-${index}`;
+
+                let html = `
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-slate-800 leading-relaxed"><span class="text-teal-600 mr-2 bg-teal-50 px-2 py-1 rounded-md border border-teal-100">${index + 1}.</span> ${q.text}</h3>
+                        <div id="feedback-icon-${index}" class="hidden shrink-0 mt-1"></div>
+                    </div><div class="flex-grow">`;
+
+                if (q.type === 'mcq') {
+                    html += `<div class="space-y-3 mt-4">`;
+                    q.options.forEach((opt, i) => {
+                        html += `
+                        <label class="flex items-center space-x-4 p-4 border border-slate-200 rounded-xl hover:bg-teal-50 hover:border-teal-300 cursor-pointer transition-all group shadow-sm">
+                            <input type="radio" name="q${index}" value="${i}" class="h-5 w-5 text-teal-600 border-gray-300 focus:ring-teal-500 q-input cursor-pointer">
+                            <span class="text-slate-700 text-[1.05rem] group-hover:text-teal-900">${opt}</span>
+                        </label>`;
+                    });
+                    html += `</div>`;
+                } 
+                else if (q.type === 'fill' || q.type === 'equation') {
+                    const ph = q.type === 'fill' ? "Escribe tu respuesta aquí" : "Expresión algebraica (Ej: lambda*dx)";
+                    html += `
+                    <div class="mt-6 flex flex-col max-w-sm">
+                        <input type="text" id="input-q${index}" autocomplete="off" class="q-input math-input text-xl border-2 border-slate-300 rounded-xl px-4 py-3 focus:ring-4 focus:ring-teal-200 focus:border-teal-500 outline-none transition-all text-center text-slate-700 font-bold shadow-sm" placeholder="${ph}">
+                        ${q.type === 'equation' ? '<p class="text-sm text-slate-500 mt-3 text-center bg-slate-50 p-2 rounded-lg border border-slate-200">Usa notación simple sin LaTeX. Ej: <code class="bg-white px-1 py-0.5 rounded text-teal-600">lambda*dx</code></p>' : ''}
+                    </div>`;
+                }
+                else if (q.type === 'drag') {
+                    html += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6"><div class="space-y-4">
+                                <h4 class="font-bold text-slate-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-target"></i> Concepto</h4>`;
+                    q.pairs.forEach((p) => {
+                        html += `
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm">
+                            <span class="font-semibold text-slate-700 text-base">${p.question}</span>
+                            <div class="dropzone min-h-[70px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-sm text-slate-400 transition-colors relative" data-target="${p.question}">
+                                <span>Soltar propiedad aquí</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div><div class="space-y-4 bg-teal-50/50 p-4 rounded-2xl border border-teal-50">
+                                <h4 class="font-bold text-teal-600 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-puzzle-piece"></i> Propiedad</h4>`;
+                    
+                    let shuffled = [...q.pairs].sort(() => Math.random() - 0.5);
+                    let dragHtml = `<div class="flex flex-col gap-3" id="drag-source-${index}">`;
+                    shuffled.forEach((p) => {
+                        dragHtml += `
+                        <div class="draggable bg-white border-2 border-teal-200 text-teal-800 p-4 rounded-xl font-semibold shadow-sm hover:border-teal-400 hover:shadow-md transition-all flex items-center gap-3 cursor-grab active:scale-95" draggable="true" data-id="${p.answer}">
+                            <i class="ph ph-dots-six-vertical text-teal-400 text-xl"></i> <span class="text-sm leading-tight">${p.answer}</span>
+                        </div>`;
+                    });
+                    html += dragHtml + `</div></div></div>`;
+                }
+                else if (q.type === 'canvas') {
+                    const cid = `simCanvas${index}`;
+                    html += `
+                    <div class="w-full max-w-lg mx-auto aspect-video md:aspect-[4/3] bg-slate-800 border-2 border-slate-700 rounded-2xl overflow-hidden mt-6 relative shadow-inner touch-none select-none">
+                        <canvas id="${cid}" class="w-full h-full cursor-pointer touch-none"></canvas>
+                        <div class="absolute top-4 left-4 bg-white/95 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-slate-200 font-mono text-sm pointer-events-none flex flex-col gap-1 z-10">
+                            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider" id="canvas-label-${index}">Lectura</span>
+                            <span id="canvas-display-${index}" class="font-bold text-slate-600 text-lg">0</span>
+                        </div>
+                        <div class="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-10">
+                            <div class="bg-teal-600/90 text-white text-xs px-4 py-2 rounded-full flex items-center gap-2 shadow-sm font-bold">
+                                <i class="ph ph-hand-swipe-left text-lg animate-pulse"></i> Interactúa arrastrando la partícula azul
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="input-q${index}" class="q-input" value="false">`;
+                }
+                html += `</div>`; 
+
+                html += `
+                    <div class="mt-8 pt-6 border-t border-slate-100 shrink-0">
+                        <button onclick="document.getElementById('tip-${index}').classList.toggle('hidden')" class="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-2 transition-colors bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 hover:border-amber-200">
+                            <i class="ph-fill ph-lightbulb text-lg"></i> Mostrar Tip Metodológico
+                        </button>
+                        <div id="tip-${index}" class="hidden mt-4 bg-amber-50 border-l-4 border-amber-400 text-amber-900 text-[0.95rem] p-4 rounded-r-xl shadow-sm fade-in leading-relaxed">
+                            <strong>Pista de resolución:</strong> ${q.tip}
+                        </div>
+                    </div>
+                `;
+
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+
+            document.querySelectorAll('.q-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const match = (e.target.name || e.target.id).match(/q(\d+)/);
+                    if(match) {
+                        userState[parseInt(match[1])].answered = true;
+                        userState[parseInt(match[1])].value = e.target.value;
+                        updateNavStyles();
+                    }
+                });
+                if (input.type === 'text') {
+                    input.addEventListener('input', (e) => {
+                        const match = e.target.id.match(/q(\d+)/);
+                        if(match) {
+                            userState[parseInt(match[1])].answered = (e.target.value.trim() !== '');
+                            userState[parseInt(match[1])].value = e.target.value;
+                            updateNavStyles();
+                        }
+                    });
+                }
+            });
+
+            initDragAndDrop();
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.q-card').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.remove('hidden');
+                    const txt = el.querySelector('input[type="text"]');
+                    if(txt && !examSubmitted) setTimeout(() => txt.focus(), 100);
+                    
+                    // Initialize specific canvases if they are shown
+                    if (index === 17 && !window.canvas17Init) { setTimeout(() => initCanvasSymmetry(17), 100); window.canvas17Init = true; }
+                    if (index === 18 && !window.canvas18Init) { setTimeout(() => initCanvasWork(18), 100); window.canvas18Init = true; }
+
+                } else el.classList.add('hidden');
+            });
+            
+            currentQuestion = index;
+            updateNavStyles();
+            if(index !== 0) document.getElementById('instructions-panel').style.display = 'none';
+
+            document.getElementById('btn-prev').disabled = index === 0;
+            document.getElementById('btn-next').disabled = index === questions.length - 1;
+            
+            const flagBtn = document.getElementById('btn-flag');
+            if (userState[index].flagged) {
+                flagBtn.classList.replace('text-amber-600', 'text-white');
+                flagBtn.classList.replace('bg-white', 'bg-amber-500');
+                flagBtn.querySelector('i').classList.replace('ph-flag', 'ph-check');
+            } else {
+                flagBtn.classList.replace('text-white', 'text-amber-600');
+                flagBtn.classList.replace('bg-amber-500', 'bg-white');
+                flagBtn.querySelector('i').classList.replace('ph-check', 'ph-flag');
+            }
+        }
+
+        function toggleFlag(index) { userState[index].flagged = !userState[index].flagged; showQuestion(index); }
+
+        function initDragAndDrop() {
+            document.querySelectorAll('.draggable').forEach(draggable => {
+                draggable.addEventListener('dragstart', (e) => {
+                    draggable.classList.add('opacity-50', 'scale-95');
+                    e.dataTransfer.setData('text/plain', draggable.getAttribute('data-id'));
+                    setTimeout(() => draggable.classList.add('invisible'), 0);
+                });
+                draggable.addEventListener('dragend', () => draggable.classList.remove('opacity-50', 'scale-95', 'invisible'));
+            });
+
+            document.querySelectorAll('.dropzone').forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault(); zone.classList.remove('dragover');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    const draggable = document.querySelector(`.draggable[data-id="${draggedId}"]`);
+                    
+                    if (draggable) {
+                        if (zone.children.length > 0 && !zone.children[0].tagName.toLowerCase().includes('span')) {
+                            const sourceContainer = draggable.closest('.q-card').querySelector(`[id^='drag-source']`);
+                            if(sourceContainer) sourceContainer.appendChild(zone.children[0]);
+                        }
+                        if(zone.querySelector('span')) zone.innerHTML = '';
+                        zone.appendChild(draggable);
+                        zone.classList.add('bg-teal-50', 'border-solid', 'border-teal-400');
+                        zone.classList.remove('border-dashed', 'text-slate-400');
+                        
+                        // Dynamic checking for any drag question
+                        const qIndex = parseInt(draggable.closest('.q-card').id.split('-')[2]);
+                        const allZones = document.getElementById(`q-card-${qIndex}`).querySelectorAll('.dropzone');
+                        let fullZones = 0;
+                        allZones.forEach(z => { if(z.querySelector('.draggable')) fullZones++; });
+                        if(fullZones === allZones.length) { userState[qIndex].answered = true; updateNavStyles(); }
+                    }
+                });
+            });
+        }
+
+        // CANVAS 1: Symmetry of Integration (Index 17)
+        function initCanvasSymmetry(index) {
+            const canvas = document.getElementById(`simCanvas${index}`);
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const display = document.getElementById(`canvas-display-${index}`);
+            document.getElementById(`canvas-label-${index}`).textContent = "Vector E neto";
+            
+            let cw = canvas.parentElement.clientWidth; let ch = canvas.parentElement.clientHeight;
+            canvas.width = cw; canvas.height = ch;
+            
+            // Continuous rod approximated by 10 points
+            const rod = [];
+            const rodX = cw * 0.2;
+            const rodYStart = ch * 0.2;
+            const rodYEnd = ch * 0.8;
+            for(let i=0; i<=10; i++) {
+                rod.push({ x: rodX, y: rodYStart + (rodYEnd - rodYStart)*(i/10), q: 1 });
+            }
+
+            let p = { x: cw * 0.6, y: ch * 0.2, r: 12, isDragging: false };
+            const centerY = (rodYStart + rodYEnd)/2;
+
+            function draw() {
+                ctx.clearRect(0, 0, cw, ch);
+                ctx.strokeStyle = '#334155'; ctx.lineWidth = 1;
+                for(let i=0; i<cw; i+=40){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,ch); ctx.stroke(); }
+                for(let i=0; i<ch; i+=40){ ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(cw,i); ctx.stroke(); }
+
+                // Axis of symmetry
+                ctx.beginPath(); ctx.moveTo(0, centerY); ctx.lineTo(cw, centerY);
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.setLineDash([5,5]); ctx.lineWidth=2; ctx.stroke();
+                ctx.setLineDash([]); ctx.fillStyle = 'white'; ctx.font = '10px Inter'; ctx.fillText("Eje Simetría", cw-70, centerY-5);
+
+                // Draw Rod
+                ctx.beginPath(); ctx.moveTo(rodX, rodYStart); ctx.lineTo(rodX, rodYEnd);
+                ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 10; ctx.lineCap = 'round'; ctx.stroke();
+                
+                // Draw individual dE vectors faintly
+                let Ex = 0; let Ey = 0;
+                rod.forEach(dq => {
+                    const dx = p.x - dq.x; const dy = p.y - dq.y;
+                    const r = Math.sqrt(dx*dx + dy*dy);
+                    if(r > 10) {
+                        const mag = 5000 / (r*r);
+                        Ex += mag * (dx/r); Ey += mag * (dy/r);
+                        
+                        ctx.beginPath(); ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x + mag*(dx/r)*0.5, p.y + mag*(dy/r)*0.5);
+                        ctx.strokeStyle = 'rgba(239, 68, 68, 0.2)'; ctx.lineWidth=1; ctx.stroke();
+                    }
+                });
+
+                // Draw Particle
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.fillStyle = '#3b82f6'; ctx.shadowColor = '#60a5fa'; ctx.shadowBlur = 10; ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                ctx.fillText('+q', p.x, p.y); ctx.shadowBlur = 0;
+
+                // Draw Net Vector
+                const netMag = Math.sqrt(Ex*Ex + Ey*Ey);
+                if(netMag > 0) {
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y);
+                    const endX = p.x + Ex*1.5; const endY = p.y + Ey*1.5;
+                    ctx.lineTo(endX, endY);
+                    ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 4; ctx.stroke();
+                    // arrow head
+                    const ang = Math.atan2(Ey, Ex);
+                    ctx.beginPath(); ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - 10*Math.cos(ang-0.5), endY - 10*Math.sin(ang-0.5));
+                    ctx.lineTo(endX - 10*Math.cos(ang+0.5), endY - 10*Math.sin(ang+0.5));
+                    ctx.fillStyle = '#22c55e'; ctx.fill();
+                }
+
+                // Logic check
+                const isSymmetric = Math.abs(Ey) < 1.0; 
+                if(isSymmetric) {
+                    display.innerHTML = `<span class="text-green-400">Ex: ${Ex.toFixed(1)} | Ey: ~0 (Simetría)</span>`;
+                    const inpH = document.getElementById(`input-q${index}`);
+                    if(inpH) { inpH.value = "true"; inpH.dispatchEvent(new Event('change')); }
+                } else {
+                    display.innerHTML = `<span class="text-amber-400">Ex: ${Ex.toFixed(1)} | Ey: ${Ey.toFixed(1)}</span>`;
+                    const inpH = document.getElementById(`input-q${index}`);
+                    if(inpH && !examSubmitted) { inpH.value = "false"; }
+                }
+            }
+
+            const startDrag = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const cx = e.touches ? e.touches[0].clientX : e.clientX; const cy = e.touches ? e.touches[0].clientY : e.clientY;
+                if (Math.hypot(cx - rect.left - p.x, cy - rect.top - p.y) < p.r * 3) { 
+                    p.isDragging = true; e.preventDefault(); canvas.style.cursor = 'grabbing';
+                }
+            };
+            const doDrag = (e) => {
+                if (p.isDragging) {
+                    e.preventDefault(); const rect = canvas.getBoundingClientRect();
+                    p.x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    p.y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                    draw();
+                }
+            };
+            const stopDrag = () => { p.isDragging = false; canvas.style.cursor = 'pointer'; };
+            canvas.addEventListener('mousedown', startDrag); canvas.addEventListener('mousemove', doDrag); window.addEventListener('mouseup', stopDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive:false}); canvas.addEventListener('touchmove', doDrag, {passive:false}); window.addEventListener('touchend', stopDrag);
+
+            window.addEventListener('resize', () => {
+                cw = canvas.parentElement.clientWidth; ch = canvas.parentElement.clientHeight;
+                canvas.width = cw; canvas.height = ch; draw();
+            });
+            draw();
+        }
+
+        // CANVAS 2: Conservative Work (Index 18)
+        function initCanvasWork(index) {
+            const canvas = document.getElementById(`simCanvas${index}`);
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const display = document.getElementById(`canvas-display-${index}`);
+            document.getElementById(`canvas-label-${index}`).textContent = "Trabajo W_AB";
+            
+            let cw = canvas.parentElement.clientWidth; let ch = canvas.parentElement.clientHeight;
+            canvas.width = cw; canvas.height = ch;
+            
+            const ZoneA = { x: cw*0.15, y: ch*0.5, r: 40 };
+            const ZoneB = { x: cw*0.85, y: ch*0.5, r: 40 };
+            let p = { x: ZoneA.x, y: ZoneA.y, r: 12, isDragging: false };
+            
+            let path = [];
+            let totalWork = 0;
+            const E_field = 10; // Uniform field to the right
+
+            function draw() {
+                ctx.clearRect(0, 0, cw, ch);
+                ctx.fillStyle = '#f1f5f9'; ctx.fillRect(0,0,cw,ch); // Light bg
+
+                // Draw uniform E field lines
+                ctx.strokeStyle = 'rgba(13, 148, 136, 0.3)'; ctx.lineWidth = 2;
+                for(let y=ch*0.1; y<ch; y+=ch*0.2) {
+                    ctx.beginPath(); ctx.moveTo(cw*0.05, y); ctx.lineTo(cw*0.95, y); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(cw*0.95, y); ctx.lineTo(cw*0.95 - 10, y - 5); ctx.lineTo(cw*0.95 - 10, y + 5);
+                    ctx.fillStyle = 'rgba(13, 148, 136, 0.3)'; ctx.fill();
+                }
+
+                // Draw Zones
+                ctx.beginPath(); ctx.arc(ZoneA.x, ZoneA.y, ZoneA.r, 0, Math.PI*2);
+                ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([5,5]); ctx.stroke();
+                ctx.fillStyle = 'rgba(148, 163, 184, 0.2)'; ctx.fill();
+                ctx.fillStyle = '#475569'; ctx.font = 'bold 16px Inter'; ctx.textAlign='center'; ctx.fillText('A', ZoneA.x, ZoneA.y-ZoneA.r-10);
+
+                ctx.beginPath(); ctx.arc(ZoneB.x, ZoneB.y, ZoneB.r, 0, Math.PI*2);
+                ctx.strokeStyle = '#22c55e'; ctx.stroke();
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.2)'; ctx.fill(); ctx.setLineDash([]);
+                ctx.fillStyle = '#16a34a'; ctx.fillText('B', ZoneB.x, ZoneB.y-ZoneB.r-10);
+
+                // Draw Path
+                if(path.length > 1) {
+                    ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
+                    for(let i=1; i<path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+                    ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 3; ctx.stroke();
+                }
+
+                // Draw Particle
+                ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+                ctx.fillStyle = '#3b82f6'; ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Inter'; ctx.textBaseline='middle'; ctx.fillText('q', p.x, p.y);
+
+                // Display logic
+                const isInB = Math.hypot(p.x - ZoneB.x, p.y - ZoneB.y) < ZoneB.r;
+                if(isInB) {
+                    display.innerHTML = `<span class="text-green-600 font-black">${totalWork.toFixed(0)} J (Fijo!)</span>`;
+                    const inpH = document.getElementById(`input-q${index}`);
+                    if(inpH) { inpH.value = "true"; inpH.dispatchEvent(new Event('change')); }
+                } else {
+                    display.innerHTML = `<span class="text-slate-600">${totalWork.toFixed(0)} J</span>`;
+                    const inpH = document.getElementById(`input-q${index}`);
+                    if(inpH && !examSubmitted) { inpH.value = "false"; }
+                }
+            }
+
+            const startDrag = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const cx = e.touches ? e.touches[0].clientX : e.clientX; const cy = e.touches ? e.touches[0].clientY : e.clientY;
+                if (Math.hypot(cx - rect.left - p.x, cy - rect.top - p.y) < p.r * 3) { 
+                    p.isDragging = true; e.preventDefault(); canvas.style.cursor = 'grabbing';
+                    if(Math.hypot(p.x - ZoneA.x, p.y - ZoneA.y) < ZoneA.r) { path = [{x: p.x, y: p.y}]; totalWork = 0; }
+                }
+            };
+            const doDrag = (e) => {
+                if (p.isDragging) {
+                    e.preventDefault(); const rect = canvas.getBoundingClientRect();
+                    const newX = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    const newY = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                    
+                    // W = F * dx. In uniform field, F is only in X.
+                    const dx = newX - p.x;
+                    totalWork += E_field * dx; // q=1, F = E
+
+                    p.x = newX; p.y = newY;
+                    path.push({x: p.x, y: p.y});
+                    draw();
+                }
+            };
+            const stopDrag = () => { p.isDragging = false; canvas.style.cursor = 'pointer'; };
+            canvas.addEventListener('mousedown', startDrag); canvas.addEventListener('mousemove', doDrag); window.addEventListener('mouseup', stopDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive:false}); canvas.addEventListener('touchmove', doDrag, {passive:false}); window.addEventListener('touchend', stopDrag);
+
+            window.addEventListener('resize', () => {
+                cw = canvas.parentElement.clientWidth; ch = canvas.parentElement.clientHeight;
+                canvas.width = cw; canvas.height = ch; 
+                ZoneA.x = cw*0.15; ZoneA.y = ch*0.5; ZoneB.x = cw*0.85; ZoneB.y = ch*0.5; draw();
+            });
+            draw();
+        }
+
+        function cleanString(str) {
+            if(!str) return "";
+            return str.toLowerCase().replace(/\s+/g, '').replace(/[\(\)]/g, '').replace(/\*/g, '').replace(/\\/g, '').replace(/[{}]/g, '');
+        }
+
+        function showConfirmModal() {
+            let unanswered = userState.filter(s => !s.answered).length;
+            const msg = document.getElementById('confirm-message');
+            msg.textContent = unanswered > 0 ? `Tienes ${unanswered} pregunta(s) sin responder. ¿Seguro que deseas evaluar ahora?` : `¿Deseas enviar tus respuestas para su evaluación final?`;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function evaluateExam() {
+            examSubmitted = true;
+            let score = 0; let total = questions.length;
+
+            questions.forEach((q, index) => {
+                const card = document.getElementById(`q-card-${index}`);
+                const icon = document.getElementById(`feedback-icon-${index}`);
+                let isCorrect = false;
+
+                card.querySelectorAll('input, button.draggable').forEach(el => { el.disabled = true; if(el.draggable) el.draggable = false; el.classList.remove('cursor-pointer'); });
+
+                if (q.type === 'mcq') {
+                    if (userState[index].value !== null && parseInt(userState[index].value) === q.answer) isCorrect = true;
+                } else if (q.type === 'fill' || q.type === 'equation') {
+                    if (userState[index].value) {
+                        const uVal = cleanString(userState[index].value); const aVal = cleanString(q.answer.toString());
+                        if (uVal === aVal || (uVal.includes(aVal))) isCorrect = true;
+                        
+                        // Custom fallback checks for tricky equations
+                        if(q.type === 'equation') {
+                            if(index === 1 && (uVal === 'lambdadx' || uVal === 'ldx' || uVal.includes('lambda*dx'))) isCorrect = true;
+                            if(index === 11 && (uVal.includes('qva') || uVal.includes('vavb'))) isCorrect = true;
+                        }
+
+                        if(!isCorrect) {
+                            const inpCont = card.querySelector('input[type="text"]').parentElement;
+                            const ansDiv = document.createElement('div');
+                            ansDiv.className = "mt-2 text-sm text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200";
+                            ansDiv.innerHTML = `Solución esperada: $$${q.answer}$$`;
+                            inpCont.appendChild(ansDiv);
+                            if(window.renderMathInElement) renderMathInElement(ansDiv);
+                        }
+                    }
+                } else if (q.type === 'drag') {
+                    let correctCount = 0;
+                    card.querySelectorAll('.dropzone').forEach(zone => {
+                        const target = zone.getAttribute('data-target'); const child = zone.querySelector('.draggable');
+                        if (child) {
+                            const pair = q.pairs.find(p => p.question === target);
+                            if (pair && pair.answer === child.getAttribute('data-id')) { correctCount++; zone.classList.add('border-green-400', 'bg-green-50'); } 
+                            else { zone.classList.add('border-red-400', 'bg-red-50'); }
+                        }
+                    });
+                    if (correctCount === q.pairs.length) isCorrect = true;
+                } else if (q.type === 'canvas') {
+                    if (userState[index].value === "true") isCorrect = true;
+                }
+
+                icon.classList.remove('hidden');
+                if (isCorrect) {
+                    score++; card.classList.add('correct-card');
+                    icon.innerHTML = `<div class="bg-green-100 p-2 rounded-full text-green-600 shadow-sm border border-green-200"><i class="ph-bold ph-check text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#22c55e';
+                } else {
+                    card.classList.add('incorrect-card');
+                    icon.innerHTML = `<div class="bg-red-100 p-2 rounded-full text-red-600 shadow-sm border border-red-200"><i class="ph-bold ph-x text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#ef4444';
+                }
+                document.getElementById(`nav-btn-${index}`).style.color = '#fff';
+                document.getElementById(`nav-btn-${index}`).style.borderColor = 'transparent';
+                document.getElementById(`tip-${index}`).classList.remove('hidden');
+            });
+
+            const percentage = Math.round((score / total) * 100);
+            document.getElementById('score-display').textContent = `${percentage}% (${score}/${total})`;
+            document.getElementById('results-panel').classList.remove('hidden');
+            
+            setTimeout(() => {
+                const bar = document.getElementById('score-bar');
+                bar.style.width = `${percentage}%`;
+                bar.className = `h-full rounded-full transition-all duration-1000 ease-out ${percentage >= 70 ? 'bg-green-500' : 'bg-red-500'}`;
+            }, 300);
+
+            const msg = document.getElementById('feedback-message');
+            if (percentage >= 70) {
+                msg.textContent = "¡Sobresaliente! Has integrado exitosamente el cálculo en el electromagnetismo.";
+                msg.className = "text-xl font-bold text-green-700 mb-6 text-center max-w-lg";
+                document.getElementById('btn-save').classList.remove('hidden');
+            } else {
+                msg.textContent = "Sigue practicando. El análisis de distribuciones continuas requiere un buen manejo del cálculo y vectores. (Requiere 70%)";
+                msg.className = "text-xl font-bold text-red-600 mb-6 text-center max-w-lg";
+            }
+            
+            window.lastScore = percentage;
+            document.getElementById('btn-export').classList.remove('hidden');
+            document.getElementById('btn-evaluate').classList.add('hidden');
+            
+            renderMathInElement(document.getElementById('questions-container'), {
+                delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+            });
+        }
+
+        function hideResultsPanel() { document.getElementById('results-panel').classList.add('hidden'); }
+
+        // --- 7. GUARDAR EN LA BASE DE DATOS (MÓDULO 4) ---
+        async function saveProgress() {
+            if (!currentUser) return showToast("Inicia sesión en la plataforma principal para guardar.", "error");
+            if (window.lastScore < 70) return showToast("Solo se guardan calificaciones aprobatorias (>70%).", "warning");
+
+            try {
+                const btn = document.getElementById('btn-save');
+                btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Guardando...`;
+                
+                // Actualizando variables para el Módulo 4
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                await update(progresoRef, {
+                    'm4-q1': true, // Chulito verde para el Cuestionario del Módulo 4
+                    'examen_distribuciones_score': window.lastScore
+                });
+                
+                showToast("¡Progreso sincronizado con tu Plataforma UNAB!", "success");
+                btn.innerHTML = `<i class="ph ph-check-circle text-lg"></i> Guardado en la plataforma`;
+                btn.classList.replace('bg-green-600', 'bg-slate-700');
+                btn.classList.replace('hover:bg-green-700', 'hover:bg-slate-800');
+                btn.disabled = true;
+            } catch (error) {
+                console.error("Save err:", error);
+                showToast("Error de conexión al guardar el progreso.", "error");
+                document.getElementById('btn-save').innerHTML = `<i class="ph ph-cloud-arrow-up text-lg"></i> Reintentar`;
+            }
+        }
+
+        async function loadProgress() {
+            if (!currentUser) return;
+            try {
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                const snapshot = await get(progresoRef);
+                if (snapshot.exists() && snapshot.val().examen_distribuciones_score) {
+                    showToast(`¡Bienvenido! Tu récord anterior en Distribuciones Continuas es: ${snapshot.val().examen_distribuciones_score}%`, "success");
+                }
+            } catch (e) { /* ignore silently */ }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-teal-600';
+            toast.className = `${bg} text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 fade-in border border-white/20`;
+            const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
+            toast.innerHTML = `<i class="ph ${icon} text-2xl"></i> <span class="font-medium text-[0.95rem]">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'; 
+                setTimeout(() => toast.remove(), 400); 
+            }, 4000);
+        }
+
+        function exportToPDF() {
+            document.querySelectorAll('.q-card').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('instructions-panel').style.display = 'none';
+            document.getElementById('results-panel').classList.add('hidden');
+            
+            const element = document.getElementById('questions-container');
+            showToast("Generando PDF detallado... Esto puede tardar unos segundos.", "info");
+            
+            const titleHTML = `<div id="pdf-header" class="mb-8 border-b-2 border-teal-200 pb-4">
+                                  <h1 class="text-3xl font-black text-teal-900">Resultados: Distribuciones y Trabajo</h1>
+                                  <p class="text-lg text-slate-600 font-bold mt-2">Puntaje obtenido: ${window.lastScore}%</p>
+                               </div>`;
+            element.insertAdjacentHTML('afterbegin', titleHTML);
+
+            html2pdf().set({
+                margin: [15, 10, 15, 10], 
+                filename: 'Examen_Distribuciones_Trabajo.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save().then(() => {
+                const h = document.getElementById('pdf-header');
+                if(h) h.remove();
+                
+                showQuestion(currentQuestion);
+                document.getElementById('results-panel').classList.remove('hidden');
+                showToast("¡PDF exportado exitosamente!", "success");
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>

@@ -1,0 +1,755 @@
+<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>LorentzLab10.easy - IA Physics</title>
+<!-- Librerías Matemáticas e Iconos -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<!-- Three.js para la simulación 3D interactiva -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<style>
+:root {
+    --accent: #4ecca3;
+    --danger: #ff6b6b;
+    --panel-w: 420px;
+}
+
+/* Modo Claro (Por Defecto) */
+body.light-mode {
+    --bg: #eef2f5;
+    --glass: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.1);
+    --text: #2c3e50;
+    --panel-bg: rgba(255, 255, 255, 0.95);
+    --card-bg: rgba(240, 244, 248, 0.8);
+    --shadow: rgba(0, 0, 0, 0.1);
+    --canvas-bg1: #dbe4eb;
+    --canvas-bg2: #f4f7f9;
+}
+
+/* Modo Oscuro */
+body.dark-mode {
+    --bg: #1a1a24;
+    --glass: rgba(30, 30, 40, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text: #e2e8f0;
+    --panel-bg: rgba(20, 20, 30, 0.95);
+    --card-bg: rgba(255, 255, 255, 0.05);
+    --shadow: rgba(0, 0, 0, 0.5);
+    --canvas-bg1: #2a2a35;
+    --canvas-bg2: #0d0d12;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', system-ui, sans-serif; }
+body { background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; transition: background 0.3s, color 0.3s; }
+
+.glass { background: var(--glass); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px var(--shadow); transition: background 0.3s, border 0.3s; }
+header { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; z-index: 100; border-bottom: 1px solid var(--glass-border); background: var(--panel-bg); }
+.h-menu { display: flex; gap: 10px; overflow-x: auto; padding: 10px 20px; background: var(--panel-bg); z-index: 90; border-bottom: 1px solid var(--glass-border); align-items: center; }
+.h-menu::-webkit-scrollbar { height: 4px; }
+.h-menu::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid transparent; border-radius: 8px; background: var(--card-bg); color: var(--text); cursor: pointer; transition: all .2s; font-size: .9rem; white-space: nowrap; font-weight: 500;}
+.btn:hover { background: rgba(128,128,128,0.2); }
+.btn.active { background: var(--accent); color: #000; font-weight: bold; box-shadow: 0 0 10px rgba(78,204,163,0.4); }
+.btn-primary { background: var(--accent); color: #000; font-weight: bold; }
+.btn-danger { background: rgba(255,107,107,0.2); color: var(--danger); }
+
+.workspace { position: relative; flex: 1; display: flex; overflow: hidden; flex-direction: column; }
+.canvas-area { flex: 1; position: relative; background: radial-gradient(circle at center, var(--canvas-bg1) 0%, var(--canvas-bg2) 100%); overflow: hidden; display: flex; justify-content: center; align-items: center; transition: background 0.3s; }
+#webgl-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; outline: none; }
+
+.slide-panel { position: absolute; right: 0; top: 0; height: 100%; width: var(--panel-w); transform: translateX(100%); transition: transform .3s cubic-bezier(0.4,0,0.2,1); z-index: 80; padding: 20px; overflow-y: auto; background: var(--panel-bg); border-left: 1px solid var(--glass-border); box-shadow: -5px 0 25px var(--shadow); }
+.slide-panel.open { transform: translateX(0); }
+.fab { position: absolute; right: 20px; top: 20px; width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: #000; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 85; box-shadow: 0 4px 15px rgba(78,204,163,0.4); font-size: 24px; transition: all .2s; }
+.fab:hover { transform: scale(1.05); }
+
+.card { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px var(--shadow); transition: background 0.3s, border 0.3s; }
+.section-title { font-size: .85rem; text-transform: uppercase; color: #888; margin-bottom: 12px; font-weight: bold; letter-spacing: 1px; border-bottom: 1px solid var(--glass-border); padding-bottom: 5px; }
+
+select, input[type="number"], input[type="text"], textarea { background: var(--bg); border: 1px solid var(--glass-border); color: var(--text); padding: 8px; border-radius: 6px; width: 100%; font-size: .9rem; outline: none; transition: border .2s; font-family: inherit; }
+select:focus, input:focus { border-color: var(--accent); }
+.input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 5px; }
+.input-label { font-size: 0.8rem; text-align: center; color: #888; margin-bottom: 4px; font-weight: bold; }
+input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent); margin-top: 5px; }
+.slider-container { display: flex; flex-direction: column; gap: 2px; text-align: center; }
+
+/* Panel Solución / Backdrop */
+#solution-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(6px); z-index: 9998; }
+#solution-overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 95vw; max-width: 800px; height: 90vh; display: none; flex-direction: column; z-index: 9999; background: var(--panel-bg); border: 2px solid var(--accent); box-shadow: 0 10px 50px rgba(0,0,0,0.9); border-radius: 12px; padding: 25px; overflow: hidden; }
+.solution-scroll-area { flex: 1; overflow-y: auto; padding-right: 15px; margin-bottom: 15px; }
+.window-controls { display: flex; gap: 8px; position: absolute; top: 15px; right: 15px; z-index: 10; }
+.win-btn { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; font-size: 12px; color: transparent; border: none; }
+.win-btn:hover { color: black; } .win-close { background: #ff5f56; }
+
+.enunciado-box { background: rgba(78, 204, 163, 0.1); border-left: 4px solid var(--accent); padding: 15px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 15px; border-radius: 0 8px 8px 0; color: var(--text); text-align: justify; }
+.teoria-box { background: rgba(241, 196, 15, 0.1); border-left: 4px solid #f1c40f; padding: 15px; font-size: 0.95rem; line-height: 1.6; margin-bottom: 15px; border-radius: 0 8px 8px 0; color: var(--text); }
+
+/* Animación / Paso a Paso CSS */
+.math-step { display: none; background: var(--card-bg); color: var(--text); padding: 15px; border-radius: 8px; font-size: 1.1rem; overflow-x: auto; border: 1px solid var(--glass-border); margin-bottom: 15px; animation: fadeIn 0.4s ease-out; }
+.pedagogy-tip { font-size: 0.85rem; color: #888; margin-top: 8px; font-style: italic; border-top: 1px dashed var(--glass-border); padding-top: 8px; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Panel 2D Inferior */
+#bottom-dashboard { height: 220px; background: var(--panel-bg); border-top: 1px solid var(--glass-border); display: flex; z-index: 50; position: relative; flex-shrink: 0; }
+.proj-container { flex: 1; display: flex; flex-direction: column; border-right: 1px solid var(--glass-border); padding: 10px; }
+.proj-container:last-child { border-right: none; }
+.proj-title { text-align: center; font-size: 0.85rem; font-weight: bold; color: var(--accent); margin-bottom: 5px; }
+.proj-canvas-wrap { flex: 1; position: relative; background: var(--bg); border-radius: 6px; overflow: hidden; border: 1px solid var(--glass-border); }
+.proj-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+/* Playback Controls reubicados */
+#playback-controls { position: absolute; top: 20px; left: 20px; z-index: 60; display: flex; flex-direction: column; gap: 10px; background: var(--glass); padding: 12px; border-radius: 8px; }
+
+.vector-legend { display: flex; gap: 20px; justify-content: center; margin-top: 5px; font-size: 0.85rem; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-weight: bold; }
+.dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+
+/* Modales */
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; backdrop-filter: blur(8px); }
+.modal-content { background: var(--panel-bg); padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; border: 1px solid var(--glass-border); position: relative; color: var(--text); box-shadow: 0 15px 50px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+.close-btn { position: absolute; top: 15px; right: 15px; cursor: pointer; font-size: 24px; color: #888; transition: color .2s; }
+.close-btn:hover { color: var(--accent); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 4px; }
+
+/* Media Queries para Responsividad */
+@media (max-width: 768px) {
+    :root { --panel-w: 100%; }
+    #bottom-dashboard { flex-direction: column; height: auto; }
+    .proj-container { height: 200px; border-right: none; border-bottom: 1px solid var(--glass-border); }
+    .vector-legend { display: none; }
+}
+</style>
+</head>
+<body class="light-mode">
+<header class="glass">
+    <div style="display:flex;align-items:center;gap:15px">
+        <h2 style="color:var(--accent);font-size:1.3rem;margin:0"><i class="ph ph-magnet"></i> LorentzLab10.easy</h2>
+        <span id="room-info" style="font-size:.85rem;color:#888;background:var(--card-bg);padding:4px 10px;border-radius:20px; border:1px solid var(--glass-border)">🌐 Sala Local</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:15px">
+        <button class="btn" onclick="toggleTheme()" title="Modo Día/Noche"><i class="ph ph-moon" id="theme-icon"></i></button>
+        <button id="user-info" class="btn" style="font-weight:bold;border:1px solid var(--accent)" onclick="showModal('profile-setup-modal')"><i class="ph ph-spinner-gap"></i> Conectando...</button>
+        <button id="btn-rooms" class="btn" style="display:none" onclick="openRooms()"><i class="ph ph-users-three"></i> Salas</button>
+        <button id="btn-logout" class="btn btn-danger" style="display:none" onclick="cerrarSesion()"><i class="ph ph-sign-out"></i> Salir</button>
+    </div>
+</header>
+
+<div class="h-menu glass">
+    <button class="btn active" onclick="togglePanel()"><i class="ph ph-sliders"></i> Panel de Control</button>
+    <button class="btn btn-primary" onclick="mostrarSolucion()"><i class="ph ph-chalkboard-teacher"></i> Ver Análisis Paso a Paso</button>
+    <div style="width:1px;background:var(--glass-border);margin:0 10px;height:24px"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:0.95rem;cursor:pointer; background:var(--card-bg); padding:6px 12px; border-radius:6px">
+        <input type="checkbox" id="toggle-grid" checked onchange="toggleFieldGrid()"> Campo Magnético ($\vec{B}$) 3D
+    </label>
+    <div class="vector-legend" style="margin-left:auto;">
+        <div class="legend-item" style="color:#3498db"><div class="dot" style="background:#3498db"></div> $\vec{v}$</div>
+        <div class="legend-item" style="color:#2ecc71"><div class="dot" style="background:#2ecc71"></div> $\vec{B}$</div>
+        <div class="legend-item" style="color:#e74c3c"><div class="dot" style="background:#e74c3c"></div> $\vec{F}$</div>
+    </div>
+</div>
+
+<div class="workspace" id="main-workspace">
+    <div class="canvas-area" id="canvas-area">
+        <div id="webgl-container"></div>
+        
+        <div style="position:absolute; top:20px; right:60px; text-align:right; color:#888; font-size:0.8rem; text-shadow:0 1px 2px var(--bg); pointer-events:none; z-index:10;">
+            Click Izq: Rotar 3D<br>Rueda: Zoom<br>Click Der: Mover 3D
+        </div>
+
+        <div id="playback-controls">
+            <button id="btn-play" class="btn btn-primary" style="justify-content:center" onclick="togglePlay()"><i class="ph ph-play"></i> Iniciar Movimiento</button>
+            <button class="btn" style="justify-content:center" onclick="resetSim()"><i class="ph ph-arrow-counter-clockwise"></i> Restaurar Posición</button>
+        </div>
+
+        <!-- OVERLAY DE SOLUCIÓN PEDAGÓGICA -->
+        <div id="solution-backdrop" onclick="document.getElementById('solution-overlay').style.display='none'; this.style.display='none';"></div>
+        <div id="solution-overlay">
+            <div class="window-controls">
+                <button class="win-btn win-close" onclick="document.getElementById('solution-overlay').style.display='none'; document.getElementById('solution-backdrop').style.display='none';"></button>
+            </div>
+            <h3 style="color:var(--accent); margin-bottom:15px; border-bottom:1px solid var(--glass-border); padding-bottom:10px;"><i class="ph ph-math-operations"></i> Desarrollo Analítico (Producto Cruz)</h3>
+            
+            <div class="solution-scroll-area">
+                <div id="step1" class="math-step">---</div>
+                <div id="step2" class="math-step">---</div>
+                <div id="step3" class="math-step">---</div>
+                <div id="step4" class="math-step">---</div>
+                <div id="step5" class="math-step">---</div>
+                
+                <div class="teoria-box" id="latex-teoria" style="display:none; margin-bottom:0;">
+                    <strong><i class="ph ph-exam"></i> Análisis y Tips Físicos:</strong><br>
+                    <ul id="analysis-list" style="margin-top:8px; margin-left:20px;"></ul>
+                </div>
+            </div>
+
+            <button id="btn-next-step" class="btn btn-primary" style="width:100%; justify-content:center; padding:15px; font-size:1.1rem; flex-shrink:0; box-shadow:0 -5px 15px var(--shadow);" onclick="nextSolutionStep()"><i class="ph ph-arrow-circle-right"></i> Revelar Siguiente Paso</button>
+        </div>
+    </div>
+
+    <!-- Dashboard Inferior 2D -->
+    <div id="bottom-dashboard">
+        <div class="proj-container">
+            <div class="proj-title">Vista Superior (Plano XY)</div>
+            <div class="proj-canvas-wrap"><canvas id="canvas-xy" class="proj-canvas"></canvas></div>
+        </div>
+        <div class="proj-container">
+            <div class="proj-title">Vista Frontal (Plano XZ)</div>
+            <div class="proj-canvas-wrap"><canvas id="canvas-xz" class="proj-canvas"></canvas></div>
+        </div>
+        <div class="proj-container">
+            <div class="proj-title">Vista Lateral (Plano YZ)</div>
+            <div class="proj-canvas-wrap"><canvas id="canvas-yz" class="proj-canvas"></canvas></div>
+        </div>
+    </div>
+    
+    <div class="fab" onclick="togglePanel()"><i class="ph ph-faders"></i></div>
+    
+    <!-- Panel Lateral de Controles y Enunciado -->
+    <div class="slide-panel open glass" id="right-panel">
+        <div class="window-controls" style="position:relative;top:0;right:0;justify-content:flex-end;margin-bottom:10px">
+            <button class="win-btn win-close" onclick="togglePanel()"></button>
+        </div>
+
+        <div class="section-title"><i class="ph ph-books"></i> Enunciados (Imágenes)</div>
+        <select id="exercise-select" onchange="loadExercise(this.value)" style="margin-bottom:15px; font-weight:bold; background:rgba(78,204,163,0.1); border-color:var(--accent)">
+            <option value="ex1">Ej 1: Haz de protones a 30°</option>
+            <option value="ex2">Ej 2: Fx y Fz con carga µC</option>
+            <option value="ex3">Ej 3: Carga -5.60 nC</option>
+            <option value="ex4">Ej 4: Carga -1.24x10⁻⁸ C</option>
+            <option value="custom">-- Modo Libre / Interactivo --</option>
+        </select>
+
+        <div class="enunciado-box card" id="latex-enunciado" style="background:var(--bg); border:1px solid var(--glass-border); border-left:4px solid var(--accent)">Cargando enunciado...</div>
+
+        <div class="section-title"><i class="ph ph-atom"></i> Partícula: Carga ($q$) y Posición</div>
+        <div class="card">
+            <div class="input-label" style="text-align:left">Carga ($q$) [C]:</div>
+            <input type="number" id="charge-q" step="any" value="1.6e-19" onchange="updateSim()" style="font-family:monospace; margin-bottom:10px;">
+            <div class="input-label" style="text-align:left">Posición Inicial 3D ($X_0, Y_0, Z_0$):</div>
+            <div class="input-grid">
+                <div class="slider-container"><input type="number" id="p-x" value="0" step="0.5" oninput="syncSlider('p-x')"><input type="range" id="p-x-sl" min="-5" max="5" step="0.1" value="0" oninput="syncInput('p-x')"></div>
+                <div class="slider-container"><input type="number" id="p-y" value="0" step="0.5" oninput="syncSlider('p-y')"><input type="range" id="p-y-sl" min="-5" max="5" step="0.1" value="0" oninput="syncInput('p-y')"></div>
+                <div class="slider-container"><input type="number" id="p-z" value="0" step="0.5" oninput="syncSlider('p-z')"><input type="range" id="p-z-sl" min="-5" max="5" step="0.1" value="0" oninput="syncInput('p-z')"></div>
+            </div>
+        </div>
+
+        <div class="section-title" style="color:#3498db"><i class="ph ph-arrow-up-right"></i> Velocidad ($\vec{v}$) [m/s]</div>
+        <div class="card" style="border-left:3px solid #3498db">
+            <div class="input-grid">
+                <div class="slider-container"><div class="input-label">X ($\hat{i}$)</div><input type="number" id="v-x" value="1.5e5" step="any" oninput="syncSlider('v-x')"><input type="range" id="v-x-sl" min="-5e5" max="5e5" step="1e4" value="1.5e5" oninput="syncInput('v-x')"></div>
+                <div class="slider-container"><div class="input-label">Y ($\hat{j}$)</div><input type="number" id="v-y" value="0" step="any" oninput="syncSlider('v-y')"><input type="range" id="v-y-sl" min="-5e5" max="5e5" step="1e4" value="0" oninput="syncInput('v-y')"></div>
+                <div class="slider-container"><div class="input-label">Z ($\hat{k}$)</div><input type="number" id="v-z" value="2.598e5" step="any" oninput="syncSlider('v-z')"><input type="range" id="v-z-sl" min="-5e5" max="5e5" step="1e4" value="2.598e5" oninput="syncInput('v-z')"></div>
+            </div>
+        </div>
+
+        <div class="section-title" style="color:#2ecc71"><i class="ph ph-magnet"></i> Campo Magnético ($\vec{B}$) [T]</div>
+        <div class="card" style="border-left:3px solid #2ecc71">
+            <div class="input-grid">
+                <div class="slider-container"><div class="input-label">X ($\hat{i}$)</div><input type="number" id="b-x" value="0" step="any" oninput="syncSlider('b-x')"><input type="range" id="b-x-sl" min="-5" max="5" step="0.1" value="0" oninput="syncInput('b-x')"></div>
+                <div class="slider-container"><div class="input-label">Y ($\hat{j}$)</div><input type="number" id="b-y" value="0" step="any" oninput="syncSlider('b-y')"><input type="range" id="b-y-sl" min="-5" max="5" step="0.1" value="0" oninput="syncInput('b-y')"></div>
+                <div class="slider-container"><div class="input-label">Z ($\hat{k}$)</div><input type="number" id="b-z" value="2.0" step="any" oninput="syncSlider('b-z')"><input type="range" id="b-z-sl" min="-5" max="5" step="0.1" value="2.0" oninput="syncInput('b-z')"></div>
+            </div>
+        </div>
+        
+        <div class="section-title" style="color:#e74c3c"><i class="ph ph-lightning"></i> Fuerza Resultante ($\vec{F}$)</div>
+        <div class="card" id="force-result" style="font-family:monospace; color:var(--text); font-size:1.1rem; line-height:1.6; border-left:3px solid #e74c3c; background:rgba(231, 76, 60, 0.1)">
+            Calculando...
+        </div>
+    </div>
+</div>
+
+<!-- Modales Firebase/Auth -->
+<div class="modal" id="auth-modal"><div class="modal-content glass"><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-lock-key"></i> Autenticación Requerida</h3><input type="email" id="auth-email" placeholder="Correo electrónico" style="margin-bottom:10px; background:var(--bg)"><input type="password" id="auth-pass" placeholder="Contraseña" style="margin-bottom:15px; background:var(--bg)"><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1;justify-content:center" onclick="iniciarSesion()">Entrar</button><button class="btn" style="flex:1;justify-content:center;background:var(--card-bg)" onclick="registrarUsuario()">Registro</button></div></div></div>
+<div class="modal" id="profile-setup-modal"><div class="modal-content glass"><span class="close-btn" onclick="hideModal('profile-setup-modal')">&times;</span><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-user-circle"></i> Mi Perfil</h3><input type="text" id="prof-name" placeholder="Nombre completo o Alias" style="margin-bottom:15px; background:var(--bg); padding:12px;"><button class="btn btn-primary" style="width:100%;justify-content:center; padding:12px;" onclick="saveProfile()">Guardar Perfil</button></div></div>
+<div class="modal" id="rooms-modal"><div class="modal-content glass"><span class="close-btn" onclick="hideModal('rooms-modal')">&times;</span><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-users"></i> Conexión a Sala Multi-Usuario</h3><input type="text" id="new-room-name" placeholder="Ej: GrupoFisica101" style="margin-bottom:15px; background:var(--bg); padding:12px;"><button class="btn btn-primary" style="width:100%;justify-content:center; padding:12px;" onclick="crearUnirseSala()">Entrar / Crear Sala</button></div></div>
+
+<script>
+// --- ESTADO Y TEMA ---
+function toggleTheme() {
+    const body = document.body;
+    body.classList.toggle('dark-mode'); body.classList.toggle('light-mode');
+    const icon = document.getElementById('theme-icon');
+    if (body.classList.contains('dark-mode')) { icon.classList.remove('ph-moon'); icon.classList.add('ph-sun'); } 
+    else { icon.classList.remove('ph-sun'); icon.classList.add('ph-moon'); }
+    draw2DViews(); 
+}
+
+const simState = {
+    q: 1.6e-19, p0: {x: 0, y: 0, z: 0},
+    v: {x: 1.5e5, y: 0, z: 2.598e5}, b: {x: 0, y: 0, z: 2.0}, f: {x: 0, y: 0, z: 0},
+    isPlaying: false, showGrid: true, currentEx: 'ex1'
+};
+
+const exData = {
+    'ex1': {
+        enunciado: "Un haz de protones ($q = 1.6 \\times 10^{-19}$ C) se mueve a $3.0 \\times 10^5$ m/s a través de un campo magnético uniforme, con magnitud 2.0 T dirigido a lo largo del eje z positivo, como se indica en la figura. La velocidad de cada protón se encuentra en el plano xz con un ángulo de 30° con respecto al eje +z. Calcule la fuerza sobre un protón.",
+        q: 1.6e-19, p0x:0, p0y:0, p0z:0, vx: 1.5e5, vy: 0, vz: 2.598e5, bx: 0, by: 0, bz: 2.0
+    },
+    'ex2': {
+        enunciado: "Una partícula con carga de $7.80 \\,\\mu$C se mueve con velocidad $\\vec{v} = -(3.80 \\times 10^3 \\text{ m/s})\\hat{j}$. Se mide la fuerza magnética sobre la partícula y resulta ser de $\\vec{F} = +(7.60 \\times 10^{-3} \\text{ N})\\hat{i} - (5.20 \\times 10^{-3} \\text{ N})\\hat{k}$. a) Calcule las componentes del campo magnético correspondientes.<br><br>*(El simulador ajusta $\\vec{B}$ automáticamente para generar esta fuerza).*.",
+        q: 7.8e-6, p0x:0, p0y:0, p0z:0, vx: 0, vy: -3800, vz: 0, bx: -0.1754, by: 0, bz: -0.2564
+    },
+    'ex3': {
+        enunciado: "Una partícula con carga de $-5.60$ nC se mueve en un campo magnético uniforme $\\vec{B} = -(1.25 \\text{ T})\\hat{k}$. La medición de la fuerza magnética resulta ser $\\vec{F} = -(3.40 \\times 10^{-7} \\text{ N})\\hat{i} + (7.40 \\times 10^{-7} \\text{ N})\\hat{j}$. Calcule la velocidad de la partícula.",
+        q: -5.6e-9, p0x:0, p0y:0, p0z:0, vx: -105.71, vy: -48.57, vz: 0, bx: 0, by: 0, bz: -1.25
+    },
+    'ex4': {
+        enunciado: "Una partícula con carga de $-1.24 \\times 10^{-8}$ C se mueve con velocidad instantánea $\\vec{v} = (4.19 \\times 10^4 \\text{ m/s})\\hat{i} + (-3.85 \\times 10^4 \\text{ m/s})\\hat{j}$. ¿Cuál es la fuerza que sobre esta partícula ejerce un campo magnético $\\vec{B} = (1.40 \\text{ T})\\hat{k}$?",
+        q: -1.24e-8, p0x:0, p0y:0, p0z:0, vx: 41900, vy: -38500, vz: 0, bx: 0, by: 0, bz: 1.40
+    },
+    'custom': { enunciado: "<b>Modo Libre:</b> Modifica libremente las variables a tu gusto. Observa cómo cambia la trayectoria de la partícula en 3D y el análisis matemático paso a paso." }
+};
+
+// --- THREE.JS SETUP ---
+let scene, camera, renderer, controls;
+let arrowV, arrowB, arrowF, particleMesh, fieldGridGroup;
+let predictedPathLine, currentPathLine, predictedGeo, currentGeo;
+let pathPoints = [], animStep = 0;
+
+function initThreeJS() {
+    const container = document.getElementById('webgl-container');
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+    camera.position.set(8, 8, 12);
+    
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    const updateSize = () => {
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+    };
+    updateSize();
+    container.appendChild(renderer.domElement);
+    
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; controls.dampingFactor = 0.05;
+
+    // Iluminación
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 20, 15);
+    scene.add(dirLight);
+    scene.add(new THREE.AxesHelper(5));
+    
+    // Partícula
+    particleMesh = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 32), new THREE.MeshPhongMaterial({color: 0xffe600, emissive: 0xaa8800}));
+    scene.add(particleMesh);
+
+    // Flechas
+    arrowV = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0x3498db, 0.4, 0.25); 
+    arrowF = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 2, 0xe74c3c, 0.5, 0.3);
+    particleMesh.add(arrowV); particleMesh.add(arrowF);
+
+    arrowB = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 3, 0x2ecc71, 0.5, 0.25);
+    scene.add(arrowB);
+
+    createFieldGrid();
+
+    // Trayectorias
+    predictedGeo = new THREE.BufferGeometry();
+    predictedPathLine = new THREE.Line(predictedGeo, new THREE.LineBasicMaterial({color: 0x4ecca3, transparent: true, opacity: 0.3, linewidth: 2}));
+    scene.add(predictedPathLine);
+
+    currentGeo = new THREE.BufferGeometry();
+    currentPathLine = new THREE.Line(currentGeo, new THREE.LineBasicMaterial({color: 0xffe600, transparent: true, opacity: 0.9, linewidth: 3}));
+    scene.add(currentPathLine);
+
+    window.addEventListener('resize', () => { updateSize(); setTimeout(draw2DViews, 100); }, false);
+}
+
+function createFieldGrid() {
+    fieldGridGroup = new THREE.Group();
+    const arrowGeo = new THREE.CylinderGeometry(0, 0.08, 0.3); arrowGeo.translate(0, 0.45, 0); 
+    const lineGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.6);
+    const bMat = new THREE.MeshPhongMaterial({color: 0x2ecc71, transparent:true, opacity:0.3});
+    
+    const spacing = 4;
+    for(let x=-1; x<=1; x++) {
+        for(let y=-1; y<=1; y++) {
+            for(let z=-1; z<=1; z++) {
+                const mesh = new THREE.Group();
+                mesh.add(new THREE.Mesh(arrowGeo, bMat)); mesh.add(new THREE.Mesh(lineGeo, bMat));
+                mesh.position.set(x*spacing, y*spacing, z*spacing);
+                fieldGridGroup.add(mesh);
+            }
+        }
+    }
+    scene.add(fieldGridGroup);
+}
+
+// --- FÍSICA Y TRAYECTORIA ---
+function calculateTrajectory() {
+    pathPoints = [];
+    let p = new THREE.Vector3(simState.p0.x, simState.p0.y, simState.p0.z);
+    const vV = new THREE.Vector3(simState.v.x, simState.v.y, simState.v.z);
+    const vB = new THREE.Vector3(simState.b.x, simState.b.y, simState.b.z);
+    
+    if(vV.length() === 0) { pathPoints.push(p.clone()); predictedGeo.setFromPoints(pathPoints); return; }
+
+    let u = vV.clone().normalize().multiplyScalar(4.0); 
+    let dt = 0.05, steps = 600;
+    let bDir = vB.length() > 0 ? vB.clone().normalize() : new THREE.Vector3(0,0,0);
+    const visualChargeScale = Math.sign(simState.q) * (vB.length() > 0 ? 1.5 : 0); 
+    const uMagInitial = u.length();
+
+    pathPoints.push(p.clone());
+    for(let i=0; i<steps; i++) {
+        p.add(u.clone().multiplyScalar(dt));
+        let dU = new THREE.Vector3().crossVectors(u, bDir).multiplyScalar(visualChargeScale * dt);
+        u.add(dU).normalize().multiplyScalar(uMagInitial);
+        pathPoints.push(p.clone());
+    }
+    predictedGeo.setFromPoints(pathPoints); currentGeo.setFromPoints([]);
+}
+
+// --- ACTUALIZACIÓN DE ESTADO ---
+function syncSlider(id) { document.getElementById(id+'-sl').value = document.getElementById(id).value; updateSim(); }
+function syncInput(id) { document.getElementById(id).value = document.getElementById(id+'-sl').value; updateSim(); }
+
+function updateSim() {
+    simState.q = parseFloat(document.getElementById('charge-q').value) || 0;
+    simState.p0.x = parseFloat(document.getElementById('p-x').value) || 0; simState.p0.y = parseFloat(document.getElementById('p-y').value) || 0; simState.p0.z = parseFloat(document.getElementById('p-z').value) || 0;
+    simState.v.x = parseFloat(document.getElementById('v-x').value) || 0; simState.v.y = parseFloat(document.getElementById('v-y').value) || 0; simState.v.z = parseFloat(document.getElementById('v-z').value) || 0;
+    simState.b.x = parseFloat(document.getElementById('b-x').value) || 0; simState.b.y = parseFloat(document.getElementById('b-y').value) || 0; simState.b.z = parseFloat(document.getElementById('b-z').value) || 0;
+
+    simState.f.x = simState.q * (simState.v.y * simState.b.z - simState.v.z * simState.b.y);
+    simState.f.y = simState.q * (simState.v.z * simState.b.x - simState.v.x * simState.b.z);
+    simState.f.z = simState.q * (simState.v.x * simState.b.y - simState.v.y * simState.b.x);
+
+    const fMag = Math.hypot(simState.f.x, simState.f.y, simState.f.z);
+    const formatH = (n) => { if(n===0) return "0"; let [m, e] = n.toExponential(2).split('e'); e = parseInt(e); return Math.abs(e)<3 ? n.toPrecision(3) : `${m} &times; 10<sup>${e}</sup>`; };
+
+    document.getElementById('force-result').innerHTML = `
+        <span style="color:var(--text)">Fx:</span> ${formatH(simState.f.x)} N<br>
+        <span style="color:var(--text)">Fy:</span> ${formatH(simState.f.y)} N<br>
+        <span style="color:var(--text)">Fz:</span> ${formatH(simState.f.z)} N<br>
+        <hr style="border:0; border-top:1px dashed var(--glass-border); margin:5px 0;">
+        <span style="color:#e74c3c; font-weight:bold;">|F|: ${formatH(fMag)} N</span>
+    `;
+
+    if(simState.isPlaying) { simState.isPlaying = false; document.getElementById('btn-play').innerHTML = '<i class="ph ph-play"></i> Iniciar Movimiento'; }
+    
+    resetParticle(); calculateTrajectory(); update3DScene(); draw2DViews();
+    prepararPasosLatex(); renderKaTeXGlobal();
+    if(window.reqSync) window.reqSync();
+}
+
+function resetParticle() { particleMesh.position.set(simState.p0.x, simState.p0.y, simState.p0.z); animStep = 0; currentGeo.setFromPoints([]); }
+function togglePlay() {
+    simState.isPlaying = !simState.isPlaying;
+    const btn = document.getElementById('btn-play');
+    if(simState.isPlaying) { btn.innerHTML = '<i class="ph ph-pause"></i> Pausar'; if(animStep >= pathPoints.length-1) resetParticle(); }
+    else { btn.innerHTML = '<i class="ph ph-play"></i> Continuar'; }
+}
+function resetSim() { simState.isPlaying = false; document.getElementById('btn-play').innerHTML = '<i class="ph ph-play"></i> Iniciar Movimiento'; resetParticle(); }
+
+function update3DScene() {
+    const vV = new THREE.Vector3(simState.v.x, simState.v.y, simState.v.z), vB = new THREE.Vector3(simState.b.x, simState.b.y, simState.b.z), vF = new THREE.Vector3(simState.f.x, simState.f.y, simState.f.z);
+    
+    if(simState.showGrid) {
+        fieldGridGroup.visible = true;
+        const dir = vB.clone().normalize(); const quat = new THREE.Quaternion(); if(vB.length() > 0) quat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+        fieldGridGroup.children.forEach(ag => { ag.visible = vB.length() > 0; if(vB.length() > 0) ag.quaternion.copy(quat); });
+    } else { fieldGridGroup.visible = false; }
+
+    arrowV.setDirection(vV.length() > 0 ? vV.clone().normalize() : new THREE.Vector3(1,0,0)); arrowV.setLength(vV.length() > 0 ? 3 : 0, 0.5, 0.3);
+    arrowF.setDirection(vF.length() > 0 ? vF.clone().normalize() : new THREE.Vector3(0,0,1)); arrowF.setLength(vF.length() > 0 ? 3.5 : 0, 0.6, 0.4);
+    arrowB.position.set(simState.p0.x, simState.p0.y, simState.p0.z);
+    arrowB.setDirection(vB.length() > 0 ? vB.clone().normalize() : new THREE.Vector3(0,1,0)); arrowB.setLength(vB.length() > 0 ? 4 : 0, 0.6, 0.3);
+}
+
+// --- DIBUJO 2D OPTIMIZADO ---
+function draw2DViews() {
+    drawProjection('canvas-xy', 'x', 'y', 'z');
+    drawProjection('canvas-xz', 'x', 'z', 'y');
+    drawProjection('canvas-yz', 'y', 'z', 'x');
+}
+
+function drawProjection(canvasId, ax1, ax2, axZ) {
+    const canvas = document.getElementById(canvasId), ctx = canvas.getContext('2d');
+    const w = canvas.clientWidth || 300, h = canvas.clientHeight || 150;
+    if(canvas.width !== w) canvas.width = w; if(canvas.height !== h) canvas.height = h;
+    
+    ctx.clearRect(0, 0, w, h); const cx = w/2, cy = h/2;
+    
+    const isDark = document.body.classList.contains('dark-mode');
+    const axColor = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)';
+    const textColor = isDark ? '#fff' : '#000';
+
+    ctx.strokeStyle = axColor; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+    
+    const getComp = (v, a) => v[a];
+    const v_1 = getComp(simState.v, ax1), v_2 = getComp(simState.v, ax2), v_z = getComp(simState.v, axZ);
+    const b_1 = getComp(simState.b, ax1), b_2 = getComp(simState.b, ax2), b_z = getComp(simState.b, axZ);
+    const f_1 = getComp(simState.f, ax1), f_2 = getComp(simState.f, ax2), f_z = getComp(simState.f, axZ);
+
+    const drawVec = (vx, vy, vz, color, label) => {
+        let len = Math.hypot(vx, vy);
+        if(len > 1e-10) {
+            const r = 40, dx = (vx/len) * r, dy = -(vy/len) * r;
+            ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx+dx, cy+dy); ctx.stroke();
+            const ang = Math.atan2(dy, dx);
+            ctx.beginPath(); ctx.moveTo(cx+dx, cy+dy); ctx.lineTo(cx+dx-10*Math.cos(ang-Math.PI/6), cy+dy-10*Math.sin(ang-Math.PI/6)); ctx.lineTo(cx+dx-10*Math.cos(ang+Math.PI/6), cy+dy-10*Math.sin(ang+Math.PI/6)); ctx.fill();
+            ctx.font = 'bold 12px Arial'; ctx.fillStyle = color; ctx.fillText(label, cx+dx+5, cy+dy+5);
+            if(Math.abs(vz) > 1e-15) drawOutIn(ctx, cx+dx, cy+dy, vz > 0, color);
+        } else if (Math.abs(vz) > 1e-15) {
+            drawOutIn(ctx, cx, cy, vz > 0, color); ctx.fillStyle = color; ctx.font = 'bold 12px Arial'; ctx.fillText(label, cx+15, cy-15);
+        }
+    };
+    const drawOutIn = (c, x, y, isOut, color) => {
+        c.strokeStyle = color; c.fillStyle = color; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 6, 0, Math.PI*2); c.stroke();
+        if(isOut) { c.beginPath(); c.arc(x, y, 2, 0, Math.PI*2); c.fill(); } 
+        else { c.beginPath(); c.moveTo(x-4, y-4); c.lineTo(x+4, y+4); c.stroke(); c.beginPath(); c.moveTo(x+4, y-4); c.lineTo(x-4, y+4); c.stroke(); }
+    };
+
+    drawVec(b_1, b_2, b_z, '#2ecc71', 'B'); drawVec(v_1, v_2, v_z, '#3498db', 'v'); drawVec(f_1, f_2, f_z, '#e74c3c', 'F');
+
+    // Ángulo
+    if(Math.hypot(v_1,v_2)>1e-10 && Math.hypot(b_1,b_2)>1e-10) {
+        let a1 = Math.atan2(v_2, v_1), a2 = Math.atan2(b_2, b_1), delta = a2 - a1;
+        if(delta > Math.PI) delta -= 2*Math.PI; if(delta < -Math.PI) delta += 2*Math.PI;
+        ctx.strokeStyle = axColor; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, 25, -a1, -a2, delta > 0); ctx.stroke();
+        let midA = -(a1 + delta/2); ctx.fillStyle = textColor; ctx.fillText(`${Math.abs(delta * 180/Math.PI).toFixed(1)}°`, cx + 35*Math.cos(midA)-10, cy + 35*Math.sin(midA));
+    }
+}
+
+// --- SOLUCIÓN PASO A PASO PEDAGÓGICA (LATEX) ---
+function formatLatexNum(num) {
+    if (num === 0) return "0";
+    let [m, e] = num.toExponential(2).split('e');
+    e = parseInt(e);
+    return Math.abs(e)<3 ? parseFloat(num.toFixed(2)).toString() : `${m} \\cdot 10^{${e}}`;
+}
+
+let currentSolutionStep = 0;
+function mostrarSolucion() {
+    document.getElementById('solution-overlay').style.display='flex';
+    document.getElementById('solution-backdrop').style.display='block';
+    currentSolutionStep = 0;
+    
+    ['step1', 'step2', 'step3', 'step4', 'step5'].forEach(id => document.getElementById(id).style.display = 'none');
+    document.getElementById('step1').style.display = 'block';
+    
+    document.getElementById('btn-next-step').style.display = 'flex';
+    document.getElementById('latex-teoria').style.display = 'none';
+}
+
+function nextSolutionStep() {
+    currentSolutionStep++;
+    if(currentSolutionStep >= 1 && currentSolutionStep <= 4) {
+        document.getElementById('step' + (currentSolutionStep + 1)).style.display = 'block';
+    }
+    
+    if(currentSolutionStep >= 4) {
+        document.getElementById('btn-next-step').style.display = 'none';
+        document.getElementById('latex-teoria').style.display = 'block';
+    }
+    // Auto-scroll al paso revelado
+    document.querySelector('.solution-scroll-area').scrollTop = document.querySelector('.solution-scroll-area').scrollHeight;
+}
+
+function prepararPasosLatex() {
+    const s = simState; const fMag = Math.hypot(s.f.x, s.f.y, s.f.z);
+    
+    const step1Tex = String.raw`
+    \text{Paso 1: Planteamiento de la Matriz 3x3 del Producto Cruz} \\
+    \vec{F} = q (\vec{v} \times \vec{B}) = q \begin{bmatrix} \hat{i} & \hat{j} & \hat{k} \\ v_x & v_y & v_z \\ B_x & B_y & B_z \end{bmatrix} \\
+    \vec{F} = (${formatLatexNum(s.q)}\text{ C}) \begin{bmatrix} \hat{i} & \hat{j} & \hat{k} \\ ${formatLatexNum(s.v.x)} & ${formatLatexNum(s.v.y)} & ${formatLatexNum(s.v.z)} \\ ${formatLatexNum(s.b.x)} & ${formatLatexNum(s.b.y)} & ${formatLatexNum(s.b.z)} \end{bmatrix}`;
+    
+    const step2Tex = String.raw`
+    \text{Paso 2: Componente en } \hat{i} \text{ (Tapamos la columna de } \hat{i} \text{ y calculamos el determinante 2x2)} \\
+    +\hat{i} \begin{vmatrix} \blacksquare & \blacksquare \\ ${formatLatexNum(s.v.y)} & ${formatLatexNum(s.v.z)} \\ ${formatLatexNum(s.b.y)} & ${formatLatexNum(s.b.z)} \end{vmatrix} = \hat{i}\left[ (${formatLatexNum(s.v.y)})(${formatLatexNum(s.b.z)}) - (${formatLatexNum(s.v.z)})(${formatLatexNum(s.b.y)}) \right] = ${formatLatexNum(s.f.x/s.q)}\hat{i}`;
+    
+    const step3Tex = String.raw`
+    \text{Paso 3: Componente en } \hat{j} \text{ (Tapamos la columna de } \hat{j} \text{.} \textcolor{red}{\textbf{ ¡Importante el signo negativo!}}) \\
+    -\hat{j} \begin{vmatrix} ${formatLatexNum(s.v.x)} & \blacksquare \\ \blacksquare & ${formatLatexNum(s.v.z)} \\ ${formatLatexNum(s.b.x)} & \blacksquare \end{vmatrix}_{\text{*(Visual)}} \rightarrow -\hat{j} \left[ (${formatLatexNum(s.v.x)})(${formatLatexNum(s.b.z)}) - (${formatLatexNum(s.v.z)})(${formatLatexNum(s.b.x)}) \right] = ${formatLatexNum(s.f.y/s.q)}\hat{j}`;
+    
+    const step4Tex = String.raw`
+    \text{Paso 4: Componente en } \hat{k} \text{ (Tapamos la columna de } \hat{k} \text{)} \\
+    +\hat{k} \begin{vmatrix} ${formatLatexNum(s.v.x)} & ${formatLatexNum(s.v.y)} \\ ${formatLatexNum(s.b.x)} & ${formatLatexNum(s.b.y)} \\ \blacksquare & \blacksquare \end{vmatrix}_{\text{*(Visual)}} \rightarrow +\hat{k} \left[ (${formatLatexNum(s.v.x)})(${formatLatexNum(s.b.y)}) - (${formatLatexNum(s.v.y)})(${formatLatexNum(s.b.x)}) \right] = ${formatLatexNum(s.f.z/s.q)}\hat{k}`;
+
+    const step5Tex = String.raw`
+    \text{Paso 5: Multiplicación por la Carga (q) y Magnitud Final} \\
+    \vec{F} = ${formatLatexNum(s.q)} \left( ${formatLatexNum(s.f.x/s.q)}\hat{i} ${s.f.y/s.q>=0?'+':''} ${formatLatexNum(s.f.y/s.q)}\hat{j} ${s.f.z/s.q>=0?'+':''} ${formatLatexNum(s.f.z/s.q)}\hat{k} \right) \\
+    \vec{F} = \mathbf{${formatLatexNum(s.f.x)}\hat{i} ${s.f.y>=0?'+':''} ${formatLatexNum(s.f.y)}\hat{j} ${s.f.z>=0?'+':''} ${formatLatexNum(s.f.z)}\hat{k} \text{ N}} \\
+    |\vec{F}| = \sqrt{F_x^2 + F_y^2 + F_z^2} = \mathbf{${formatLatexNum(fMag)} \text{ N}}`;
+
+    const el1 = document.getElementById('step1'); katex.render(step1Tex, el1, {displayMode: true});
+    const el2 = document.getElementById('step2'); katex.render(step2Tex, el2, {displayMode: true});
+    const el3 = document.getElementById('step3'); katex.render(step3Tex, el3, {displayMode: true});
+    const el4 = document.getElementById('step4'); katex.render(step4Tex, el4, {displayMode: true});
+    const el5 = document.getElementById('step5'); katex.render(step5Tex, el5, {displayMode: true});
+
+    // Añadir tips pedagógicos visuales a los pasos
+    if(!el2.querySelector('.pedagogy-tip')) el2.innerHTML += `<div class="pedagogy-tip">💡 Tip: Para hallar $\hat{i}$, ignoramos los valores en X (fila 1, columna 1) y cruzamos Y con Z.</div>`;
+    if(!el3.querySelector('.pedagogy-tip')) el3.innerHTML += `<div class="pedagogy-tip">⚠️ Cuidado: La regla de signos para el determinante de orden 3 es $(+,-,+)$. Por eso la componente $\hat{j}$ lleva un menos delante.</div>`;
+    if(!el5.querySelector('.pedagogy-tip')) el5.innerHTML += `<div class="pedagogy-tip">💡 Tip: Al multiplicar por $q$, si la carga es negativa, <b>todos</b> los componentes de la fuerza invertirán su signo.</div>`;
+
+    const list = document.getElementById('analysis-list'); list.innerHTML = "";
+    if (s.q < 0) list.innerHTML += `<li><b style="color:var(--danger)">Carga Negativa:</b> Notarás en el "Paso 5" que multiplicar por un negativo invirtió el vector. La fuerza apunta en sentido contrario a la regla de la mano derecha.</li>`;
+    else if (s.q > 0) list.innerHTML += `<li><b style="color:var(--accent)">Carga Positiva:</b> La fuerza resultante sigue directamente la regla de la mano derecha.</li>`;
+
+    const vDotB = s.v.x*s.b.x + s.v.y*s.b.y + s.v.z*s.b.z, vLen = Math.hypot(s.v.x, s.v.y, s.v.z), bLen = Math.hypot(s.b.x, s.b.y, s.b.z);
+    if(vLen > 0 && bLen > 0) {
+        const cosT = Math.max(-1, Math.min(1, vDotB / (vLen * bLen))), angle = Math.acos(cosT) * (180/Math.PI);
+        list.innerHTML += `<li><b>Ángulo de Intersección:</b> El ángulo espacial es $\\approx ${angle.toFixed(1)}^\\circ$ entre el vector Velocidad y el vector Campo.</li>`;
+        
+        if(fMag > 0) {
+            const vDotF = s.v.x*s.f.x + s.v.y*s.f.y + s.v.z*s.f.z;
+            list.innerHTML += `<li><b>Ortogonalidad Demostrada:</b> El producto punto $\\vec{v} \\cdot \\vec{F} = ${vDotF.toExponential(2)}$. Como es $\\approx 0$, se demuestra que la Fuerza siempre es perpendicular a la Velocidad.</li>`;
+        }
+        
+        if (Math.abs(angle) < 0.1 || Math.abs(angle - 180) < 0.1) list.innerHTML += `<li><b style="color:var(--danger)">¡Trayectoria Paralela!</b> Al ser colineales, $\\vec{v} \\times \\vec{B} = 0$. La partícula viaja en línea recta porque no existe fuerza que la desvíe.</li>`;
+        else if (Math.abs(angle - 90) < 0.1) list.innerHTML += `<li><b>Fuerza Máxima:</b> Vectores perpendiculares. La carga describirá un <b>Movimiento Circular Uniforme</b>.</li>`;
+        else list.innerHTML += `<li><b>Trayectoria Helicoidal:</b> Al haber un ángulo oblicuo, el componente paralelo mantiene velocidad constante y el perpendicular genera rotación, resultando en una espiral.</li>`;
+    }
+}
+
+function renderKaTeXGlobal() {
+    renderMathInElement(document.body, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}], throwOnError: false, strict: "ignore" });
+}
+
+window.loadExercise = function(id) {
+    simState.currentEx = id; const data = exData[id];
+    document.getElementById('latex-enunciado').innerHTML = data.enunciado;
+    
+    if (id !== 'custom') {
+        document.getElementById('charge-q').value = data.q;
+        document.getElementById('p-x').value = data.p0x; document.getElementById('p-x-sl').value = data.p0x;
+        document.getElementById('p-y').value = data.p0y; document.getElementById('p-y-sl').value = data.p0y;
+        document.getElementById('p-z').value = data.p0z; document.getElementById('p-z-sl').value = data.p0z;
+        document.getElementById('v-x').value = data.vx; document.getElementById('v-x-sl').value = data.vx;
+        document.getElementById('v-y').value = data.vy; document.getElementById('v-y-sl').value = data.vy;
+        document.getElementById('v-z').value = data.vz; document.getElementById('v-z-sl').value = data.vz;
+        document.getElementById('b-x').value = data.bx; document.getElementById('b-x-sl').value = data.bx;
+        document.getElementById('b-y').value = data.by; document.getElementById('b-y-sl').value = data.by;
+        document.getElementById('b-z').value = data.bz; document.getElementById('b-z-sl').value = data.bz;
+    }
+    updateSim();
+};
+
+window.toggleFieldGrid = function() { simState.showGrid = document.getElementById('toggle-grid').checked; update3DScene(); };
+
+// --- ANIMATION LOOP ---
+function animate() {
+    requestAnimationFrame(animate);
+    if(controls) controls.update();
+    if(simState.isPlaying && pathPoints.length > 0) {
+        if(animStep < pathPoints.length - 1) {
+            animStep += 2; if(animStep >= pathPoints.length) animStep = pathPoints.length - 1;
+            particleMesh.position.copy(pathPoints[animStep]);
+            currentGeo.setFromPoints(pathPoints.slice(0, animStep + 1));
+        } else {
+            simState.isPlaying = false; document.getElementById('btn-play').innerHTML = '<i class="ph ph-play"></i> Iniciar Movimiento';
+        }
+    }
+    if(renderer) renderer.render(scene, camera);
+}
+
+// Init
+window.onload = function() {
+    initThreeJS(); loadExercise('ex1'); renderKaTeXGlobal(); animate(); setTimeout(draw2DViews, 200); 
+};
+
+// Utilidades UI
+window.togglePanel = () => document.getElementById('right-panel').classList.toggle('open');
+window.showModal = (id) => { document.getElementById(id).style.display='flex'; };
+window.hideModal = (id) => { document.getElementById(id).style.display='none'; };
+
+</script>
+
+<script type="module">
+// --- FIREBASE ARCHITECTURE ---
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+    apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA", authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+    databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com", projectId: "laboratorio-de-coulomb"
+};
+
+const app = initializeApp(firebaseConfig), db = getFirestore(app), rtdb = getDatabase(app), auth = getAuth(app);
+const APP_ID = typeof __app_id !== 'undefined' ? __app_id : 'lorentzLab10';
+
+let curRoomRef=null, unsubRoom=null, isRecv=!1;
+
+const initAuth = async () => {
+    try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) await signInWithCustomToken(auth, __initial_auth_token);
+        else await signInAnonymously(auth);
+    } catch(e) {}
+}; initAuth();
+
+onAuthStateChanged(auth, async u => {
+    const uiInfo = document.getElementById('user-info');
+    if(u){
+        document.getElementById('auth-modal').style.display='none';
+        try {
+            const s = await getDoc(doc(db, `artifacts/${APP_ID}/users/${u.uid}/profile/data`));
+            if(s.exists()){ const pd = s.data(); uiInfo.innerHTML = `👤 ${pd.nombre || pd.alias || u.email.split('@')[0]}`; document.getElementById('prof-name').value = pd.nombre || ''; }
+            else { uiInfo.innerHTML = u.isAnonymous ? "👤 Usuario Anónimo" : `👤 ${u.email ? u.email.split('@')[0] : u.uid.substring(0,6)}`; }
+        } catch(e) { uiInfo.innerHTML = u.isAnonymous ? "👤 Usuario Anónimo" : `👤 Conectado`; }
+        document.getElementById('btn-rooms').style.display='inline-flex';
+    } else { uiInfo.innerHTML = "<i class='ph ph-warning'></i> Desconectado"; }
+});
+
+window.saveProfile = async () => {
+    if(!auth.currentUser) return; const n = document.getElementById('prof-name').value;
+    try { await setDoc(doc(db,`artifacts/${APP_ID}/users/${auth.currentUser.uid}/profile/data`), {nombre: n}, {merge: true}); document.getElementById('user-info').innerHTML = `👤 ${n}`; hideModal('profile-setup-modal'); }
+    catch(e) { alert("Error guardando: " + e.message); }
+}
+
+window.crearUnirseSala = async () => { const n = document.getElementById('new-room-name').value.trim(); if(!n) return alert("Ingresa el nombre de la sala"); joinRoom(n); };
+
+window.joinRoom = (id) => {
+    hideModal('rooms-modal'); document.getElementById('room-info').innerHTML = `🌐 Sala: <b>${id}</b>`;
+    if (unsubRoom) unsubRoom();
+    
+    curRoomRef = ref(rtdb, `salas/${APP_ID}/${id}/state`);
+    unsubRoom = onValue(curRoomRef, snap => {
+        const d = snap.val();
+        if (d && !window.isSendingData) {
+            isRecv = true;
+            document.getElementById('charge-q').value = d.q;
+            document.getElementById('p-x').value = d.px; document.getElementById('p-x-sl').value = d.px;
+            document.getElementById('p-y').value = d.py; document.getElementById('p-y-sl').value = d.py;
+            document.getElementById('p-z').value = d.pz; document.getElementById('p-z-sl').value = d.pz;
+            document.getElementById('v-x').value = d.vx; document.getElementById('v-x-sl').value = d.vx;
+            document.getElementById('v-y').value = d.vy; document.getElementById('v-y-sl').value = d.vy;
+            document.getElementById('v-z').value = d.vz; document.getElementById('v-z-sl').value = d.vz;
+            document.getElementById('b-x').value = d.bx; document.getElementById('b-x-sl').value = d.bx;
+            document.getElementById('b-y').value = d.by; document.getElementById('b-y-sl').value = d.by;
+            document.getElementById('b-z').value = d.bz; document.getElementById('b-z-sl').value = d.bz;
+            if(d.ex && d.ex !== simState.currentEx) document.getElementById('exercise-select').value = d.ex;
+            window.updateSim(); setTimeout(() => { isRecv = false; }, 100);
+        }
+    });
+};
+
+window.sendData = () => {
+    if(!curRoomRef || isRecv || !auth.currentUser) return;
+    window.isSendingData = true;
+    set(curRoomRef, { 
+        q: document.getElementById('charge-q').value,
+        px: document.getElementById('p-x').value, py: document.getElementById('p-y').value, pz: document.getElementById('p-z').value,
+        vx: document.getElementById('v-x').value, vy: document.getElementById('v-y').value, vz: document.getElementById('v-z').value,
+        bx: document.getElementById('b-x').value, by: document.getElementById('b-y').value, bz: document.getElementById('b-z').value,
+        ex: document.getElementById('exercise-select').value
+    }).then(() => { window.isSendingData = false; });
+};
+window.openRooms = () => { showModal('rooms-modal'); };
+</script>
+</body></html>

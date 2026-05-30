@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+        <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Trabajo y Potencial Eléctrico</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #1e293b, #0f172a);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden;
+        }
+        .canvas-wrapper canvas { cursor: grab; }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+        
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+        .dcl-wrapper { background: #1e293b; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.95);
+            padding: 6px 12px; border-radius: 6px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #1e293b; pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10;
+            border-left: 4px solid #3b82f6;
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; cursor: pointer; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; }
+
+        #paint-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; touch-action: none; pointer-events: none; }
+        .paint-mode-active { cursor: crosshair !important; pointer-events: auto !important; }
+
+        .btn-ui { padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.85em; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .btn-ui:hover { opacity: 0.8; transform: scale(1.05); }
+
+        .eq-input { width: 60px; padding: 0.1rem; border-radius: 0.25rem; border: 1px solid #94a3b8; font-family: monospace; font-size: 0.85em; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-500">
+                <h1 class="font-bold tracking-wide flex items-center gap-3" style="font-size: clamp(20px, 2vw, 36px);">
+                    🔬 Laboratorio: Trabajo Eléctrico y Superficies Equipotenciales
+                </h1>
+                <p class="text-blue-300" style="font-size: clamp(12px, 1vw, 18px);">
+                    Integración de Línea, Conservación de Energía e Independencia de la Trayectoria
+                </p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BASE COMÚN -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span>El <strong>Trabajo Eléctrico ($W$)</strong> realizado por un campo eléctrico $\vec{E}$ sobre una carga de prueba $q$ que se desplaza desde un punto $A$ a un punto $B$ se define mediante la integral de línea de la fuerza eléctrica:</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Integración Numérica:</strong> En esta simulación, la partícula avanza en pasos infinitesimales $d\vec{r}$, acumulando el producto punto $\vec{F} \cdot d\vec{r}$ en tiempo real.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$W_{A \to B} = \int_{A}^{B} \vec{F} \cdot d\vec{r} = q \int_{A}^{B} \vec{E} \cdot d\vec{r}$$</div>
+                        <p class="text-xs text-slate-600 italic">Modifica la posición de los Nodos (A, B y Control) para trazar distintas trayectorias y presiona ▶ Play.</p>
+                    </div>
+
+                    <!-- CASO 1: ENERGÍA POTENCIAL -->
+                    <div class="bg-emerald-50 p-[1.5vmin] border border-emerald-200 shadow-sm rounded-lg relative mb-[1vmin]">
+                        <p class="font-bold text-emerald-800 flex items-center">
+                            Campos Conservativos y Potencial ($V$)
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Analogía Topográfica:</strong> El potencial es como la "altura". Moverse perpendicular al campo no cuesta trabajo, moverse a favor del campo extrae energía.</span>
+                            </span>
+                        </p>
+                        <p class="mt-1 text-sm">Dado que el campo electrostático es conservativo ($\nabla \times \vec{E} = 0$), el trabajo <strong>no depende de la trayectoria</strong>, sino solo de la diferencia de potencial electrostático ($\Delta V$) entre los extremos:</p>
+                        <div class="math-display">
+                            \begin{aligned}
+                            W_{campo} &= -\Delta U = -(U_B - U_A) \\
+                            W_{campo} &= q(V_A - V_B)
+                            \end{aligned}
+                        </div>
+                        <hr class="border-emerald-200 my-2">
+                        <p class="font-bold text-sm text-emerald-900 flex items-center">
+                            ⚠️ Trabajo Externo vs. Campo
+                        </p>
+                        <p class="text-xs">
+                            Si desplazamos la carga lentamente (sin acelerarla), un agente externo debe ejercer una fuerza opuesta al campo. Por lo tanto, el trabajo del agente externo es el negativo del trabajo del campo: $W_{ext} = \Delta U = q(V_B - V_A)$.
+                        </p>
+                    </div>
+
+                    <!-- CASOS ESPECÍFICOS DE POTENCIAL Y CAMPO -->
+                    <div id="teoria-dinamica" class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg relative flex-1">
+                        <div id="teoria-millikan" class="flex flex-col gap-1">
+                            <p class="font-bold text-indigo-800">1. Campo Uniforme (Placas)</p>
+                            <div class="math-display">$$V(y) = -E_0 y$$</div>
+                            <p class="text-sm">El potencial decrece linealmente en la dirección del campo. Las superficies equipotenciales son planos paralelos. El trabajo numérico y analítico coincidirán sin importar qué tan sinuosa sea la ruta.</p>
+                        </div>
+                        <div id="teoria-radial" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">2. Carga Puntual Central</p>
+                            <div class="math-display">$$V(r) = k \frac{Q}{r}$$</div>
+                            <p class="text-sm">El potencial obedece a la ley de la inversa de la distancia. Si la carga de prueba es del mismo signo, acercarla requiere trabajo externo negativo (el campo se opone); si es opuesto, el campo hace el trabajo.</p>
+                        </div>
+                        <div id="teoria-rotacional" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">3. Dipolo Eléctrico</p>
+                            <div class="math-display">$$V(x,y) = kQ \left(\frac{1}{r_1} - \frac{1}{r_2}\right)$$</div>
+                            <p class="text-sm">Configuración de dos cargas opuestas. Moverse por el eje de simetría (donde las distancias $r_1$ y $r_2$ son iguales) implica viajar por una superficie equipotencial de $V=0$, resultando en $W=0$.</p>
+                        </div>
+                        <div id="teoria-custom" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">4. Potencial Libre V(x,y)</p>
+                            <p class="text-sm mb-1">Define una expresión escalar para $V(x,y)$. El motor derivará automáticamente el campo $\vec{E} = -\nabla V$ mediante diferencias finitas y calculará el trabajo exacto de la trayectoria.</p>
+                            <p class="text-xs text-indigo-600">Ejemplo de curva asintótica: <code class="bg-indigo-100 px-1 rounded">sin(x)*cos(y)</code></p>
+                        </div>
+                        <div id="teoria-placas" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">5. Cuadripolo / Múltiples Cargas</p>
+                            <div class="math-display">$$V = \sum_{i} k\frac{q_i}{r_i}$$</div>
+                            <p class="text-sm">Superposición de 4 fuentes alternadas. Observa la complejidad del mapa de calor equipotencial. Incluso en geometrías complejas, la integral de línea en bucles cerrados ($A \to B \to A$) siempre dará $0 \text{ J}$.</p>
+                        </div>
+                        <!-- NUEVO CASO AÑADIDO: Campo E vectorial libre -->
+                        <div id="teoria-custom-e" class="hidden flex-col gap-1">
+                            <p class="font-bold text-teal-800">6. Campo Eléctrico Libre $\vec{E}(x,y,z)$</p>
+                            <p class="text-sm mb-1">Define directamente las componentes vectoriales del campo. <strong>¡Atención!</strong> Si el campo definido no cumple $\nabla \times \vec{E} = 0$, el campo <strong>no será conservativo</strong>.</p>
+                            <p class="text-xs text-teal-700">Explora añadiendo múltiples puntos de control Bézier: el trabajo numérico dependerá del camino elegido, probando que no existe un potencial escalar global $V$ para este campo.</p>
+                        </div>
+                    </div>
+
+                    <!-- CONCLUSIÓN (DATOS EN TIEMPO REAL) -->
+                    <div class="bg-slate-800 text-white p-[1.5vmin] shadow-sm rounded-lg border border-slate-600 mt-[1vmin]">
+                        <p class="font-bold text-amber-400 mb-1 text-center">Datos Integración vs. Analítico</p>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs">Fuerza Local $|\vec{F}|$:</span>
+                                <span id="ui-mag-f" class="font-mono font-bold text-yellow-400">0.00</span> <span class="text-xs">N</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs text-emerald-300">Trabajo Numérico ($\int \vec{F} \cdot d\vec{r}$):</span>
+                                <span id="ui-mag-v" class="font-mono font-bold text-emerald-400">0.00</span> <span class="text-xs">J</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded col-span-2 flex justify-between items-center text-xs">
+                                <span><span class="text-slate-400">Pot. $V_A$:</span> <span id="ui-pos-x" class="font-mono text-white">0.00</span>V</span>
+                                <span><span class="text-slate-400">Pot. $V(\vec{r})$:</span> <span id="ui-pos-y" class="font-mono text-white">0.00</span>V</span>
+                                <span><span class="text-blue-300 font-bold">W Analítico ($q\Delta V$):</span> <span id="ui-pos-z" class="font-mono text-blue-300 font-bold">0.00</span> J</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL AVANZADO -->
+                    <div class="control-panel shadow-sm relative z-20 flex-col !items-start">
+                        
+                        <!-- Fila 1 -->
+                        <div class="flex w-full gap-[1.5vmin] border-b border-slate-300 pb-1 mb-1 items-center">
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800">Vista:</label>
+                                <button id="btn-toggle-3d" class="btn-ui bg-indigo-100 text-indigo-800 border-indigo-300">Modo 2D</button>
+                            </div>
+                            
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800">Sistema:</label>
+                                <select id="select-config" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500 cursor-pointer">
+                                    <option value="millikan">1. Campo Uniforme</option>
+                                    <option value="radial">2. Carga Puntual (+/-)</option>
+                                    <option value="rotacional">3. Dipolo Eléctrico</option>
+                                    <option value="custom">4. Potencial Libre V(x,y)</option>
+                                    <option value="placas">5. Cuadripolo Múltiple</option>
+                                    <!-- NUEVO CAMPO AÑADIDO -->
+                                    <option value="custom-E" class="text-teal-700 font-bold">6. Campo Libre E(x,y,z)</option>
+                                </select>
+                            </div>
+
+                            <!-- Opciones Matemáticas Custom V -->
+                            <div id="custom-inputs" class="control-group border-r border-slate-300 pr-3 hidden text-sm font-bold text-indigo-900">
+                                V=<input type="text" id="in-ex" value="sin(x)*cos(y)" class="eq-input bg-indigo-50 w-[120px]">
+                            </div>
+
+                            <!-- NUEVO: Opciones Matemáticas Custom E -->
+                            <div id="custom-inputs-e" class="control-group border-r border-slate-300 pr-3 hidden text-sm font-bold text-teal-900">
+                                Ex=<input type="text" id="in-e-x" value="-y" class="eq-input bg-teal-50 w-[55px]">
+                                Ey=<input type="text" id="in-e-y" value="x" class="eq-input bg-teal-50 w-[55px]">
+                                Ez=<input type="text" id="in-e-z" value="0" class="eq-input bg-teal-50 w-[55px]">
+                            </div>
+
+                            <div class="control-group flex-1 justify-end gap-1">
+                                <button id="btn-play" class="btn-ui bg-emerald-100 text-emerald-700 border-emerald-300" title="Integrar Trayectoria">▶ Calcular W</button>
+                                <button id="btn-pause" class="btn-ui bg-amber-100 text-amber-700 border-amber-300" title="Pausar">⏸ Pausa</button>
+                                <button id="btn-reset" class="btn-ui bg-red-100 text-red-700 border-red-300" title="Reiniciar a Nodo A">🔄 Reset</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2 -->
+                        <div class="flex w-full gap-[1.5vmin] items-center">
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-red-700 text-xs md:text-sm" title="Carga que se desplaza">Carga prueba $q$:</label>
+                                <input type="range" id="slider-q" min="-5" max="5" step="0.5" value="1" class="w-[3.5vw]">
+                                <span id="val-q" class="font-mono font-bold w-[1.5vw] text-right text-red-600">1.0</span>
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-blue-700 text-xs md:text-sm" title="Magnitud de la fuente de campo">Carga Fte. $Q$:</label>
+                                <input type="range" id="slider-m" min="-10" max="10" step="1" value="5.0" class="w-[3.5vw]">
+                                <span id="val-m" class="font-mono font-bold w-[1.5vw] text-right text-blue-600">5.0</span>
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-purple-700 text-xs md:text-sm" title="Intensidad global de la simulación">Intensidad $k$:</label>
+                                <input type="range" id="slider-e" min="0" max="10" step="0.5" value="2" class="w-[3.5vw]">
+                                <span id="val-e" class="font-mono font-bold w-[1.5vw] text-right text-purple-600">2.0</span>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-xs font-semibold text-slate-700">
+                                <label class="flex items-center cursor-pointer text-indigo-700 bg-indigo-50 px-1 border border-indigo-200 rounded hover:bg-indigo-100" title="Mostrar/Ocultar Relieve Equipotencial">
+                                    <input type="checkbox" id="toggle-grav" checked class="mr-1"> Equipotenciales
+                                </label>
+                                <label class="flex items-center cursor-pointer hover:text-blue-600">
+                                    <input type="checkbox" id="toggle-grid" checked class="mr-1"> Vectores $\vec{E}$
+                                </label>
+                                <label class="flex items-center cursor-pointer text-indigo-700 border border-indigo-200 bg-indigo-50 px-1 rounded hover:bg-indigo-100">
+                                    <input type="checkbox" id="toggle-paint" class="mr-1"> ✏️
+                                </label>
+                                <button id="btn-clear-paint" class="btn-ui bg-red-100 text-red-700 border-red-300 hidden">Borrar</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 3 (Específica Nodos y Ruta ampliada) -->
+                        <div class="flex w-full gap-[1.5vmin] items-center border-t border-slate-300 pt-1 mt-1">
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-800 text-xs md:text-sm">Control Trayectoria:</label>
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-600 text-xs">Tipo:</label>
+                                <select id="in-path" class="eq-input bg-white w-[100px] !text-left">
+                                    <option value="0">Recta (A ➔ B)</option>
+                                    <option value="1" selected>Curvas de Bézier</option>
+                                </select>
+                            </div>
+                            
+                            <!-- NUEVO CONTROLES AÑADIDOS PARA BEZIER MULTIPUNTO -->
+                            <div class="control-group border-r border-slate-300 pr-2" id="bezier-controls-ui">
+                                <button id="btn-add-node" class="btn-ui bg-green-100 text-green-700 border-green-300 font-mono text-xs px-2" title="Añadir Punto de Control (N Mayor)">+ Pt</button>
+                                <button id="btn-rem-node" class="btn-ui bg-red-100 text-red-700 border-red-300 font-mono text-xs px-2" title="Quitar Punto de Control">- Pt</button>
+                            </div>
+                            
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-600 text-xs" title="Nodo de control primario Bézier X">N_C0x:</label>
+                                <input type="number" id="in-vx" value="0" step="1" class="eq-input bg-white w-[50px]">
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-600 text-xs" title="Nodo de control primario Bézier Y">N_C0y:</label>
+                                <input type="number" id="in-vy" value="5" step="1" class="eq-input bg-white w-[50px]">
+                            </div>
+                            <div class="control-group flex-1 text-[10px] md:text-xs text-slate-500 italic text-right">
+                                🔄 Arrastra todos los Nodos (A, B, C...) en el lienzo
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas / Paint Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper relative" id="canvas-wrapper-3d">
+                            <div class="hint-overlay shadow-md flex flex-col gap-1">
+                                <span>👆 <strong>Arrastra los Nodos A, B o C_i</strong> para definir el camino general.</span>
+                                <span id="hint-3d" class="text-xs text-indigo-600 hidden">🔄 Arrastra el fondo para rotar el Relieve 3D</span>
+                            </div>
+                            
+                            <!-- Contenedor del Motor 3D -->
+                            <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                            
+                            <!-- Pizarra Overlay (Herramienta Paint) -->
+                            <canvas id="paint-canvas"></canvas>
+                        </div>
+
+                        <!-- 2D Graph & DCL -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Diagrama de Cuerpo Libre (DCL) Vector E y dr -->
+                            <div class="h-[55%] dcl-wrapper p-[1vmin] flex flex-col">
+                                <div class="text-center font-bold text-emerald-400 mb-1" style="font-size: clamp(12px, 1vw, 15px);">
+                                    DCL Local: $\vec{E}$ y $d\vec{r}$
+                                </div>
+                                <div class="flex-1 relative w-full" id="dcl-container">
+                                    <canvas id="dcl-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                                <div class="text-center text-xs text-slate-300 mt-1 font-mono flex flex-col items-center">
+                                    <span>Fuerza $\vec{F} = q\vec{E}$: <span id="ui-dcl-fe" class="text-yellow-400">0.0</span> N</span>
+                                    <span>Desplazamiento $\vec{v}$: <span id="ui-dcl-wg" class="text-blue-300">0.0</span> m/s</span>
+                                </div>
+                            </div>
+
+                            <!-- Gráfica Comparativa Trabajo -->
+                            <div class="h-[45%] graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 15px);">
+                                    Trabajo $W$ (J) vs Progreso de Ruta
+                                </div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                                <div class="text-xs text-center flex justify-center gap-3">
+                                    <span class="text-blue-600 font-bold">— Analítico</span>
+                                    <span class="text-emerald-500 font-bold">--- Numérico</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS, INTERACCIÓN Y MATEMÁTICAS -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS Y ESCENA
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        
+        const aspect = cont3D.clientWidth / cont3D.clientHeight;
+        const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio); 
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true;
+        
+        // Luces
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(5, 15, 15); 
+        scene.add(light);
+
+        // Malla Superficie Equipotencial
+        const equiGeo = new THREE.PlaneGeometry(30, 30, 100, 100);
+        const equiMat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+        const equiMesh = new THREE.Mesh(equiGeo, equiMat);
+        equiMesh.rotation.x = 0; // Se mantiene en plano XY
+        scene.add(equiMesh);
+
+        // ==========================================
+        // 2. PARÁMETROS FÍSICOS Y ESTADO
+        // ==========================================
+        let params = {
+            config: 'millikan',
+            q: 1.0,      // Carga de prueba
+            m: 5.0,      // Carga Fuente Q
+            E_scale: 2.0, // Multiplicador de campo k
+            useEqui: true,
+            is3D: false,
+            isPlaying: false
+        };
+        
+        // Nodos interactivos (SE AÑADE SOPORTE PARA MÚLTIPLES NODOS DE CONTROL)
+        const nodeMatA = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.2 }); // Azul Inicio
+        const nodeMatB = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2 }); // Rojo Fin
+        const nodeMatC = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.2 }); // Verde Control
+        
+        const nodeA = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), nodeMatA); nodeA.position.set(-6, -2, 0);
+        const nodeB = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), nodeMatB); nodeB.position.set(6, -2, 0);
+        
+        // Matriz dinámica de puntos de control
+        const nodeC = new THREE.Mesh(new THREE.SphereGeometry(0.4, 32, 32), nodeMatC); nodeC.position.set(0, 5, 0);
+        let controlNodes = [nodeC];
+        
+        scene.add(nodeA); scene.add(nodeB); scene.add(nodeC);
+
+        // Helper para agrupar dinámicamente todos los nodos
+        const getAllNodes = () => [nodeA, nodeB, ...controlNodes];
+
+        let particle = {
+            mesh: new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 32), new THREE.MeshStandardMaterial({ color: 0xfacc15, emissive: 0x665500 })),
+            pos: new THREE.Vector3().copy(nodeA.position),
+            vel: new THREE.Vector3(0,0,0)
+        };
+        scene.add(particle.mesh);
+
+        // Vectores Globales y Trayectoria
+        const gridVectorsGroup = new THREE.Group(); scene.add(gridVectorsGroup);
+        const pathMat = new THREE.LineBasicMaterial({ color: 0xfbbf24, linewidth: 3 });
+        let pathLine = new THREE.Line(new THREE.BufferGeometry(), pathMat);
+        scene.add(pathLine);
+
+        // Estado del Trabajo
+        let simTime = 0; // va de 0 a 1 representando el progreso en el camino
+        let workData = {
+            num: 0,
+            ana: 0,
+            vA: 0,
+            vB: 0
+        };
+        let graphData = []; 
+
+        // ==========================================
+        // 3. VISTA 2D vs 3D
+        // ==========================================
+        function setupView() {
+            if (params.is3D) {
+                cam.position.set(0, -15, 15);
+                equiMesh.rotation.x = -Math.PI/4; // Inclinar para ver relieve 3D
+                gridVectorsGroup.rotation.x = -Math.PI/4;
+                
+                // Nodos flotan pero seguimos XY lógico
+                nodeA.position.z = equiMesh.position.z; nodeB.position.z = equiMesh.position.z; 
+                controlNodes.forEach(n => n.position.z = equiMesh.position.z);
+                
+                ctrl.enableRotate = true;
+                document.getElementById('btn-toggle-3d').textContent = "Modo 3D";
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-purple-100 text-purple-800 border-purple-300";
+                document.getElementById('hint-3d').classList.remove('hidden');
+            } else {
+                cam.position.set(0, 0, 25);
+                cam.rotation.set(0,0,0);
+                equiMesh.rotation.x = 0;
+                gridVectorsGroup.rotation.x = 0;
+                
+                ctrl.enableRotate = false;
+                document.getElementById('btn-toggle-3d').textContent = "Modo 2D";
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-indigo-100 text-indigo-800 border-indigo-300";
+                document.getElementById('hint-3d').classList.add('hidden');
+                
+                nodeA.position.z = 0; nodeB.position.z = 0; 
+                controlNodes.forEach(n => n.position.z = 0);
+            }
+            updateBackgroundGrid();
+            updateEquiMesh();
+        }
+
+        document.getElementById('btn-toggle-3d').addEventListener('click', () => {
+            params.is3D = !params.is3D;
+            setupView();
+        });
+
+        // ==========================================
+        // 4. MATEMÁTICAS DEL CAMPO ELÉCTRICO Y POTENCIAL
+        // ==========================================
+        function parseCustomEq(eqStr, x, y, z) {
+            try {
+                let exp = eqStr.replace(/sin/g, 'Math.sin').replace(/cos/g, 'Math.cos')
+                               .replace(/tan/g, 'Math.tan').replace(/sqrt/g, 'Math.sqrt')
+                               .replace(/abs/g, 'Math.abs').replace(/exp/g, 'Math.exp');
+                let f = new Function('x', 'y', 'z', 'return ' + exp);
+                let val = f(x, y, z);
+                if(isNaN(val) || !isFinite(val)) return 0;
+                return val;
+            } catch(e) { return 0; }
+        }
+
+        // CÁLCULO DEL POTENCIAL ESCALAR V(x,y)
+        function calculateV(pos) {
+            // NUEVA CONDICIONAL: Si el campo es Custom-E Vectorial, el potencial escalar podría no estar definido (no conservativo).
+            if (params.config === 'custom-E') return 0; 
+
+            let x = pos.x, y = pos.y, z = 0;
+            let k = params.E_scale;
+            let Q = params.m;
+
+            switch (params.config) {
+                case 'millikan':
+                    // Campo uniforme hacia abajo (Potencial crece arriba)
+                    return k * y;
+                case 'radial':
+                    // Carga puntual en el origen
+                    let r = Math.sqrt(x*x + y*y + 0.1);
+                    return (k * Q * 3) / r;
+                case 'rotacional':
+                    // Dipolo eléctrico (Q y -Q)
+                    let r1 = Math.sqrt((x-3)**2 + y**2 + 0.1);
+                    let r2 = Math.sqrt((x+3)**2 + y**2 + 0.1);
+                    return (k * Q * 3) / r1 - (k * Q * 3) / r2;
+                case 'custom':
+                    let sx = document.getElementById('in-ex').value;
+                    return parseCustomEq(sx, x, y, z) * k * 2;
+                case 'placas':
+                    // Cuadripolo (+, -, +, -)
+                    let d1 = Math.sqrt((x-3)**2 + (y-3)**2 + 0.1);
+                    let d2 = Math.sqrt((x+3)**2 + (y+3)**2 + 0.1);
+                    let d3 = Math.sqrt((x-3)**2 + (y+3)**2 + 0.1);
+                    let d4 = Math.sqrt((x+3)**2 + (y-3)**2 + 0.1);
+                    return (k*Q*2)/d1 + (k*Q*2)/d2 - (k*Q*2)/d3 - (k*Q*2)/d4;
+            }
+            return 0;
+        }
+
+        // CÁLCULO DEL CAMPO E (Vectorial o Numérico a través del Gradiente)
+        function calculateE(pos) {
+            // NUEVA CONDICIONAL: Evaluación de funciones vectoriales libres
+            if (params.config === 'custom-E') {
+                let sx = document.getElementById('in-e-x').value;
+                let sy = document.getElementById('in-e-y').value;
+                let sz = document.getElementById('in-e-z').value;
+                return new THREE.Vector3(
+                    parseCustomEq(sx, pos.x, pos.y, pos.z) * params.E_scale,
+                    parseCustomEq(sy, pos.x, pos.y, pos.z) * params.E_scale,
+                    parseCustomEq(sz, pos.x, pos.y, pos.z) * params.E_scale
+                );
+            }
+
+            // Derivada Numérica Central: E = -Grad(V) para el resto de casos conservativos
+            const eps = 0.02;
+            let Vx1 = calculateV(new THREE.Vector3(pos.x + eps, pos.y, 0));
+            let Vx2 = calculateV(new THREE.Vector3(pos.x - eps, pos.y, 0));
+            let Vy1 = calculateV(new THREE.Vector3(pos.x, pos.y + eps, 0));
+            let Vy2 = calculateV(new THREE.Vector3(pos.x, pos.y - eps, 0));
+            
+            let Ex = -(Vx1 - Vx2) / (2 * eps);
+            let Ey = -(Vy1 - Vy2) / (2 * eps);
+            
+            return new THREE.Vector3(Ex, Ey, 0);
+        }
+
+        // ==========================================
+        // 5. RENDERIZADO VISUAL (MALLA POTENCIAL Y VECTORES)
+        // ==========================================
+        function updateEquiMesh() {
+            // Si es un campo customizado vectorial, se ocultan las equipotenciales (puede ser no conservativo)
+            if (!params.useEqui || params.config === 'custom-E') { equiMesh.visible = false; return; }
+            equiMesh.visible = true;
+            
+            const positions = equiGeo.attributes.position;
+            const colors = [];
+            
+            for (let i = 0; i < positions.count; i++) {
+                let x = positions.getX(i);
+                let y = positions.getY(i);
+                
+                let v = calculateV(new THREE.Vector3(x, y, 0));
+                
+                // Z-displacement for 3D Relief map
+                if (params.is3D) {
+                    // Limit z to avoid extreme spikes
+                    let zDisp = Math.max(-10, Math.min(10, v * 0.4));
+                    positions.setZ(i, zDisp);
+                } else {
+                    positions.setZ(i, -0.5); // Placed slightly behind grid in 2D
+                }
+
+                // Color Map (Blue = negative, Red = positive, White = zero)
+                let c = new THREE.Color();
+                let vNorm = Math.max(-1, Math.min(1, v / 15.0)); // Normalize approx
+                if (vNorm > 0) {
+                    c.lerpColors(new THREE.Color(0xffffff), new THREE.Color(0xef4444), vNorm);
+                } else {
+                    c.lerpColors(new THREE.Color(0xffffff), new THREE.Color(0x3b82f6), -vNorm);
+                }
+                colors.push(c.r, c.g, c.b);
+            }
+            equiGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            equiGeo.attributes.position.needsUpdate = true;
+            equiGeo.computeVertexNormals();
+        }
+
+        function updateBackgroundGrid() {
+            gridVectorsGroup.clear();
+            if (!document.getElementById('toggle-grid').checked) return;
+
+            const spacing = 2.5; 
+            const sizeX = 12, sizeY = 10;
+            
+            for (let x = -sizeX; x <= sizeX; x += spacing) {
+                for (let y = -sizeY; y <= sizeY; y += spacing) {
+                    let pos = new THREE.Vector3(x, y, 0);
+                    let E = calculateE(pos);
+                    let mag = E.length();
+                    
+                    if (mag < 0.2) continue;
+
+                    let dir = E.clone().normalize();
+                    let visualLen = Math.min(Math.pow(mag/5, 0.4), spacing * 0.7); 
+                    
+                    let color = new THREE.Color();
+                    color.setHSL(0.6 - Math.min(mag/30, 0.6), 0.8, 0.6); 
+                    
+                    let arrow = new THREE.ArrowHelper(dir, pos, visualLen, color, visualLen*0.3, visualLen*0.2);
+                    arrow.line.material.transparent = true; arrow.line.material.opacity = 0.5;
+                    arrow.cone.material.transparent = true; arrow.cone.material.opacity = 0.6;
+                    gridVectorsGroup.add(arrow);
+                }
+            }
+        }
+
+        // ==========================================
+        // 6. TRAYECTORIA BÉZIER (SOPORTE MULTIPUNTO/N-ORDEN) Y CÁLCULO FÍSICO
+        // ==========================================
+        
+        // Matemáticas para Bézier Generalizado de N puntos
+        const factorial = (n) => n <= 1 ? 1 : n * factorial(n - 1);
+        const binom = (n, k) => factorial(n) / (factorial(k) * factorial(n - k));
+
+        function getPathPosAndVel(t) {
+            const isBezier = document.getElementById('in-path').value === "1";
+            let pA = nodeA.position.clone(); pA.z = 0;
+            let pB = nodeB.position.clone(); pB.z = 0;
+
+            let pos = new THREE.Vector3();
+            let vel = new THREE.Vector3(); // Derivative dr/dt
+
+            if (isBezier) {
+                // Curva Bézier de grado N (N puntos de control generalizados)
+                let pts = [pA, ...controlNodes.map(n => { let pc = n.position.clone(); pc.z=0; return pc; }), pB];
+                let n = pts.length - 1;
+                
+                // Cálculo de Posición (Algoritmo Explícito)
+                for(let i=0; i<=n; i++) {
+                    let b = binom(n, i) * Math.pow(1-t, n-i) * Math.pow(t, i);
+                    pos.addScaledVector(pts[i], b);
+                }
+                
+                // Cálculo de la Derivada paramétrica (Velocidad en el trazado dr/dt)
+                if (n > 0) {
+                    for(let i=0; i<=n-1; i++) {
+                        let b = n * binom(n-1, i) * Math.pow(1-t, n-1-i) * Math.pow(t, i);
+                        let diff = pts[i+1].clone().sub(pts[i]);
+                        vel.addScaledVector(diff, b);
+                    }
+                }
+            } else {
+                // Recta: r(t) = (1-t)A + tB
+                pos.addScaledVector(pA, 1 - t);
+                pos.addScaledVector(pB, t);
+                // dr/dt = B - A
+                vel.copy(pB).sub(pA);
+            }
+            return { pos, vel };
+        }
+
+        function updatePathVisual() {
+            const isBezier = document.getElementById('in-path').value === "1";
+            controlNodes.forEach(n => n.visible = isBezier); // Ocultar nodos si es recta
+            
+            let pts = [];
+            for (let i=0; i<=60; i++) { // Se aumenta resolución para curvas de mayor grado
+                pts.push(getPathPosAndVel(i/60.0).pos);
+            }
+            pathLine.geometry.setFromPoints(pts);
+
+            // Ajuste Z visual en 3D
+            if(params.is3D) {
+                nodeA.position.z = calculateV(nodeA.position)*0.4 + 1;
+                nodeB.position.z = calculateV(nodeB.position)*0.4 + 1;
+                controlNodes.forEach(n => n.position.z = calculateV(n.position)*0.4 + 1);
+                particle.mesh.position.z = calculateV(particle.pos)*0.4 + 1;
+                pathLine.position.z = 1.0; 
+            } else {
+                nodeA.position.z = 0; nodeB.position.z = 0; 
+                controlNodes.forEach(n => n.position.z = 0);
+                particle.mesh.position.z = 0; pathLine.position.z = 0;
+            }
+        }
+
+        let lastTime = performance.now();
+
+        function updatePhysics() {
+            let now = performance.now();
+            let dt = (now - lastTime) / 1000.0;
+            lastTime = now;
+            if (dt > 0.1) dt = 0.016; 
+
+            if (params.isPlaying) {
+                let speed = 0.3; // Velocidad de avance paramétrico
+                simTime += dt * speed;
+                
+                if (simTime >= 1.0) {
+                    simTime = 1.0;
+                    params.isPlaying = false; // Fin del trayecto
+                }
+                
+                let { pos, vel } = getPathPosAndVel(simTime);
+                particle.pos.copy(pos);
+                particle.vel.copy(vel); // En este contexto vel es dr/dt paramétrico
+
+                // 1. Integración Numérica del Trabajo: dW = q * E(r) \cdot dr
+                // Dado que dr = vel * (dt * speed), el desplazamiento real infinitesimal en la ruta es:
+                let dr_vector = vel.clone().multiplyScalar(dt * speed);
+                let E = calculateE(particle.pos);
+                let Fe = E.clone().multiplyScalar(params.q);
+                
+                let dW = Fe.dot(dr_vector);
+                workData.num += dW;
+
+                // 2. Trabajo Analítico = q * (V_A - V_actual)
+                let v_actual = calculateV(particle.pos);
+                workData.ana = params.q * (workData.vA - v_actual);
+
+                // 3. Registrar Datos para la Gráfica
+                if (Math.random() < 0.3) { 
+                    graphData.push({ t: simTime, wNum: workData.num, wAna: workData.ana });
+                }
+            }
+
+            // Sync visual
+            if(!params.isPlaying && simTime === 0) {
+                // Si está en el origen, obligar a estar en A
+                let { pos, vel } = getPathPosAndVel(0);
+                particle.pos.copy(pos);
+                particle.vel.copy(vel);
+                workData.vA = calculateV(nodeA.position);
+                workData.vB = calculateV(nodeB.position);
+            }
+
+            particle.mesh.position.copy(particle.pos);
+            
+            // Color de partícula
+            particle.mesh.material.color.setHex(params.q < 0 ? 0x10b981 : (params.q > 0 ? 0xfacc15 : 0x9ca3af));
+
+            updatePathVisual();
+            updateUI();
+            drawDCL();
+        }
+
+        function updateUI() {
+            let E = calculateE(particle.pos);
+            let Fe = E.clone().multiplyScalar(params.q);
+
+            document.getElementById('ui-mag-f').textContent = Fe.length().toFixed(2);
+            document.getElementById('ui-mag-v').textContent = workData.num.toFixed(2);
+            
+            workData.vA = calculateV(nodeA.position);
+            let v_actual = calculateV(particle.pos);
+
+            // Modificación para contemplar Campos E Independientes (que no provienen de V)
+            if (params.config === 'custom-E') {
+                document.getElementById('ui-pos-x').textContent = "N/A ";
+                document.getElementById('ui-pos-y').textContent = "N/A ";
+                document.getElementById('ui-pos-z').textContent = "N/A ";
+            } else {
+                document.getElementById('ui-pos-x').textContent = workData.vA.toFixed(1);
+                document.getElementById('ui-pos-y').textContent = v_actual.toFixed(1);
+                
+                let w_ana_live = params.q * (workData.vA - v_actual);
+                document.getElementById('ui-pos-z').textContent = w_ana_live.toFixed(2);
+            }
+
+            document.getElementById('ui-dcl-fe').textContent = Fe.length().toFixed(2);
+            document.getElementById('ui-dcl-wg').textContent = particle.vel.length().toFixed(2);
+        }
+
+        // ==========================================
+        // 7. ARRASTRE DE NODOS (DRAG) MÚLTIPLES PUNTOS
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
+        let dragObj = null;
+        const canvasEl = renderer.domElement;
+
+        canvasEl.addEventListener('pointerdown', (e) => {
+            if (document.getElementById('toggle-paint').checked) return; 
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, cam);
+            
+            // Evaluamos interacción en la matriz dinámica de todos los nodos
+            const intersects = raycaster.intersectObjects(getAllNodes());
+
+            if (intersects.length > 0) {
+                dragObj = intersects[0].object;
+                
+                // Si agarramos A, hacer reset visual para mantener lógica consistente
+                if(dragObj === nodeA) resetSim();
+
+                canvasEl.setPointerCapture(e.pointerId);
+                document.body.style.cursor = 'grabbing';
+                ctrl.enabled = false; 
+            }
+        });
+
+        canvasEl.addEventListener('pointermove', (e) => {
+            if (document.getElementById('toggle-paint').checked) return;
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (dragObj) {
+                raycaster.setFromCamera(mouse, cam);
+                
+                if(params.is3D) {
+                     dragPlane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1), dragObj.position);
+                } else {
+                     dragPlane.set(new THREE.Vector3(0,0,1), 0);
+                }
+
+                const intersect = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, intersect);
+                if (intersect) {
+                    intersect.x = Math.max(-15, Math.min(15, intersect.x));
+                    intersect.y = Math.max(-10, Math.min(10, intersect.y));
+                    if(!params.is3D) intersect.z = 0;
+                    
+                    dragObj.position.copy(intersect);
+                    
+                    // Sincronizar UI inputs si arrastramos el nodo C primario (el primero de los controles)
+                    if(dragObj === controlNodes[0]) {
+                        document.getElementById('in-vx').value = intersect.x.toFixed(1);
+                        document.getElementById('in-vy').value = intersect.y.toFixed(1);
+                    }
+                    
+                    if(!params.isPlaying) {
+                        updatePathVisual(); updateUI(); drawDCL();
+                    }
+                }
+            } else {
+                raycaster.setFromCamera(mouse, cam);
+                if (raycaster.intersectObjects(getAllNodes()).length > 0) {
+                    document.body.style.cursor = 'grab';
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            }
+        });
+
+        const onPointerUp = (e) => {
+            if (dragObj) {
+                dragObj = null;
+                document.body.style.cursor = 'default';
+                ctrl.enabled = true; 
+                try { canvasEl.releasePointerCapture(e.pointerId); } catch(err){}
+            }
+        };
+
+        canvasEl.addEventListener('pointerup', onPointerUp);
+        canvasEl.addEventListener('pointercancel', onPointerUp);
+
+        // ==========================================
+        // ADICIONAL: MANEJO DE NUEVOS PUNTOS DE CONTROL BÉZIER
+        // ==========================================
+        document.getElementById('btn-add-node').addEventListener('click', () => {
+            if (controlNodes.length >= 7) return; // Limitar grado por cordura visual
+            let n = new THREE.Mesh(new THREE.SphereGeometry(0.35, 32, 32), nodeMatC);
+            // Interpolar posición entre el ultimo control y B
+            let lastPos = controlNodes[controlNodes.length-1].position;
+            n.position.set((lastPos.x + nodeB.position.x)/2, (lastPos.y + nodeB.position.y)/2 + 2, 0);
+            scene.add(n);
+            controlNodes.push(n);
+            updatePathVisual();
+        });
+
+        document.getElementById('btn-rem-node').addEventListener('click', () => {
+            if (controlNodes.length <= 1) return; // No permitir quitar el principal C0
+            let n = controlNodes.pop();
+            scene.remove(n);
+            updatePathVisual();
+        });
+
+        // ==========================================
+        // 8. DIAGRAMA DE CUERPO LIBRE (DCL) 2D
+        // ==========================================
+        const dclCont = document.getElementById('dcl-container');
+        const dclCanvas = document.getElementById('dcl-canvas');
+        const dclCtx = dclCanvas.getContext('2d');
+
+        function resizeDCL() {
+            dclCanvas.width = dclCont.clientWidth;
+            dclCanvas.height = dclCont.clientHeight;
+            drawDCL(); 
+        }
+
+        function drawDCL() {
+            const w = dclCanvas.width; const h = dclCanvas.height;
+            const cx = w/2; const cy = h/2;
+            dclCtx.clearRect(0, 0, w, h);
+
+            dclCtx.beginPath(); dclCtx.strokeStyle = "#334155"; dclCtx.lineWidth = 1;
+            dclCtx.moveTo(0, cy); dclCtx.lineTo(w, cy); 
+            dclCtx.moveTo(cx, 0); dclCtx.lineTo(cx, h); 
+            dclCtx.stroke();
+
+            dclCtx.beginPath(); dclCtx.arc(cx, cy, 8, 0, Math.PI*2);
+            dclCtx.fillStyle = (params.q < 0) ? "#10b981" : (params.q > 0 ? "#facc15" : "#9ca3af");
+            dclCtx.fill(); dclCtx.strokeStyle="#fff"; dclCtx.lineWidth=1.5; dclCtx.stroke();
+
+            let E = calculateE(particle.pos);
+            let Fe = E.clone().multiplyScalar(params.q);
+            let dr = particle.vel.clone().normalize(); // Tangente a la curva
+
+            const scaleF = 4; 
+            const scaleV = 20; // Visual length for tangent
+
+            const drawArrowCtx = (vec, color, lineWidth, scl) => {
+                let vLen = vec.length() * scl;
+                if(vLen < 1) return;
+                let norm = vec.clone().normalize();
+                let endX = cx + norm.x * vLen;
+                let endY = cy - norm.y * vLen; 
+
+                dclCtx.beginPath(); 
+                dclCtx.strokeStyle = color; dclCtx.lineWidth = lineWidth;
+                
+                var headlen = 8; 
+                var angle = Math.atan2(-norm.y, norm.x); 
+
+                dclCtx.moveTo(cx, cy); dclCtx.lineTo(endX, endY);
+                dclCtx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                dclCtx.moveTo(endX, endY);
+                dclCtx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+                dclCtx.stroke();
+            };
+
+            drawArrowCtx(Fe, "#facc15", 3, scaleF); // Fuerza Eléctrica (Amarillo)
+            drawArrowCtx(dr, "#93c5fd", 2, scaleV); // Desplazamiento local dr (Azul Claro)
+        }
+
+        // ==========================================
+        // 9. GRÁFICA COMPARATIVA W(t)
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const graphCanvas = document.getElementById('graph-2d');
+        const gCtx = graphCanvas.getContext('2d');
+
+        function resizeGraph() {
+            graphCanvas.width = graphCont.clientWidth;
+            graphCanvas.height = graphCont.clientHeight;
+        }
+
+        function drawGraphProfile() {
+            const w = graphCanvas.width; const h = graphCanvas.height;
+            const padX = 40; const padY = 25;
+            gCtx.clearRect(0, 0, w, h);
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#94a3b8"; gCtx.lineWidth = 2;
+            gCtx.moveTo(padX, padY/2); gCtx.lineTo(padX, h - padY); 
+            gCtx.lineTo(w - padX/2, h - padY); 
+            gCtx.stroke();
+
+            gCtx.fillStyle = "#475569"; gCtx.font = "11px sans-serif";
+            gCtx.fillText("W(J)", padX - 30, padY); 
+            gCtx.fillText("Ruta", w - padX + 5, h - padY + 12);
+
+            if (graphData.length < 2) return;
+
+            const tMin = 0; const tMax = 1;
+            let yMax = 5, yMin = -5;
+            graphData.forEach(d => {
+                if(d.wAna > yMax) yMax = d.wAna + 2;
+                if(d.wAna < yMin) yMin = d.wAna - 2;
+                if(d.wNum > yMax) yMax = d.wNum + 2;
+                if(d.wNum < yMin) yMin = d.wNum - 2;
+            });
+
+            const mapX = (t) => padX + ((t - tMin) / (tMax - tMin)) * (w - padX * 1.5);
+            const mapY = (y) => (h - padY) - ((y - yMin) / (yMax - yMin)) * (h - padY * 1.5);
+
+            // Cero
+            gCtx.beginPath(); gCtx.strokeStyle = "#cbd5e1"; gCtx.lineWidth = 1; gCtx.setLineDash([2,2]);
+            gCtx.moveTo(padX, mapY(0)); gCtx.lineTo(w - padX/2, mapY(0)); gCtx.stroke(); gCtx.setLineDash([]);
+
+            // W Analítico (Azul Solido grueso, Ocultar en Campos Customizados E)
+            if (params.config !== 'custom-E') {
+                gCtx.beginPath(); gCtx.strokeStyle = "#2563eb"; gCtx.lineWidth = 3;
+                for(let i=0; i<graphData.length; i++) {
+                    let px = mapX(graphData[i].t); let py = mapY(graphData[i].wAna);
+                    if (i===0) gCtx.moveTo(px, py); else gCtx.lineTo(px, py);
+                }
+                gCtx.stroke();
+            }
+
+            // W Numérico (Verde punteado superpuesto, prueba que son iguales)
+            gCtx.beginPath(); gCtx.strokeStyle = "#10b981"; gCtx.lineWidth = 2; gCtx.setLineDash([5, 5]);
+            for(let i=0; i<graphData.length; i++) {
+                let px = mapX(graphData[i].t); let py = mapY(graphData[i].wNum);
+                if (i===0) gCtx.moveTo(px, py); else gCtx.lineTo(px, py);
+            }
+            gCtx.stroke(); gCtx.setLineDash([]);
+        }
+
+        // ==========================================
+        // 10. HERRAMIENTA PAINT / PIZARRA
+        // ==========================================
+        const paintCanvas = document.getElementById('paint-canvas');
+        const pCtx = paintCanvas.getContext('2d');
+        let isPainting = false;
+
+        function resizePaint() {
+            paintCanvas.width = paintCanvas.offsetWidth;
+            paintCanvas.height = paintCanvas.offsetHeight;
+            pCtx.lineWidth = 3; pCtx.lineCap = 'round'; pCtx.strokeStyle = '#fbbf24'; 
+        }
+
+        const startPaint = (e) => {
+            isPainting = true;
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.beginPath(); pCtx.moveTo(clientX - rect.left, clientY - rect.top);
+        };
+        const drawPaint = (e) => {
+            if (!isPainting) return;
+            e.preventDefault();
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.lineTo(clientX - rect.left, clientY - rect.top); pCtx.stroke();
+        };
+        const stopPaint = () => { isPainting = false; };
+
+        paintCanvas.addEventListener('mousedown', startPaint);
+        paintCanvas.addEventListener('mousemove', drawPaint);
+        window.addEventListener('mouseup', stopPaint);
+        paintCanvas.addEventListener('touchstart', startPaint, {passive: false});
+        paintCanvas.addEventListener('touchmove', drawPaint, {passive: false});
+        paintCanvas.addEventListener('touchend', stopPaint);
+
+        document.getElementById('btn-clear-paint').addEventListener('click', () => { pCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height); });
+        document.getElementById('toggle-paint').addEventListener('change', (e) => {
+            const btnClear = document.getElementById('btn-clear-paint');
+            if(e.target.checked) {
+                paintCanvas.classList.add('paint-mode-active'); btnClear.classList.remove('hidden'); canvasEl.style.pointerEvents = "none";
+            } else {
+                paintCanvas.classList.remove('paint-mode-active'); btnClear.classList.add('hidden'); canvasEl.style.pointerEvents = "auto";
+            }
+        });
+
+        // ==========================================
+        // 11. EVENTOS UI Y BUCLE DE ANIMACIÓN
+        // ==========================================
+        
+        function syncNodeC() {
+            let cx = parseFloat(document.getElementById('in-vx').value) || 0;
+            let cy = parseFloat(document.getElementById('in-vy').value) || 0;
+            controlNodes[0].position.set(cx, cy, 0); // Sincroniza al menos el C0 principal
+            updatePathVisual();
+        }
+        document.getElementById('in-vx').addEventListener('input', syncNodeC);
+        document.getElementById('in-vy').addEventListener('input', syncNodeC);
+        document.getElementById('in-path').addEventListener('change', (e) => {
+            updatePathVisual();
+            document.getElementById('bezier-controls-ui').style.display = (e.target.value === "1") ? "flex" : "none";
+        });
+
+        function updateTeoriaUI(val) {
+            ['millikan', 'radial', 'rotacional', 'custom', 'placas', 'custom-E'].forEach(c => {
+                const el = document.getElementById('teoria-' + c);
+                if(el) {
+                    if (c === val) { el.classList.remove('hidden'); el.classList.add('flex'); } 
+                    else { el.classList.add('hidden'); el.classList.remove('flex'); }
+                }
+            });
+
+            const customInputsV = document.getElementById('custom-inputs');
+            const customInputsE = document.getElementById('custom-inputs-e');
+            
+            if(val === 'custom') {
+                customInputsV.classList.remove('hidden'); customInputsE.classList.add('hidden');
+            } else if (val === 'custom-E') {
+                customInputsE.classList.remove('hidden'); customInputsV.classList.add('hidden');
+            } else {
+                customInputsV.classList.add('hidden'); customInputsE.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('select-config').addEventListener('change', (e) => { 
+            params.config = e.target.value; 
+            updateTeoriaUI(params.config);
+            resetSim();
+            updateEquiMesh();
+            updateBackgroundGrid();
+        });
+
+        document.getElementById('in-ex').addEventListener('input', () => { updateEquiMesh(); updateBackgroundGrid(); });
+        
+        // Listeners for custom E components
+        ['in-e-x', 'in-e-y', 'in-e-z'].forEach(id => {
+            document.getElementById(id).addEventListener('input', () => {
+                updateBackgroundGrid(); // Recomputar visualización del campo
+            });
+        });
+
+        document.getElementById('slider-q').addEventListener('input', (e) => { 
+            params.q = parseFloat(e.target.value);
+            document.getElementById('val-q').textContent = params.q.toFixed(1); 
+            document.getElementById('val-q').className = `font-mono font-bold w-[1.5vw] text-right ${params.q >= 0 ? 'text-red-600' : 'text-emerald-600'}`;
+            if(!params.isPlaying) { updateUI(); drawDCL(); }
+        });
+
+        document.getElementById('slider-m').addEventListener('input', (e) => { 
+            params.m = parseFloat(e.target.value);
+            document.getElementById('val-m').textContent = params.m.toFixed(1); 
+            updateEquiMesh(); updateBackgroundGrid();
+            if(!params.isPlaying) { updateUI(); drawDCL(); }
+        });
+
+        document.getElementById('slider-e').addEventListener('input', (e) => {
+            params.E_scale = parseFloat(e.target.value);
+            document.getElementById('val-e').textContent = params.E_scale.toFixed(1);
+            updateEquiMesh(); updateBackgroundGrid();
+            if(!params.isPlaying) { updateUI(); drawDCL(); }
+        });
+
+        document.getElementById('toggle-grav').addEventListener('change', (e) => {
+            params.useEqui = e.target.checked;
+            updateEquiMesh();
+        });
+
+        document.getElementById('toggle-grid').addEventListener('change', updateBackgroundGrid);
+        
+        function resetSim() {
+            params.isPlaying = false;
+            simTime = 0;
+            workData = { num: 0, ana: 0, vA: calculateV(nodeA.position), vB: calculateV(nodeB.position) };
+            graphData = [];
+            let { pos, vel } = getPathPosAndVel(0);
+            particle.pos.copy(pos);
+            particle.vel.copy(vel);
+            particle.mesh.position.copy(pos);
+            updateUI(); drawDCL();
+        }
+
+        // Play / Pause / Reset
+        document.getElementById('btn-play').addEventListener('click', () => { 
+            if(simTime >= 1.0) resetSim(); // Auto-restart
+            params.isPlaying = true; 
+            lastTime = performance.now(); 
+        });
+        document.getElementById('btn-pause').addEventListener('click', () => { params.isPlaying = false; });
+        document.getElementById('btn-reset').addEventListener('click', resetSim);
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-wrapper-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height); resizePaint();
+                } else if(entry.target.id === 'dcl-container') resizeDCL(); 
+                else if(entry.target.id === 'graph-container') resizeGraph();
+            }
+        });
+        resizeObserver.observe(document.getElementById('canvas-wrapper-3d')); 
+        resizeObserver.observe(dclCont); resizeObserver.observe(graphCont);
+
+        setupView();
+        updateTeoriaUI(params.config);
+        
+        setTimeout(() => { resizePaint(); resizeDCL(); resizeGraph(); updateBackgroundGrid(); updateEquiMesh(); updateUI(); }, 100);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            drawGraphProfile();
+            ctrl.update();
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tip System Global (INMUTABLE)
+        (function () {
+            let globalTip = document.createElement("div"); globalTip.className = "tip-content"; globalTip.style.position = "fixed"; globalTip.style.zIndex = "999999"; globalTip.style.pointerEvents = "none"; globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden";
+            document.body.appendChild(globalTip);
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                const localTip = wrapper.querySelector(".tip-content");
+                wrapper.addEventListener("mouseenter", () => {
+                    const rect = wrapper.getBoundingClientRect(); globalTip.innerHTML = localTip.innerHTML; globalTip.style.top = rect.top + "px"; globalTip.style.left = (rect.right + 10) + "px"; globalTip.style.opacity = "1"; globalTip.style.visibility = "visible";
+                });
+                wrapper.addEventListener("mouseleave", () => { globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden"; });
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Universitaria: Campo Eléctrico</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- KaTeX for Beautiful Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f8fafc; }
+        
+        /* Draggable items styles */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone.dragover { background-color: #e0e7ff; border-color: #4f46e5; }
+        .math-input { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; }
+        
+        /* Navigation Grid Styles */
+        .nav-btn { transition: all 0.2s ease; }
+        .nav-answered { background-color: #4f46e5; color: white; border-color: #4338ca; }
+        .nav-flagged { background-color: #f59e0b; color: white; border-color: #d97706; }
+        .nav-active { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.4); transform: scale(1.1); z-index: 10; }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        .correct-card { border: 2px solid #22c55e !important; background-color: #f0fdf4 !important; }
+        .incorrect-card { border: 2px solid #ef4444 !important; background-color: #fef2f2 !important; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center border border-slate-200">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-warning text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">¿Evaluar examen?</h3>
+            <p class="text-slate-600 mb-6" id="confirm-message">Aún tienes preguntas sin responder.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-cancel-eval" class="px-5 py-2.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button id="btn-confirm-eval" class="px-5 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">Sí, evaluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm shrink-0 z-40 relative border-b-2 border-indigo-100">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-md">
+                    <i class="ph ph-lightning text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">Física Electromagnética</h1>
+                    <p class="text-xs md:text-sm text-indigo-600 font-bold tracking-wide uppercase">Módulo 2: Campo Eléctrico</p>
+                </div>
+            </div>
+            <div class="flex gap-3 items-center">
+                <div id="auth-status" class="text-sm font-medium text-slate-500 hidden md:flex items-center gap-1 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                    <i class="ph ph-spinner animate-spin"></i> Conectando plataforma...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <!-- Sidebar: Navigation Panel -->
+        <aside class="w-full md:w-1/4 lg:w-1/5 flex flex-col gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-full max-h-[calc(100vh-120px)] overflow-y-auto">
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="ph ph-squares-four text-indigo-600"></i> Navegación
+                </h3>
+                
+                <div id="nav-grid" class="grid grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-6">
+                    <!-- Buttons injected via JS -->
+                </div>
+
+                <!-- Legend -->
+                <div class="text-xs text-slate-600 space-y-2 mb-6 border-t border-slate-100 pt-4">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded border border-slate-300 bg-slate-50"></div> Sin responder</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-indigo-500 shadow-sm"></div> Respondida</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-amber-500 shadow-sm"></div> Bandera (Revisar)</div>
+                </div>
+
+                <div class="mt-auto space-y-3">
+                    <button id="btn-export" class="w-full hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200">
+                        <i class="ph ph-file-pdf text-lg text-red-500"></i> Exportar PDF
+                    </button>
+                    <button id="btn-evaluate" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="ph ph-check-circle text-lg"></i> Evaluar Examen
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Area: Question Display -->
+        <section class="w-full md:w-3/4 lg:w-4/5 flex flex-col h-full max-h-[calc(100vh-120px)]">
+            
+            <!-- Instructions -->
+            <div id="instructions-panel" class="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mb-4 shadow-sm shrink-0 fade-in">
+                <h2 class="text-lg font-bold text-indigo-900 mb-2 flex items-center gap-2">
+                    <i class="ph ph-info text-xl"></i> Instrucciones de la Evaluación
+                </h2>
+                <p class="text-sm text-indigo-800 mb-2 leading-relaxed">Resuelve los 20 problemas sobre el Campo Eléctrico generado por partículas puntuales y el principio de superposición (nivel AP Physics 2). Utiliza las herramientas y los <strong>tips metodológicos</strong> si necesitas apoyo.</p>
+                <p class="text-sm text-indigo-800 font-semibold bg-indigo-100/50 p-2 rounded inline-block">Tu progreso se respaldará automáticamente en el Módulo 2 de Firebase si tu nota supera el 70%.</p>
+            </div>
+
+            <!-- Question Container -->
+            <div id="questions-container" class="flex-grow overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 relative p-6 md:p-10">
+                <!-- Questions injected here via JS -->
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="mt-4 flex justify-between items-center shrink-0">
+                <button id="btn-prev" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    <i class="ph ph-caret-left text-lg"></i> Anterior
+                </button>
+                
+                <button id="btn-flag" class="px-4 py-2.5 bg-white border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="ph-fill ph-flag"></i> <span class="hidden sm:inline">Marcar con Bandera</span>
+                </button>
+
+                <button id="btn-next" class="px-5 py-2.5 bg-indigo-600 border border-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    Siguiente <i class="ph ph-caret-right text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="results-panel" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-8 rounded-xl border border-slate-200 shadow-2xl fade-in">
+                <div class="bg-indigo-100 text-indigo-600 p-4 rounded-full mb-4">
+                    <i class="ph ph-medal text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Resultados Finales</h2>
+                <div class="text-6xl font-black mb-4 tracking-tighter text-indigo-900" id="score-display">0%</div>
+                <p id="feedback-message" class="text-lg font-medium mb-8 text-center max-w-lg"></p>
+                
+                <div class="w-full max-w-md bg-slate-200 rounded-full h-4 mb-10 shadow-inner overflow-hidden">
+                  <div id="score-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="btn-review" class="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+                        <i class="ph ph-magnifying-glass"></i> Revisar Respuestas
+                    </button>
+                    <button id="btn-save" class="hidden px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                        <i class="ph ph-cloud-arrow-up text-lg"></i> Guardar en la Nube
+                    </button>
+                </div>
+            </div>
+            
+        </section>
+    </main>
+
+    <script type="module">
+        // =========================================================================
+        // === INTEGRACIÓN FIREBASE (COMPATIBLE CON DASHBOARD UNAB) ===
+        // =========================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+        import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+            authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+            databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",
+            projectId: "laboratorio-de-coulomb",
+            storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+            messagingSenderId: "525944850850",
+            appId: "1:525944850850:web:eca9c0b79809358e8d8afb",
+            measurementId: "G-SZECJNG25E"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const statusEl = document.getElementById('auth-status');
+            if (user) {
+                const userName = user.email ? user.email.split('@')[0] : 'Estudiante';
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></div> <span class="truncate max-w-[100px]">${userName}</span>`;
+                statusEl.classList.remove('hidden');
+                loadProgress();
+            } else {
+                statusEl.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Debes iniciar sesión en la plataforma`;
+                statusEl.classList.remove('hidden');
+            }
+        });
+
+        // --- 2. DATA DEL EXAMEN: CAMPO ELÉCTRICO DE PARTÍCULAS PUNTUALES ---
+        const questions = [
+            { 
+                type: 'mcq', 
+                text: "El campo eléctrico $\\vec{E}$ en un punto del espacio se define operacionalmente como:", 
+                options: ["El trabajo realizado para mover una carga unitaria hasta ese punto.", "La fuerza eléctrica por unidad de carga de prueba positiva colocada en ese punto.", "La energía potencial eléctrica almacenada en ese punto.", "La constante de Coulomb dividida por la distancia al cuadrado."], 
+                answer: 1, 
+                tip: "La definición formal es $\\vec{E} = \\frac{\\vec{F}}{q_0}$. Es decir, mide cuántos Newtons de fuerza experimentaría un Coulomb de carga." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Las líneas de campo eléctrico creadas por una carga puntual aislada negativa:", 
+                options: ["Son concéntricas y circulares alrededor de la carga.", "Apuntan radialmente hacia afuera de la carga.", "Apuntan radialmente hacia adentro, terminando en la carga.", "Son paralelas y uniformemente espaciadas."], 
+                answer: 2, 
+                tip: "Por convención, las líneas de campo indican la dirección de la fuerza sobre una carga de prueba positiva. Una carga positiva sería atraída hacia la negativa." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Si la magnitud del campo eléctrico a una distancia $r$ de una partícula puntual es $E$, ¿cuál será la magnitud del campo a una distancia $2r$?", 
+                options: ["$E/2$", "$E/4$", "$2E$", "$E$"], 
+                answer: 1, 
+                tip: "El campo de una partícula puntual sigue la ley del inverso del cuadrado: $E = k\\frac{q}{r^2}$. Si $r$ se duplica, el denominador se multiplica por $2^2 = 4$." 
+            },
+            { 
+                type: 'fill', 
+                text: "En el Sistema Internacional, la magnitud del campo eléctrico se mide en Newtons por ______.", 
+                answer: "coulomb", 
+                tip: "Deriva directamente de su definición: Fuerza ($N$) dividida por Carga ($C$)." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Dos cargas puntuales idénticas $+Q$ están separadas por una distancia $d$. ¿Cuál es la magnitud del campo eléctrico neto exactamente en el punto medio entre ambas?", 
+                options: ["$k\\frac{2Q}{(d/2)^2}$", "Cero", "$k\\frac{Q}{d^2}$", "$k\\frac{4Q}{d^2}$"], 
+                answer: 1, 
+                tip: "Usa el principio de superposición. El campo de la carga izquierda apunta hacia la derecha, y el de la derecha apunta hacia la izquierda. Al ser iguales las distancias y las cargas, los vectores se anulan." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Un protón y un electrón se colocan (en reposo) en una región donde existe un campo eléctrico uniforme. ¿Qué enunciado es correcto respecto a la **fuerza inicial** que experimentan?", 
+                options: ["El electrón experimenta una fuerza mayor por ser más ligero.", "El protón experimenta una fuerza mayor por ser más masivo.", "Ambos experimentan fuerzas de igual magnitud pero en direcciones opuestas.", "Ambos experimentan la misma fuerza en la misma dirección."], 
+                answer: 2, 
+                tip: "La fuerza electrostática depende exclusivamente de la carga y el campo ($F = |q|E$). Como protón y electrón tienen la misma magnitud de carga elemental ($e$), la magnitud de la fuerza es idéntica." 
+            },
+            { 
+                type: 'equation', 
+                text: "Escribe la expresión algebraica para la magnitud del campo eléctrico $E$ creado por una carga puntual $Q$ a una distancia $r$. Utiliza la constante $k$. (Ejemplo: k*Q/r^2)", 
+                answer: "k*Q/r^2", 
+                tip: "Divide la Ley de Coulomb entre la carga de prueba $q_0$ para obtener el campo de la carga generadora $Q$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Si las líneas de campo eléctrico en una región del espacio están muy juntas (alta densidad de líneas), esto indica físicamente que:", 
+                options: ["El campo eléctrico es muy débil.", "El campo eléctrico es muy intenso.", "No hay cargas presentes en esa región.", "El potencial eléctrico es cero."], 
+                answer: 1, 
+                tip: "La convención visual de Faraday establece que la intensidad del campo es directamente proporcional a la densidad de las líneas de fuerza." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Un electrón se lanza horizontalmente hacia la derecha y entra en un campo eléctrico uniforme que apunta verticalmente hacia abajo. Despreciando la gravedad, ¿qué trayectoria seguirá el electrón?", 
+                options: ["Una línea recta hacia abajo.", "Una parábola desviándose hacia arriba.", "Una parábola desviándose hacia abajo.", "Continuará en línea recta horizontal."], 
+                answer: 1, 
+                tip: "El electrón tiene carga negativa, por lo que experimenta una fuerza eléctrica en dirección opuesta a las líneas de campo. Si el campo va hacia abajo, la fuerza lo empuja hacia arriba." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En un dipolo eléctrico (una carga $+q$ y una $-q$ separadas por una distancia $d$), el campo eléctrico neto en el punto central de la línea que las une:", 
+                options: ["Es nulo.", "Apunta hacia la carga positiva.", "Apunta hacia la carga negativa.", "Es perpendicular a la línea que une las cargas."], 
+                answer: 2, 
+                tip: "Superposición vectorial: el campo de la carga positiva la 'aleja' (apunta hacia la negativa) y el campo de la negativa la 'atrae' (también apunta hacia la negativa). Ambos vectores se suman en la misma dirección." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Se tiene una carga $+q$ en el origen $(0,0)$. El vector de campo eléctrico evaluado en el punto $(x, y)$ se expresa matemáticamente como:", 
+                options: ["$\\vec{E} = k \\frac{q}{r^2} \\hat{i}$", "$\\vec{E} = k \\frac{q}{r^2} \\hat{r}$", "$\\vec{E} = k \\frac{q}{r^3}$", "$\\vec{E} = k \\frac{q}{r} \\hat{r}$"], 
+                answer: 1, 
+                tip: "Recuerda que el campo es un vector. Su dirección radial desde el origen se denota con el vector unitario $\\hat{r}$." 
+            },
+            { 
+                type: 'fill', 
+                text: "A nivel microscópico, el campo eléctrico no se transmite instantáneamente, sino que sus perturbaciones viajan por el vacío a la velocidad de la ______.", 
+                answer: "luz", 
+                tip: "Las ondas electromagnéticas son perturbaciones de campos eléctricos y magnéticos y viajan a $c \approx 3 \\times 10^8 \\text{ m/s}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Dos cargas puntuales $+q$ y $+4q$ están separadas una distancia $L$. ¿En qué posición, respecto a $+q$, el campo eléctrico neto se anula?", 
+                options: ["A $L/2$", "A $L/4$", "A $L/3$", "A $2L/3$"], 
+                answer: 2, 
+                tip: "Iguala las magnitudes: $k\\frac{q}{x^2} = k\\frac{4q}{(L-x)^2}$. Al sacar raíz a ambos lados queda $1/x = 2/(L-x)$, lo que se resuelve como $x = L/3$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "¿Por qué dos líneas de campo eléctrico estático en el vacío nunca pueden cruzarse?", 
+                options: ["Porque la constante de Coulomb lo prohíbe.", "Porque en el punto de cruce el campo tendría dos direcciones simultáneas, lo cual es físicamente imposible.", "Porque se repelen entre sí magnéticamente.", "Porque las cargas de prueba se detendrían en el cruce."], 
+                answer: 1, 
+                tip: "El campo eléctrico es una función vectorial de posición bien definida. Cada punto del espacio tiene un único vector campo neto." 
+            },
+            { 
+                type: 'drag', 
+                text: "Relaciona la configuración de las cargas con el comportamiento característico de las líneas de campo eléctrico generadas:", 
+                pairs: [
+                    { id: 'p1', question: "Carga puntual aislada", answer: "Líneas radiales rectas que se extienden al infinito." },
+                    { id: 'p2', question: "Dipolo (una +, una -)", answer: "Líneas curvas que nacen en una carga y mueren en la otra." },
+                    { id: 'p3', question: "Dos cargas del mismo signo", answer: "Líneas que se alejan de ambas cargas y nunca se tocan, con un punto central asintótico." }
+                ],
+                tip: "Imagina visualmente cómo las cargas atraen o repelen una pequeña carga de prueba en el espacio que las rodea."
+            },
+            { 
+                type: 'mcq', 
+                text: "Una partícula de polvo con masa $m$ y carga neta negativa $-q$ está suspendida estáticamente en el aire. El campo eléctrico necesario para lograr esto debe apuntar:", 
+                options: ["Hacia arriba, con magnitud $E = mg/q$.", "Hacia abajo, con magnitud $E = mg/q$.", "Hacia arriba, con magnitud $E = q/mg$.", "Hacia la derecha, formando un dipolo inducido."], 
+                answer: 1, 
+                tip: "Para equilibrar el peso (fuerza hacia abajo $mg$), la fuerza eléctrica debe ir hacia arriba. Como la carga es negativa, la fuerza tiene sentido opuesto al campo. Por tanto, el campo debe ir hacia abajo." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Una esferita de masa $m$ y carga $+q$ cuelga de un hilo ideal dentro de un campo eléctrico uniforme horizontal $E$. El hilo se desvía un ángulo $\\theta$ respecto a la vertical en equilibrio. ¿Cuál es la relación correcta?", 
+                options: ["$\\tan\\theta = \\frac{qE}{mg}$", "$\\sin\\theta = \\frac{mg}{qE}$", "$\\cos\\theta = \\frac{qE}{mg}$", "$\\tan\\theta = \\frac{mg}{qE}$"], 
+                answer: 0, 
+                tip: "Analiza las fuerzas: Tensión en Y iguala al peso ($T\\cos\\theta = mg$) y Tensión en X iguala a la fuerza eléctrica ($T\\sin\\theta = qE$). Divide ambas ecuaciones." 
+            },
+            { 
+                type: 'fill', 
+                text: "Un protón y una partícula alfa (carga $+2e$, masa $\\approx 4m_p$) son liberados desde el reposo en el mismo campo eléctrico uniforme. La razón de las aceleraciones $(a_{proton} / a_{alfa})$ es igual a ______.", 
+                answer: "2", 
+                tip: "Aceleración es $a = \\frac{qE}{m}$. Para el protón es $eE/m_p$. Para el alfa es $2eE/4m_p = 0.5(eE/m_p)$. El protón acelera el doble." 
+            },
+            { 
+                type: 'equation', 
+                text: "Si se conoce la fuerza $\\vec{F}$ que experimenta una carga de prueba $q_0$, escribe la ecuación algebraica más sencilla para hallar el vector Campo Eléctrico $\\vec{E}$. (Ejemplo: F/q0)", 
+                answer: "F/q0", 
+                tip: "Es la simple definición matemática del campo eléctrico." 
+            },
+            { 
+                type: 'canvas', 
+                text: "Simulador Vectorial: En el centro hay una carga fuente $+Q$ fija. **Arrastra la carga de prueba azul ($+q_0$)** acercándola al núcleo. Observa cómo crece exponencialmente el vector Campo Eléctrico (flecha roja). Lleva la carga a la zona de **Alto Campo (marcada con círculo)** para confirmar tu respuesta.", 
+                tip: "El tamaño de la flecha roja es proporcional a $1/r^2$. Por esto, a cortas distancias, las fuerzas eléctricas dominan masivamente sobre cualquier otra interacción fundamental." 
+            }
+        ];
+
+        let currentQuestion = 0;
+        let userState = questions.map(() => ({ answered: false, flagged: false, value: null }));
+        let examSubmitted = false;
+
+        function initUI() {
+            renderNavGrid();
+            renderAllQuestions();
+            showQuestion(0);
+            
+            document.getElementById('btn-prev').addEventListener('click', () => { if(currentQuestion > 0) showQuestion(currentQuestion - 1); });
+            document.getElementById('btn-next').addEventListener('click', () => { if(currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1); });
+            document.getElementById('btn-flag').addEventListener('click', () => toggleFlag(currentQuestion));
+            
+            document.getElementById('btn-evaluate').addEventListener('click', showConfirmModal);
+            document.getElementById('btn-cancel-eval').addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden'));
+            document.getElementById('btn-confirm-eval').addEventListener('click', () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                evaluateExam();
+            });
+
+            document.getElementById('btn-review').addEventListener('click', hideResultsPanel);
+            document.getElementById('btn-export').addEventListener('click', exportToPDF);
+            document.getElementById('btn-save').addEventListener('click', saveProgress);
+
+            renderMathInElement(document.body, {
+              delimiters: [
+                  {left: '$$', right: '$$', display: true},
+                  {left: '$', right: '$', display: false},
+                  {left: '\\(', right: '\\)', display: false},
+                  {left: '\\[', right: '\\]', display: true}
+              ],
+              throwOnError: false
+            });
+        }
+
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid');
+            grid.innerHTML = '';
+            questions.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = `nav-btn w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-200 cursor-pointer shadow-sm`;
+                btn.id = `nav-btn-${i}`;
+                btn.textContent = i + 1;
+                btn.addEventListener('click', () => showQuestion(i));
+                grid.appendChild(btn);
+            });
+            updateNavStyles();
+        }
+
+        function updateNavStyles() {
+            questions.forEach((_, i) => {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(!btn) return;
+                btn.classList.remove('nav-answered', 'nav-flagged', 'nav-active', 'bg-slate-50', 'text-slate-500', 'border-slate-200');
+                if (userState[i].flagged) btn.classList.add('nav-flagged');
+                else if (userState[i].answered) btn.classList.add('nav-answered');
+                else btn.classList.add('bg-slate-50', 'text-slate-500', 'border-slate-200');
+
+                if (i === currentQuestion) btn.classList.add('nav-active');
+            });
+        }
+
+        function renderAllQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = `q-card hidden flex flex-col h-full`;
+                card.id = `q-card-${index}`;
+
+                let html = `
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-slate-800 leading-relaxed"><span class="text-indigo-600 mr-2 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100">${index + 1}.</span> ${q.text}</h3>
+                        <div id="feedback-icon-${index}" class="hidden shrink-0 mt-1"></div>
+                    </div><div class="flex-grow">`;
+
+                if (q.type === 'mcq') {
+                    html += `<div class="space-y-3 mt-4">`;
+                    q.options.forEach((opt, i) => {
+                        html += `
+                        <label class="flex items-center space-x-4 p-4 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-300 cursor-pointer transition-all group shadow-sm">
+                            <input type="radio" name="q${index}" value="${i}" class="h-5 w-5 text-indigo-600 border-gray-300 focus:ring-indigo-500 q-input cursor-pointer">
+                            <span class="text-slate-700 text-[1.05rem] group-hover:text-indigo-900">${opt}</span>
+                        </label>`;
+                    });
+                    html += `</div>`;
+                } 
+                else if (q.type === 'fill' || q.type === 'equation') {
+                    const ph = q.type === 'fill' ? "Escribe tu respuesta aquí" : "Expresión algebraica (Ej: k*Q/r^2)";
+                    html += `
+                    <div class="mt-6 flex flex-col max-w-sm">
+                        <input type="text" id="input-q${index}" autocomplete="off" class="q-input math-input text-xl border-2 border-slate-300 rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 outline-none transition-all text-center text-slate-700 font-bold shadow-sm" placeholder="${ph}">
+                        ${q.type === 'equation' ? '<p class="text-sm text-slate-500 mt-3 text-center bg-slate-50 p-2 rounded-lg border border-slate-200">Usa notación simple sin LaTeX. Ej: <code class="bg-white px-1 py-0.5 rounded text-indigo-600">k*Q/r^2</code> o `F/q0`</p>' : ''}
+                    </div>`;
+                }
+                else if (q.type === 'drag') {
+                    html += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6"><div class="space-y-4">
+                                <h4 class="font-bold text-slate-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-target"></i> Configuración</h4>`;
+                    q.pairs.forEach((p) => {
+                        html += `
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm">
+                            <span class="font-semibold text-slate-700 text-base">${p.question}</span>
+                            <div class="dropzone min-h-[70px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-sm text-slate-400 transition-colors relative" data-target="${p.question}">
+                                <span>Soltar definición aquí</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div><div class="space-y-4 bg-indigo-50/50 p-4 rounded-2xl border border-indigo-50">
+                                <h4 class="font-bold text-indigo-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-lightning"></i> Líneas de Campo</h4>`;
+                    
+                    let shuffled = [...q.pairs].sort(() => Math.random() - 0.5);
+                    let dragHtml = `<div class="flex flex-col gap-3" id="drag-source-${index}">`;
+                    shuffled.forEach((p) => {
+                        dragHtml += `
+                        <div class="draggable bg-white border-2 border-indigo-200 text-indigo-800 p-4 rounded-xl font-semibold shadow-sm hover:border-indigo-400 hover:shadow-md transition-all flex items-center gap-3 cursor-grab active:scale-95" draggable="true" data-id="${p.answer}">
+                            <i class="ph ph-dots-six-vertical text-indigo-400 text-xl"></i> <span class="text-sm leading-tight">${p.answer}</span>
+                        </div>`;
+                    });
+                    html += dragHtml + `</div></div></div>`;
+                }
+                else if (q.type === 'canvas') {
+                    html += `
+                    <div class="w-full max-w-lg mx-auto aspect-video md:aspect-[4/3] bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden mt-6 relative shadow-inner touch-none select-none">
+                        <canvas id="simCanvas" class="w-full h-full cursor-pointer touch-none"></canvas>
+                        <div class="absolute top-4 left-4 bg-white/95 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-slate-200 font-mono text-sm pointer-events-none flex flex-col gap-1 z-10">
+                            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Magnitud del Campo $\\vec{E}$</span>
+                            <span id="canvas-field" class="font-bold text-slate-600 text-lg">0 N/C</span>
+                        </div>
+                        <div class="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-10">
+                            <div class="bg-indigo-600/90 text-white text-xs px-4 py-2 rounded-full flex items-center gap-2 shadow-sm font-bold">
+                                <i class="ph ph-hand-swipe-left text-lg animate-pulse"></i> Arrastra la carga de prueba
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="input-q${index}" class="q-input" value="false">`;
+                }
+                html += `</div>`; 
+
+                html += `
+                    <div class="mt-8 pt-6 border-t border-slate-100 shrink-0">
+                        <button onclick="document.getElementById('tip-${index}').classList.toggle('hidden')" class="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-2 transition-colors bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 hover:border-amber-200">
+                            <i class="ph-fill ph-lightbulb text-lg"></i> Mostrar Tip Metodológico
+                        </button>
+                        <div id="tip-${index}" class="hidden mt-4 bg-amber-50 border-l-4 border-amber-400 text-amber-900 text-[0.95rem] p-4 rounded-r-xl shadow-sm fade-in leading-relaxed">
+                            <strong>Pista de resolución:</strong> ${q.tip}
+                        </div>
+                    </div>
+                `;
+
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+
+            document.querySelectorAll('.q-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const match = (e.target.name || e.target.id).match(/q(\d+)/);
+                    if(match) {
+                        userState[parseInt(match[1])].answered = true;
+                        userState[parseInt(match[1])].value = e.target.value;
+                        updateNavStyles();
+                    }
+                });
+                if (input.type === 'text') {
+                    input.addEventListener('input', (e) => {
+                        const match = e.target.id.match(/q(\d+)/);
+                        if(match) {
+                            userState[parseInt(match[1])].answered = (e.target.value.trim() !== '');
+                            userState[parseInt(match[1])].value = e.target.value;
+                            updateNavStyles();
+                        }
+                    });
+                }
+            });
+
+            initDragAndDrop();
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.q-card').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.remove('hidden');
+                    const txt = el.querySelector('input[type="text"]');
+                    if(txt && !examSubmitted) setTimeout(() => txt.focus(), 100);
+                    if (questions[i].type === 'canvas' && !window.canvasInitialized) {
+                        setTimeout(initCanvas, 100); window.canvasInitialized = true;
+                    }
+                } else el.classList.add('hidden');
+            });
+            
+            currentQuestion = index;
+            updateNavStyles();
+            if(index !== 0) document.getElementById('instructions-panel').style.display = 'none';
+
+            document.getElementById('btn-prev').disabled = index === 0;
+            document.getElementById('btn-next').disabled = index === questions.length - 1;
+            
+            const flagBtn = document.getElementById('btn-flag');
+            if (userState[index].flagged) {
+                flagBtn.classList.replace('text-amber-600', 'text-white');
+                flagBtn.classList.replace('bg-white', 'bg-amber-500');
+                flagBtn.querySelector('i').classList.replace('ph-flag', 'ph-check');
+            } else {
+                flagBtn.classList.replace('text-white', 'text-amber-600');
+                flagBtn.classList.replace('bg-amber-500', 'bg-white');
+                flagBtn.querySelector('i').classList.replace('ph-check', 'ph-flag');
+            }
+        }
+
+        function toggleFlag(index) { userState[index].flagged = !userState[index].flagged; showQuestion(index); }
+
+        function initDragAndDrop() {
+            document.querySelectorAll('.draggable').forEach(draggable => {
+                draggable.addEventListener('dragstart', (e) => {
+                    draggable.classList.add('opacity-50', 'scale-95');
+                    e.dataTransfer.setData('text/plain', draggable.getAttribute('data-id'));
+                    setTimeout(() => draggable.classList.add('invisible'), 0);
+                });
+                draggable.addEventListener('dragend', () => draggable.classList.remove('opacity-50', 'scale-95', 'invisible'));
+            });
+
+            document.querySelectorAll('.dropzone').forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault(); zone.classList.remove('dragover');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    const draggable = document.querySelector(`.draggable[data-id="${draggedId}"]`);
+                    
+                    if (draggable) {
+                        if (zone.children.length > 0 && !zone.children[0].tagName.toLowerCase().includes('span')) {
+                            const sourceContainer = document.querySelector(`[id^='drag-source']`);
+                            if(sourceContainer) sourceContainer.appendChild(zone.children[0]);
+                        }
+                        if(zone.querySelector('span')) zone.innerHTML = '';
+                        zone.appendChild(draggable);
+                        zone.classList.add('bg-indigo-50', 'border-solid', 'border-indigo-400');
+                        zone.classList.remove('border-dashed', 'text-slate-400');
+                        
+                        const qIndex = 14; 
+                        const allZones = document.getElementById(`q-card-${qIndex}`).querySelectorAll('.dropzone');
+                        let fullZones = 0;
+                        allZones.forEach(z => { if(z.querySelector('.draggable')) fullZones++; });
+                        if(fullZones === allZones.length) { userState[qIndex].answered = true; updateNavStyles(); }
+                    }
+                });
+            });
+        }
+
+        function initCanvas() {
+            const canvas = document.getElementById('simCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const fieldDisplay = document.getElementById('canvas-field');
+            
+            let cw = canvas.parentElement.clientWidth;
+            let ch = canvas.parentElement.clientHeight;
+            canvas.width = cw; canvas.height = ch;
+            
+            const Q_fija = { x: cw * 0.25, y: ch / 2, r: 25 };
+            let q_prueba = { x: cw * 0.85, y: ch / 2, r: 15, isDragging: false };
+            const targetZone = { r: cw * 0.15 };
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Fondo de cuadrícula
+                ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 1;
+                for(let i=0; i<cw; i+=25){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,ch); ctx.stroke(); }
+                for(let i=0; i<ch; i+=25){ ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(cw,i); ctx.stroke(); }
+                
+                // Zona de alto campo
+                ctx.beginPath(); ctx.arc(Q_fija.x, Q_fija.y, targetZone.r + Q_fija.r, 0, Math.PI * 2);
+                ctx.strokeStyle = '#cbd5e1'; ctx.setLineDash([6, 6]); ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = 'rgba(239, 246, 255, 0.4)'; ctx.fill(); ctx.setLineDash([]);
+                ctx.fillStyle = '#94a3b8'; ctx.font = '12px Inter'; ctx.textAlign = 'center'; 
+                ctx.fillText('Alto Campo', Q_fija.x, Q_fija.y - targetZone.r - Q_fija.r - 10);
+
+                // Carga Fuente
+                ctx.beginPath(); ctx.arc(Q_fija.x, Q_fija.y, Q_fija.r, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444'; ctx.shadowColor = 'rgba(239, 68, 68, 0.6)'; ctx.shadowBlur = 20; ctx.fill();
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 24px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('+Q', Q_fija.x, Q_fija.y); ctx.shadowBlur = 0;
+
+                // Carga Prueba
+                ctx.beginPath(); ctx.arc(q_prueba.x, q_prueba.y, q_prueba.r, 0, Math.PI * 2);
+                ctx.fillStyle = '#3b82f6'; ctx.shadowColor = 'rgba(59, 130, 246, 0.5)'; ctx.shadowBlur = 10; ctx.fill();
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 14px Inter'; ctx.fillText('+q', q_prueba.x, q_prueba.y); ctx.shadowBlur = 0;
+
+                // Calcular Campo E (Magnitud proporcional a 1/r^2)
+                const dx = q_prueba.x - Q_fija.x; const dy = q_prueba.y - Q_fija.y;
+                let dist = Math.max(Math.sqrt(dx*dx + dy*dy), Q_fija.r + q_prueba.r);
+                
+                // Simular un valor realista visual (por ejemplo max 1000 N/C)
+                const campoReal = (10000000 / (dist * dist)); 
+                
+                // Vector Flecha
+                const arrowLength = Math.min(campoReal / 3, cw * 0.4); // Capping the arrow length visually
+                const angle = Math.atan2(dy, dx);
+                const endX = q_prueba.x + arrowLength * Math.cos(angle);
+                const endY = q_prueba.y + arrowLength * Math.sin(angle);
+                
+                // Dibujar flecha (si hay algo de campo)
+                if (arrowLength > 5) {
+                    ctx.beginPath(); ctx.moveTo(q_prueba.x + q_prueba.r*Math.cos(angle), q_prueba.y + q_prueba.r*Math.sin(angle));
+                    ctx.lineTo(endX, endY); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4; ctx.stroke();
+                    
+                    // Cabeza de la flecha
+                    ctx.beginPath(); ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - 12 * Math.cos(angle - Math.PI/7), endY - 12 * Math.sin(angle - Math.PI/7));
+                    ctx.lineTo(endX - 12 * Math.cos(angle + Math.PI/7), endY - 12 * Math.sin(angle + Math.PI/7));
+                    ctx.fillStyle = '#ef4444'; ctx.fill();
+                }
+
+                let displayE = Math.round(campoReal);
+                
+                if (dist <= targetZone.r + Q_fija.r) {
+                    fieldDisplay.innerHTML = `${displayE} N/C (Objetivo Alcanzado)`; fieldDisplay.className = "font-black text-indigo-600 text-2xl mt-1";
+                    const inputH = document.getElementById('input-q19'); 
+                    if(inputH) { inputH.value = "true"; inputH.dispatchEvent(new Event('change')); }
+                } else {
+                    fieldDisplay.innerHTML = `${displayE} N/C`; fieldDisplay.className = "font-bold text-slate-600 text-xl mt-1";
+                    const inputH = document.getElementById('input-q19'); 
+                    if(inputH && !examSubmitted) { inputH.value = "false"; }
+                }
+            }
+
+            const startDrag = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                if (Math.sqrt((clientX - rect.left - q_prueba.x)**2 + (clientY - rect.top - q_prueba.y)**2) < q_prueba.r * 2.5) { 
+                    q_prueba.isDragging = true; e.preventDefault(); canvas.style.cursor = 'grabbing';
+                }
+            };
+
+            const doDrag = (e) => {
+                if (q_prueba.isDragging) {
+                    e.preventDefault();
+                    const rect = canvas.getBoundingClientRect();
+                    q_prueba.x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    q_prueba.y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                    draw();
+                }
+            };
+            
+            const stopDrag = () => { q_prueba.isDragging = false; canvas.style.cursor = 'pointer'; };
+
+            canvas.addEventListener('mousedown', startDrag); canvas.addEventListener('mousemove', doDrag); window.addEventListener('mouseup', stopDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive: false}); canvas.addEventListener('touchmove', doDrag, {passive: false}); window.addEventListener('touchend', stopDrag);
+
+            window.addEventListener('resize', () => {
+                cw = canvas.parentElement.clientWidth; ch = canvas.parentElement.clientHeight;
+                canvas.width = cw; canvas.height = ch; Q_fija.x = cw * 0.25; Q_fija.y = ch/2; draw();
+            });
+
+            draw();
+        }
+
+        function cleanString(str) {
+            if(!str) return "";
+            return str.toLowerCase().replace(/\s+/g, '').replace(/[\(\)]/g, '').replace(/\*/g, '').replace(/\\/g, '').replace(/[{}]/g, '');
+        }
+
+        function showConfirmModal() {
+            let unanswered = userState.filter(s => !s.answered).length;
+            const msg = document.getElementById('confirm-message');
+            msg.textContent = unanswered > 0 ? `Tienes ${unanswered} pregunta(s) sin responder. ¿Seguro que deseas evaluar ahora?` : `¿Deseas enviar tus respuestas para su evaluación final?`;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function evaluateExam() {
+            examSubmitted = true;
+            let score = 0; let total = questions.length;
+
+            questions.forEach((q, index) => {
+                const card = document.getElementById(`q-card-${index}`);
+                const icon = document.getElementById(`feedback-icon-${index}`);
+                let isCorrect = false;
+
+                card.querySelectorAll('input, button.draggable').forEach(el => { el.disabled = true; if(el.draggable) el.draggable = false; el.classList.remove('cursor-pointer'); });
+
+                if (q.type === 'mcq') {
+                    if (userState[index].value !== null && parseInt(userState[index].value) === q.answer) isCorrect = true;
+                } else if (q.type === 'fill' || q.type === 'equation') {
+                    if (userState[index].value) {
+                        const uVal = cleanString(userState[index].value); const aVal = cleanString(q.answer.toString());
+                        if (uVal === aVal || (uVal.includes(aVal.replace('q1','q').replace('q2','q')))) isCorrect = true;
+                        if(q.type === 'equation' && (uVal.includes('kq/r') || uVal.includes('f/q'))) isCorrect = true;
+
+                        if(!isCorrect) {
+                            const inpCont = card.querySelector('input[type="text"]').parentElement;
+                            const ansDiv = document.createElement('div');
+                            ansDiv.className = "mt-2 text-sm text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200";
+                            ansDiv.innerHTML = `Solución esperada: $$${q.answer}$$`;
+                            inpCont.appendChild(ansDiv);
+                            if(window.renderMathInElement) renderMathInElement(ansDiv);
+                        }
+                    }
+                } else if (q.type === 'drag') {
+                    let correctCount = 0;
+                    card.querySelectorAll('.dropzone').forEach(zone => {
+                        const target = zone.getAttribute('data-target'); const child = zone.querySelector('.draggable');
+                        if (child) {
+                            const pair = q.pairs.find(p => p.question === target);
+                            if (pair && pair.answer === child.getAttribute('data-id')) { correctCount++; zone.classList.add('border-green-400', 'bg-green-50'); } 
+                            else { zone.classList.add('border-red-400', 'bg-red-50'); }
+                        }
+                    });
+                    if (correctCount === q.pairs.length) isCorrect = true;
+                } else if (q.type === 'canvas') {
+                    if (userState[index].value === "true") isCorrect = true;
+                }
+
+                icon.classList.remove('hidden');
+                if (isCorrect) {
+                    score++; card.classList.add('correct-card');
+                    icon.innerHTML = `<div class="bg-green-100 p-2 rounded-full text-green-600 shadow-sm border border-green-200"><i class="ph-bold ph-check text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#22c55e';
+                } else {
+                    card.classList.add('incorrect-card');
+                    icon.innerHTML = `<div class="bg-red-100 p-2 rounded-full text-red-600 shadow-sm border border-red-200"><i class="ph-bold ph-x text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#ef4444';
+                }
+                document.getElementById(`nav-btn-${index}`).style.color = '#fff';
+                document.getElementById(`nav-btn-${index}`).style.borderColor = 'transparent';
+                document.getElementById(`tip-${index}`).classList.remove('hidden');
+            });
+
+            const percentage = Math.round((score / total) * 100);
+            document.getElementById('score-display').textContent = `${percentage}% (${score}/${total})`;
+            document.getElementById('results-panel').classList.remove('hidden');
+            
+            setTimeout(() => {
+                const bar = document.getElementById('score-bar');
+                bar.style.width = `${percentage}%`;
+                bar.className = `h-full rounded-full transition-all duration-1000 ease-out ${percentage >= 70 ? 'bg-green-500' : 'bg-red-500'}`;
+            }, 300);
+
+            const msg = document.getElementById('feedback-message');
+            if (percentage >= 70) {
+                msg.textContent = "¡Aprobado! Demuestras una excelente comprensión de los fundamentos del campo eléctrico y su naturaleza vectorial.";
+                msg.className = "text-xl font-bold text-green-700 mb-6 text-center max-w-lg";
+                document.getElementById('btn-save').classList.remove('hidden');
+            } else {
+                msg.textContent = "Reprobado. Te sugiero repasar la naturaleza vectorial del campo y el principio de superposición. Requiere mínimo 70%.";
+                msg.className = "text-xl font-bold text-red-600 mb-6 text-center max-w-lg";
+            }
+            
+            window.lastScore = percentage;
+            document.getElementById('btn-export').classList.remove('hidden');
+            document.getElementById('btn-evaluate').classList.add('hidden');
+            
+            renderMathInElement(document.getElementById('questions-container'), {
+                delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+            });
+        }
+
+        function hideResultsPanel() { document.getElementById('results-panel').classList.add('hidden'); }
+
+        // --- 7. GUARDAR EN LA BASE DE DATOS (MÓDULO 2) ---
+        async function saveProgress() {
+            if (!currentUser) return showToast("Inicia sesión en la plataforma principal para guardar.", "error");
+            if (window.lastScore < 70) return showToast("Solo se guardan calificaciones aprobatorias (>70%).", "warning");
+
+            try {
+                const btn = document.getElementById('btn-save');
+                btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Guardando...`;
+                
+                // Actualizando variables para el Módulo 2
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                await update(progresoRef, {
+                    'm2-q1': true, // Chulito verde para el Cuestionario del Módulo 2
+                    'examen_campo_score': window.lastScore
+                });
+                
+                showToast("¡Progreso sincronizado con tu Plataforma UNAB!", "success");
+                btn.innerHTML = `<i class="ph ph-check-circle text-lg"></i> Guardado en la plataforma`;
+                btn.classList.replace('bg-green-600', 'bg-slate-700');
+                btn.classList.replace('hover:bg-green-700', 'hover:bg-slate-800');
+                btn.disabled = true;
+            } catch (error) {
+                console.error("Save err:", error);
+                showToast("Error de conexión al guardar el progreso.", "error");
+                document.getElementById('btn-save').innerHTML = `<i class="ph ph-cloud-arrow-up text-lg"></i> Reintentar`;
+            }
+        }
+
+        async function loadProgress() {
+            if (!currentUser) return;
+            try {
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                const snapshot = await get(progresoRef);
+                if (snapshot.exists() && snapshot.val().examen_campo_score) {
+                    showToast(`¡Bienvenido de nuevo! Tu récord anterior en Campo Eléctrico es: ${snapshot.val().examen_campo_score}%`, "success");
+                }
+            } catch (e) { /* ignore silently */ }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-indigo-600';
+            toast.className = `${bg} text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 fade-in border border-white/20`;
+            const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
+            toast.innerHTML = `<i class="ph ${icon} text-2xl"></i> <span class="font-medium text-[0.95rem]">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'; 
+                setTimeout(() => toast.remove(), 400); 
+            }, 4000);
+        }
+
+        function exportToPDF() {
+            document.querySelectorAll('.q-card').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('instructions-panel').style.display = 'none';
+            document.getElementById('results-panel').classList.add('hidden');
+            
+            const element = document.getElementById('questions-container');
+            showToast("Generando PDF detallado... Esto puede tardar unos segundos.", "info");
+            
+            const titleHTML = `<div id="pdf-header" class="mb-8 border-b-2 border-indigo-200 pb-4">
+                                  <h1 class="text-3xl font-black text-indigo-900">Resultados: Campo Eléctrico</h1>
+                                  <p class="text-lg text-slate-600 font-bold mt-2">Puntaje obtenido: ${window.lastScore}%</p>
+                               </div>`;
+            element.insertAdjacentHTML('afterbegin', titleHTML);
+
+            html2pdf().set({
+                margin: [15, 10, 15, 10], 
+                filename: 'Examen_Campo_Electrico.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save().then(() => {
+                const h = document.getElementById('pdf-header');
+                if(h) h.remove();
+                
+                showQuestion(currentQuestion);
+                document.getElementById('results-panel').classList.remove('hidden');
+                showToast("¡PDF exportado exitosamente!", "success");
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>

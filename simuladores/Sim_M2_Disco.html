@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Campo Eléctrico: Eje de un Disco</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-light: #f8fafc; --bg-dark: #0f172a;
+            --text-light: #1e2b3b; --text-dark: #e2e8f0;
+            --border-light: #e2e8f0; --border-dark: #334155;
+            --panel-light: #ffffff; --panel-dark: #1e2b3b;
+            --accent-color: #3b82f6; --tab-inactive-light: #f1f5f9;
+            --tab-inactive-dark: #334155;
+        }
+        html.dark {
+            --bg-light: #0f172a; --text-light: #e2e8f0;
+            --border-light: #334155; --panel-light: #1e2b3b;
+            --tab-inactive-light: #334155;
+        }
+        body {
+            font-family: 'Inter', sans-serif; background-color: var(--bg-light);
+            color: var(--text-light); transition: background-color 0.3s, color 0.3s;
+        }
+        .panel {
+            background-color: var(--panel-light); border: 1px solid var(--border-light);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .tab-button { background-color: var(--tab-inactive-light); color: var(--text-light); }
+        .tab-button.active { background-color: var(--accent-color); color: white; }
+        html.dark .tab-button { color: var(--text-dark); }
+        html.dark .tab-button.active { color: white; }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            background: transparent; cursor: pointer; width: 100%;
+        }
+        input[type="range"]::-webkit-slider-runnable-track { height: 0.5rem; border-radius: 0.25rem; background: var(--border-light); }
+        input[type="range"]::-moz-range-track { height: 0.5rem; border-radius: 0.25rem; background: var(--border-light); }
+        input[type="range"]::-webkit-slider-thumb {
+           -webkit-appearance: none; appearance: none; margin-top: -0.25rem;
+           width: 1rem; height: 1rem; border-radius: 9999px; background-color: var(--accent-color);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 1rem; height: 1rem; border-radius: 9999px;
+            background-color: var(--accent-color); border: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 flex items-center justify-center">
+
+<div class="w-full max-w-screen-2xl mx-auto flex flex-col lg:flex-row gap-4">
+    <!-- Main Simulation Area -->
+    <main class="flex-grow flex flex-col items-center justify-center panel rounded-xl shadow-lg p-4">
+        <h1 class="text-2xl font-bold text-center mb-4 text-blue-600 dark:text-blue-400">Campo Eléctrico en el Eje de un Disco Cargado (3D)</h1>
+        <div id="canvas-parent" class="w-full h-[60vh] lg:h-full cursor-move">
+            <canvas id="simulationCanvas"></canvas>
+        </div>
+    </main>
+
+    <!-- Control and Information Panel -->
+    <aside class="w-full lg:w-[550px] flex-shrink-0">
+        <div class="panel rounded-xl shadow-lg p-4">
+             <nav class="flex space-x-1 rounded-lg bg-slate-100 dark:bg-slate-900 p-1 mb-4">
+                <button data-tab="controles" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Controles</button>
+                <button data-tab="datos" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Datos</button>
+                <button data-tab="teoria" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Teoría</button>
+                <button data-tab="analisis" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Análisis</button>
+            </nav>
+            <div>
+                <div id="controles" class="tab-content">
+                    <p class="text-xs text-center text-slate-500 mb-3">Arrastra el punto P o el anillo diferencial ($da$) en la simulación.</p>
+                    <div class="my-3">
+                        <label for="radiusSlider" class="block text-sm font-medium">Radio del disco ($R$): <span id="radiusValue">2.0</span> m</label>
+                        <input id="radiusSlider" type="range" min="0.5" max="3" value="2" step="0.1" class="w-full">
+                    </div>
+                     <div class="my-3">
+                        <label for="x0Slider" class="block text-sm font-medium">Posición en el eje ($x_0$): <span id="x0Value">1.5</span> m</label>
+                        <input id="x0Slider" type="range" min="0" max="4" value="1.5" step="0.1" class="w-full">
+                    </div>
+                    <div class="my-3">
+                        <label for="densitySlider" class="block text-sm font-medium">Densidad superficial ($\sigma$): <span id="densityValue">5.0</span> nC/m²</label>
+                        <input id="densitySlider" type="range" min="1" max="10" value="5" step="0.1" class="w-full">
+                    </div>
+                    <div class="my-3">
+                        <label for="ringRadiusSlider" class="block text-sm font-medium">Radio del anillo diferencial ($a$): <span id="ringRadiusValue">1.0</span> m</label>
+                        <input id="ringRadiusSlider" type="range" min="0" max="3" value="1" step="0.05" class="w-full">
+                    </div>
+                     <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button id="chargeSignBtn" class="p-2 rounded-lg font-semibold bg-red-500 text-white">Carga Positiva</button>
+                        <button id="resetBtn" class="p-2 rounded-lg font-semibold bg-gray-500 hover:bg-gray-600 text-white">Reiniciar</button>
+                    </div>
+                    <div class="mt-4 flex items-center justify-center">
+                        <span class="mr-2 text-sm font-medium">Claro</span>
+                        <label for="theme-toggle" class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" value="" id="theme-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                        <span class="ml-2 text-sm font-medium">Oscuro</span>
+                    </div>
+                </div>
+
+                <div id="datos" class="tab-content p-2 text-sm">
+                    <p class="font-semibold text-base mb-2">Valores del Anillo Diferencial (en radio $a$)</p>
+                    <div class="space-y-2 pl-2">
+                        <p>Carga del anillo $dq$: <span id="dqValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> C</p>
+                        <p>Campo del anillo $|d\vec{E}|$: <span id="dEValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> N/C</p>
+                    </div>
+                    <hr class="my-4 border-slate-200 dark:border-slate-700">
+                    <p class="font-semibold text-base mb-2">Valores Totales del Disco</p>
+                     <div class="space-y-2 pl-2">
+                        <p>Carga Total $Q$: <span id="QValue" class="font-mono font-semibold text-purple-600 dark:text-purple-400">...</span> C</p>
+                        <p>Campo Total $|\vec{E}_{total}|$: <span id="EtotalValue" class="font-mono font-semibold text-purple-600 dark:text-purple-400">...</span> N/C</p>
+                    </div>
+                </div>
+                
+                <div id="teoria" class="tab-content p-2 text-sm space-y-3">
+                    <p class="font-semibold text-base">1. Estrategia: Dividir y Vencerás</p>
+                    <p>Tratamos el disco como una colección de infinitos anillos concéntricos. El campo de un anillo de radio $a$ y carga $dq$ ya lo conocemos:</p>
+                     <p class="text-center my-1 p-2 border rounded-md">$$d\vec{E} = \frac{k_e x_0 dq}{(a^2 + x_0^2)^{3/2}} \hat{i}$$</p>
+                    
+                    <p class="font-semibold text-base">2. Carga del Anillo Diferencial ($dq$)</p>
+                    <p>La carga $dq$ del anillo es la densidad superficial $\sigma$ por su área $dA$. El área de un anillo delgado es su circunferencia ($2\pi a$) por su grosor ($da$).</p>
+                     <p class="text-center my-1 p-2 border rounded-md">$$dq = \sigma dA = \sigma (2\pi a \, da)$$</p>
+
+                    <p class="font-semibold text-base">3. Sustitución e Integración</p>
+                    <p>Sustituimos $dq$ en la fórmula de $dE$ y sumamos (integramos) los campos de todos los anillos, desde el centro ($a=0$) hasta el borde ($a=R$).</p>
+                     <p class="text-center my-1 p-2 border rounded-md">$$\vec{E} = \int_{0}^{R} \frac{k_e x_0 (\sigma 2\pi a \, da)}{(a^2 + x_0^2)^{3/2}} \hat{i}$$</p>
+                     <p class="font-semibold text-base">4. Resultado Final</p>
+                      <p>Resolviendo la integral (con sustitución $u=a^2+x_0^2$), obtenemos el campo total del disco:</p>
+                      <p class="text-center my-1 p-2 border rounded-md">$$ \vec{E} = 2\pi k_e \sigma \left( 1 - \frac{x_0}{\sqrt{R^2 + x_0^2}} \right) \hat{i} $$</p>
+                </div>
+                
+                <div id="analisis" class="tab-content p-2 text-sm space-y-4">
+                     <p class="font-semibold text-base">Tips Conceptuales</p>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li><strong>Cerca del disco ($x_0 \ll R$):</strong> El término de la raíz se hace pequeño y el campo se aproxima a $2\pi k_e \sigma$. ¡Es casi constante!</li>
+                        <li><strong>Lejos del disco ($x_0 \gg R$):</strong> El disco se comporta como una carga puntual $Q = \sigma \pi R^2$. La fórmula se simplifica a $E \approx k_e Q / x_0^2$.</li>
+                    </ul>
+
+                     <div class="mt-6">
+                        <p class="font-semibold text-base">Desafío: El Plano Infinito</p>
+                        <div class="mt-2 p-3 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <p>Un resultado fundamental es que el campo de un plano infinito de carga es constante y vale $E = \sigma / (2\epsilon_0) = 2\pi k_e \sigma$.</p>
+                            <p class="font-semibold my-2">Simula un plano infinito:</p>
+                            <ol class="list-decimal list-inside my-2 pl-4">
+                                <li>Maximiza el radio del disco ($R=3$ m).</li>
+                                <li>Minimiza la distancia $x_0$ (ej. $0.1$ m), de modo que $x_0 \ll R$.</li>
+                                <li>Observa el valor de $E_{total}$. ¿A qué valor se aproxima?</li>
+                                <li>Calcula $2\pi k_e \sigma$ con los valores del panel de datos y compara.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE AND CONSTANTS ---
+    const k = 8.9875517923e9;
+    const initialState = {
+        R: 2.0, x0: 1.5, sigma: 5.0,
+        chargeSign: 1, ringRadius: 1.0, // 'a'
+    };
+    let state = { ...initialState };
+
+    // --- DOM ELEMENTS ---
+    const radiusSlider = document.getElementById('radiusSlider'), radiusValue = document.getElementById('radiusValue');
+    const x0Slider = document.getElementById('x0Slider'), x0Value = document.getElementById('x0Value');
+    const densitySlider = document.getElementById('densitySlider'), densityValue = document.getElementById('densityValue');
+    const ringRadiusSlider = document.getElementById('ringRadiusSlider'), ringRadiusValue = document.getElementById('ringRadiusValue');
+    const chargeSignBtn = document.getElementById('chargeSignBtn'), resetBtn = document.getElementById('resetBtn');
+    const dqValueEl = document.getElementById('dqValue'), dEValueEl = document.getElementById('dEValue');
+    const QValueEl = document.getElementById('QValue'), EtotalValueEl = document.getElementById('EtotalValue');
+
+    // --- 3D SCENE SETUP ---
+    const canvas = document.getElementById('simulationCanvas');
+    const canvasParent = document.getElementById('canvas-parent');
+    let scene, camera, renderer, controls, disk, diffRing, pointP;
+    let dE_vector, E_total_vector, line;
+    let raycaster, mouse, dragPlane, draggedObject = null;
+
+    function init3D() {
+        scene = new THREE.Scene();
+        const rect = canvasParent.getBoundingClientRect();
+
+        camera = new THREE.PerspectiveCamera(75, rect.width / rect.height, 0.1, 1000);
+        camera.position.set(2, 2.5, 3.5);
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(rect.width, rect.height);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const diskMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+        const diskGeometry = new THREE.CircleGeometry(1, 64);
+        disk = new THREE.Mesh(diskGeometry, diskMaterial);
+        disk.rotation.y = Math.PI / 2;
+        scene.add(disk);
+
+        const ringGeometry = new THREE.TorusGeometry(1, 0.03, 16, 100);
+        diffRing = new THREE.Mesh(ringGeometry, new THREE.MeshBasicMaterial({ color: 0xf59e0b }));
+        diffRing.rotation.y = Math.PI / 2;
+        scene.add(diffRing);
+
+        const pointGeo = new THREE.SphereGeometry(0.08, 16, 16);
+        pointP = new THREE.Mesh(pointGeo, new THREE.MeshBasicMaterial({ color: 0x10b981 }));
+        scene.add(pointP);
+        
+        dE_vector = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xf59e0b, 0.2, 0.1);
+        E_total_vector = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xa855f7, 0.25, 0.12);
+        scene.add(dE_vector, E_total_vector);
+
+        const dashedMaterial = new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.1, gapSize: 0.05 });
+        const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+        line = new THREE.Line(lineGeom, dashedMaterial);
+        scene.add(line);
+        
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+        dragPlane = new THREE.Plane();
+        
+        renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+        renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+        renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+
+        window.addEventListener('resize', onWindowResize);
+        animate();
+    }
+
+    function onWindowResize() {
+        const rect = canvasParent.getBoundingClientRect();
+        camera.aspect = rect.width / rect.height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(rect.width, rect.height);
+    }
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    function calculateFields() {
+        const { R, x0, sigma, chargeSign, ringRadius } = state;
+        const sigma_signed = sigma * 1e-9 * chargeSign;
+        
+        // Total Field
+        const Q = sigma_signed * Math.PI * R * R;
+        const E_total = 2 * Math.PI * k * sigma_signed * (1 - x0 / Math.sqrt(R*R + x0*x0));
+
+        // Differential Ring Field
+        const da = 0.05; // thickness of the ring
+        const dq = sigma_signed * 2 * Math.PI * ringRadius * da;
+        const r_diff = Math.hypot(ringRadius, x0);
+        const dE = (k * x0 * dq) / Math.pow(r_diff, 3);
+        
+        return { Q, E_total, dq, dE };
+    }
+
+    function updateScene() {
+        const { R, x0, chargeSign, ringRadius } = state;
+        const fields = calculateFields();
+
+        disk.scale.set(R, R, R);
+        diffRing.scale.set(ringRadius, ringRadius, ringRadius);
+        pointP.position.set(x0, 0, 0);
+
+        const isDark = document.documentElement.classList.contains('dark');
+        scene.background = new THREE.Color(isDark ? 0x0f172a : 0xf8fafc);
+        disk.material.color.set(chargeSign > 0 ? 0xef4444 : 0x3b82f6);
+        
+        const P_pos = pointP.position;
+        const vectorScale = 0.5 / Math.max(1e-9, Math.abs(fields.E_total), Math.abs(fields.dE));
+
+        // Update vectors
+        const E_dir = new THREE.Vector3(fields.E_total >= 0 ? 1 : -1, 0, 0);
+        E_total_vector.position.copy(P_pos);
+        E_total_vector.setDirection(E_dir);
+        E_total_vector.setLength(Math.abs(fields.E_total * vectorScale), 0.25, 0.12);
+
+        const dE_dir = new THREE.Vector3(fields.dE >= 0 ? 1 : -1, 0, 0);
+        dE_vector.position.copy(P_pos);
+        dE_vector.setDirection(dE_dir);
+        dE_vector.setLength(Math.abs(fields.dE * vectorScale), 0.2, 0.1);
+
+        const ringEdgePos = new THREE.Vector3(0, ringRadius, 0);
+        line.geometry.setFromPoints([ringEdgePos, P_pos]);
+        line.computeLineDistances();
+    }
+    
+    function updateDataPanel() {
+        const fields = calculateFields();
+        dqValueEl.textContent = fields.dq.toExponential(2);
+        dEValueEl.textContent = Math.abs(fields.dE).toExponential(2);
+        QValueEl.textContent = fields.Q.toExponential(2);
+        EtotalValueEl.textContent = Math.abs(fields.E_total).toExponential(2);
+    }
+
+    function handleInputChange() {
+        state.R = parseFloat(radiusSlider.value);
+        state.x0 = parseFloat(x0Slider.value);
+        state.sigma = parseFloat(densitySlider.value);
+        state.ringRadius = parseFloat(ringRadiusSlider.value);
+
+        // Ensure ring radius is not larger than disk radius
+        if (state.ringRadius > state.R) {
+            state.ringRadius = state.R;
+            ringRadiusSlider.value = state.ringRadius;
+        }
+        ringRadiusSlider.max = state.R;
+        
+        radiusValue.textContent = state.R.toFixed(1);
+        x0Value.textContent = state.x0.toFixed(1);
+        densityValue.textContent = state.sigma.toFixed(1);
+        ringRadiusValue.textContent = state.ringRadius.toFixed(2);
+
+        updateDataPanel();
+        updateScene();
+        if (window.MathJax) MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+    }
+
+    function resetSimulation() {
+        state = { ...initialState };
+        radiusSlider.value = state.R;
+        x0Slider.value = state.x0;
+        densitySlider.value = state.sigma;
+        ringRadiusSlider.value = state.ringRadius;
+        chargeSignBtn.classList.toggle('bg-red-500', true);
+        chargeSignBtn.classList.toggle('bg-blue-500', false);
+        chargeSignBtn.textContent = 'Carga Positiva';
+        handleInputChange();
+    }
+    
+    function onMouseDown(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects([pointP, diffRing]);
+
+        if (intersects.length > 0) {
+            draggedObject = intersects[0].object;
+            controls.enabled = false;
+            dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(dragPlane.normal).cross(draggedObject === pointP ? new THREE.Vector3(0,1,0) : new THREE.Vector3(1,0,0)), draggedObject.position);
+        }
+    }
+
+    function onMouseMove(event) {
+        if (draggedObject) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersectPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(dragPlane, intersectPoint);
+            
+            if (draggedObject === pointP) {
+                let newX0 = intersectPoint.x;
+                state.x0 = Math.max(0, Math.min(parseFloat(x0Slider.max), newX0));
+                x0Slider.value = state.x0.toFixed(1);
+            } else if (draggedObject === diffRing) {
+                let newRingRadius = Math.hypot(intersectPoint.y, intersectPoint.z);
+                 state.ringRadius = Math.max(0, Math.min(state.R, newRingRadius));
+                 ringRadiusSlider.value = state.ringRadius.toFixed(2);
+            }
+            handleInputChange();
+        }
+    }
+
+    function onMouseUp(event) {
+        draggedObject = null;
+        controls.enabled = true;
+    }
+
+    [radiusSlider, x0Slider, densitySlider, ringRadiusSlider].forEach(s => s.addEventListener('input', handleInputChange));
+    resetBtn.addEventListener('click', resetSimulation);
+    chargeSignBtn.addEventListener('click', () => {
+        state.chargeSign *= -1;
+        const isPositive = state.chargeSign > 0;
+        chargeSignBtn.textContent = isPositive ? 'Carga Positiva' : 'Carga Negativa';
+        chargeSignBtn.classList.toggle('bg-red-500', isPositive);
+        chargeSignBtn.classList.toggle('bg-blue-500', !isPositive);
+        handleInputChange();
+    });
+
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            tabContents.forEach(content => {
+                content.id === button.dataset.tab ? content.classList.add('active') : content.classList.remove('active');
+            });
+            if (window.MathJax) MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+        });
+    });
+
+    document.getElementById('theme-toggle').addEventListener('change', () => {
+        document.documentElement.classList.toggle('dark');
+        updateScene();
+    });
+
+    init3D();
+    resetSimulation();
+    document.querySelector('[data-tab="controles"]').click();
+});
+</script>
+</body>
+</html>

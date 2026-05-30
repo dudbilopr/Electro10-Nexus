@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Gauss: Simetría Cilíndrica</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 4px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #475569; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        .angle-label {
+            position: absolute; transform: translate(-50%, -50%);
+            font-weight: bold; font-family: monospace; color: #dc2626;
+            background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 6px;
+            pointer-events: none; z-index: 20; border: 1px solid #fca5a5;
+            font-size: clamp(11px, 0.9vw, 15px); display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-red-600">
+                <h1 class="font-bold tracking-wide" style="font-size: clamp(20px, 2vw, 36px);">Laboratorio: Simetría Cilíndrica y Ley de Gauss</h1>
+                <p class="text-red-300" style="font-size: clamp(12px, 1vw, 18px);">Desarrollo Matemático, Potencial y Distribución de Carga en 5 Geometrías</p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍAS DINÁMICAS -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BASE COMÚN -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span>Aplicamos la ley de Gauss en un cilindro imaginario de radio $r$ y longitud $L$. El flujo en las bases es nulo ($\vec{E} \perp d\vec{S}$). Solo aporta el área lateral ($2\pi r L$):</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Flujo en las tapas:</strong> Como el campo es puramente radial y el vector área de las tapas es paralelo al eje Z, forman un ángulo de 90°. El producto escalar $\cos(90^\circ)$ es cero.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$ \oint \vec{E} \cdot d\vec{S} = E(2\pi r L) = \frac{q_{\text{enc}}}{\varepsilon_0} $$</div>
+                    </div>
+
+                    <!-- CASO 1: MACIZO AISLANTE -->
+                    <div id="teoria-c1" class="flex flex-col gap-[1vmin] flex-1">
+                        <div class="bg-red-50 p-[1.5vmin] border border-red-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-red-800 flex items-center">
+                                Cilindro Macizo Aislante ($R=2\text{ cm}$)
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Carga Congelada:</strong> En un material aislante, las cargas no tienen libertad de moverse. Quedan "congeladas" en el lugar donde fueron depositadas, llenando todo el volumen.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm">Densidad volumétrica uniforme $\rho$.</p>
+                            <hr class="border-red-200 my-2">
+                            <p class="font-bold text-sm">1. Interior ($r < R$)</p>
+                            <div class="math-display">
+                                \begin{aligned}
+                                q_{\text{enc}} &= \rho (\pi r^2 L) \\
+                                E(2\pi r L) &= \frac{\rho \pi r^2 L}{\varepsilon_0} \quad \Rightarrow \quad E = \frac{\rho r}{2\varepsilon_0}
+                                \end{aligned}
+                            </div>
+                            <p class="font-bold text-sm mt-2">2. Exterior ($r > R$)</p>
+                            <div class="math-display">
+                                \begin{aligned}
+                                q_{\text{enc}} &= \rho (\pi R^2 L) \\
+                                E(2\pi r L) &= \frac{\rho \pi R^2 L}{\varepsilon_0} \quad \Rightarrow \quad E = \frac{\rho R^2}{2\varepsilon_0 r}
+                                \end{aligned}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CASO 2: MACIZO CONDUCTOR -->
+                    <div id="teoria-c2" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-slate-50 p-[1.5vmin] border border-slate-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-slate-800 flex items-center">
+                                Cilindro Macizo Conductor ($R=2\text{ cm}$)
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Efecto Piel:</strong> En un conductor, las cargas libres se repelen mutuamente hasta alcanzar la máxima distancia posible: la superficie exterior. El interior queda neutro.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm">Carga libre se repele hacia la superficie ($r=R$).</p>
+                            <hr class="border-slate-300 my-2">
+                            <p class="font-bold text-sm">1. Interior ($r < R$)</p>
+                            <p class="text-sm">En electrostática, el campo en el interior de un conductor debe ser nulo para evitar movimiento de cargas:</p>
+                            <div class="math-display">$$q_{\text{enc}} = 0 \quad \Rightarrow \quad E = 0$$</div>
+                            <p class="font-bold text-sm mt-2">2. Exterior ($r > R$)</p>
+                            <p class="text-sm">Toda la carga está en la superficie. Si la carga total es igual al caso macizo ($Q = \rho \pi R^2 L$):</p>
+                            <div class="math-display">
+                                E(2\pi r L) = \frac{\rho \pi R^2 L}{\varepsilon_0} \quad \Rightarrow \quad E = \frac{\rho R^2}{2\varepsilon_0 r}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CASO 3: HUECO CONDUCTOR -->
+                    <div id="teoria-c3" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-slate-50 p-[1.5vmin] border border-slate-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-slate-800 flex items-center">
+                                Hueco Conductor ($R_1=1\text{ cm}, R_2=2\text{ cm}$)
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Blindaje:</strong> El interior del material metálico no tolera campo eléctrico ($E=0$). Por repulsión mutua, toda carga en exceso huye hacia la superficie más externa $R_2$.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm">La carga reside en la cara más externa ($R_2$).</p>
+                            <hr class="border-slate-300 my-2">
+                            <p class="font-bold text-sm">1. Cavidad ($r < R_1$) y Material ($R_1 \le r \le R_2$)</p>
+                            <p class="text-sm">La cavidad está vacía ($q=0$) y en el interior del conductor el campo es nulo.</p>
+                            <div class="math-display">$$E = 0$$</div>
+                            <p class="font-bold text-sm mt-2">2. Exterior ($r > R_2$)</p>
+                            <p class="text-sm">Si asumimos la misma carga neta total $Q$, el comportamiento exterior es idéntico a un hilo infinito:</p>
+                            <div class="math-display">$$E \propto \frac{1}{r}$$</div>
+                        </div>
+                    </div>
+
+                    <!-- CASO 4: HUECO AISLANTE -->
+                    <div id="teoria-c4" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-red-50 p-[1.5vmin] border border-red-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-red-800 flex items-center">
+                                Hueco Aislante ($R_1=1\text{ cm}, R_2=2\text{ cm}$)
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Corona Circular:</strong> A diferencia del conductor hueco, aquí la carga sí existe *dentro* del espesor del material inmovilizada, por lo que el campo crece gradualmente al atravesarlo.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm">Densidad volumétrica $\rho$ distribuida en la corona circular.</p>
+                            <hr class="border-red-200 my-2">
+                            <p class="font-bold text-sm">1. Cavidad ($r < R_1$): \(\quad q_{\text{enc}} = 0 \Rightarrow E = 0\)</p>
+                            <p class="font-bold text-sm mt-2">2. Material ($R_1 \le r \le R_2$)</p>
+                            <div class="math-display">
+                                \begin{aligned}
+                                q_{\text{enc}} &= \rho \pi (r^2 - R_1^2) L \\
+                                E(2\pi r L) &= \frac{\rho \pi (r^2 - R_1^2) L}{\varepsilon_0} \quad \Rightarrow \quad E = \frac{\rho(r^2 - R_1^2)}{2\varepsilon_0 r}
+                                \end{aligned}
+                            </div>
+                            <p class="font-bold text-sm mt-2">3. Exterior ($r > R_2$)</p>
+                            <div class="math-display">
+                                \begin{aligned}
+                                q_{\text{enc}} &= \rho \pi (R_2^2 - R_1^2) L \\
+                                E(2\pi r L) &= \frac{\rho \pi (R_2^2 - R_1^2) L}{\varepsilon_0} \quad \Rightarrow \quad E = \frac{\rho(R_2^2 - R_1^2)}{2\varepsilon_0 r}
+                                \end{aligned}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CASO 5: CAPACITOR -->
+                    <div id="teoria-c5" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-amber-50 p-[1.5vmin] border border-amber-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-amber-800 flex items-center">
+                                Capacitor Cilíndrico
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Inducción:</strong> El hilo positivo central atrae a los electrones libres del cascarón metálico hacia su pared interna, creando una carga idéntica pero opuesta ($-\lambda$) que anula el campo exterior.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm text-slate-700">Hilo central con densidad <strong class="text-red-600">lineal $\lambda$</strong>. Cascarón ($R_1=1\text{ cm}$) con carga inducida de densidad <strong class="text-blue-600">superficial $\sigma$</strong>.</p>
+                            <hr class="border-amber-300 my-2">
+                            <p class="font-bold text-sm">1. Relación Lineal-Superficial</p>
+                            <p class="text-xs">Para que $E=0$ fuera del hilo, el cascarón adquiere una carga total igual pero opuesta ($-\lambda L$):</p>
+                            <div class="math-display">$$ \sigma(2\pi R_1 L) = -\lambda L \quad \Rightarrow \quad \sigma = \frac{-\lambda}{2\pi R_1} $$</div>
+                            <p class="font-bold text-sm mt-2">2. Interior ($0 < r < R_1$)</p>
+                            <div class="math-display">$$ E(2\pi r L) = \frac{\lambda L}{\varepsilon_0} \quad \Rightarrow \quad E = \frac{\lambda}{2\pi\varepsilon_0 r} $$</div>
+                            <p class="font-bold text-sm mt-2">3. Conductor y Exterior ($r \ge R_1$)</p>
+                            <p class="text-sm">La carga encerrada neta es cero ($+\lambda L - \lambda L = 0$).</p>
+                            <div class="math-display">$$ E = 0 $$</div>
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE COMÚN POTENCIAL -->
+                    <div class="bg-indigo-50 p-[1.5vmin] shadow-sm rounded-lg border border-indigo-200 mt-[1vmin]">
+                        <p class="text-sm"><strong>Potencial Eléctrico</strong> ($\Delta V = \int E \cdot dr$ - Área Sombreada):</p>
+                        <div class="text-center font-bold text-indigo-700 mt-2" style="font-size: clamp(16px, 1.5vw, 24px);">
+                            <span id="ui-potential-text">\( \Delta V = 0\text{ V} \)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL -->
+                    <div class="control-panel shadow-sm">
+                        
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-slate-800">Geometría:</label>
+                            <select id="select-material" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500">
+                                <option value="c1">1. Macizo Aislante</option>
+                                <option value="c2">2. Macizo Conductor</option>
+                                <option value="c3">3. Hueco Conductor</option>
+                                <option value="c4">4. Hueco Aislante</option>
+                                <option value="c5">5. Capacitor (Hilo + Cascarón)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-red-700">Gauss $r$ (cm):</label>
+                            <input type="range" id="slider-r" min="0.1" max="15" step="0.1" value="1.5" class="w-[5vw]">
+                            <span id="val-r" class="font-mono font-bold w-[2vw] text-right">1.5</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3" id="rho-group">
+                            <label class="font-bold text-amber-600">Densidad $\rho$:</label>
+                            <input type="range" id="slider-rho" min="1" max="10" step="0.5" value="4" class="w-[4vw]">
+                            <span id="val-rho" class="font-mono font-bold w-[1.5vw] text-right">4.0</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-blue-700">Ángulo $\theta$:</label>
+                            <input type="range" id="slider-theta" min="0" max="360" value="45" class="w-[3.5vw]">
+                        </div>
+
+                        <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-sm font-semibold text-slate-700">
+                            <label><input type="checkbox" id="toggle-field" checked> $\vec{E}$</label>
+                            <label><input type="checkbox" id="toggle-rotate" checked> Girar</label>
+                            <label class="text-indigo-700 border border-indigo-200 bg-indigo-50 px-1 rounded cursor-pointer"><input type="checkbox" id="toggle-cut"> Corte 3D</label>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper" id="canvas-3d">
+                            <div class="hint-overlay">⟲ Rotar 3D | ⚲ Zoom | <strong>Cargas Blancas = Positivas, Azules = Negativas</strong></div>
+                            <div id="lbl-angle" class="angle-label">0°</div>
+                        </div>
+
+                        <!-- 2D Graph & Stats -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Gráfica -->
+                            <div class="flex-1 graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 16px);">Campo $E$ vs Radio $r$</div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Stats Flujo -->
+                            <div class="bg-white border border-slate-200 rounded-lg p-[1.5vmin] text-center shadow-sm">
+                                <div class="text-slate-600 font-serif italic mb-1" style="font-size: clamp(12px, 1vw, 16px);">Superficie Gaussiana</div>
+                                <div class="font-mono font-bold text-slate-800" id="ui-region" style="font-size: clamp(14px, 1.2vw, 20px);">
+                                    Analizando topología...
+                                </div>
+                                <div class="mt-2 text-slate-600 font-semibold bg-slate-100 py-1 rounded border border-slate-200" style="font-size: clamp(12px, 1.1vw, 16px);">
+                                    $|\vec{E}|$ local: <span id="val-e-local" class="text-red-600 font-bold font-mono text-lg">0.0</span> N/C
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS Y FÍSICA -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(40, cont3D.clientWidth / cont3D.clientHeight, 0.1, 100);
+        cam.position.set(12, 10, 12);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.localClippingEnabled = false; // Preparado para el plano de corte
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true; ctrl.autoRotate = true; ctrl.autoRotateSpeed = 1.0;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const light = new THREE.DirectionalLight(0xffffff, 0.5);
+        light.position.set(10, 20, 10); scene.add(light);
+
+        // Plano de corte global (Corta la mitad del espacio en el eje X)
+        const clipPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+
+        // ==========================================
+        // 2. CONSTANTES FÍSICAS Y ESTADO
+        // ==========================================
+        const R1 = 1.0; // Radio interno hueco (cm)
+        const R2 = 2.0; // Radio externo (cm)
+        let params = { r: 1.5, rho: 4, theta: 45, L: 8, material: 'c1' };
+        
+        // ==========================================
+        // 3. GENERADORES DE GEOMETRÍA 3D
+        // ==========================================
+        const materialRed = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, transparent: true, opacity: 0.6, roughness: 0.2, side: THREE.DoubleSide, clippingPlanes: [clipPlane] });
+        const materialMetal = new THREE.MeshPhysicalMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.8, metalness: 0.9, roughness: 0.3, side: THREE.DoubleSide, clippingPlanes: [clipPlane] });
+        
+        const geoSolid = new THREE.CylinderGeometry(R2, R2, 20, 32);
+        
+        // Crear geometría de tubo hueco (Extrude)
+        const shapeTube = new THREE.Shape();
+        shapeTube.absarc(0, 0, R2, 0, Math.PI * 2, false);
+        const hole = new THREE.Path();
+        hole.absarc(0, 0, R1, 0, Math.PI * 2, true);
+        shapeTube.holes.push(hole);
+        const geoTube = new THREE.ExtrudeGeometry(shapeTube, { depth: 20, curveSegments: 32, bevelEnabled: false });
+        geoTube.rotateX(Math.PI / 2); geoTube.translate(0, 10, 0); // Centrar en Y
+
+        const geoWire = new THREE.CylinderGeometry(0.05, 0.05, 20, 16);
+        
+        // Malla Principal
+        const mainMesh = new THREE.Mesh(geoSolid, materialRed);
+        scene.add(mainMesh);
+        
+        // Hilo central (solo para C5)
+        const wireMesh = new THREE.Mesh(geoWire, new THREE.MeshBasicMaterial({color: 0xff0000, clippingPlanes: [clipPlane]}));
+        wireMesh.visible = false;
+        scene.add(wireMesh);
+
+        // --- SISTEMA DE PARTÍCULAS (CARGAS) ---
+        const particleGeo = new THREE.SphereGeometry(0.06, 8, 8);
+        const numParticles = 400;
+        const particlesMesh = new THREE.InstancedMesh(particleGeo, new THREE.MeshBasicMaterial({ clippingPlanes: [clipPlane] }), numParticles);
+        scene.add(particlesMesh);
+
+        const colorPos = new THREE.Color(0xffffff); // Blanca para +
+        const colorNeg = new THREE.Color(0x3b82f6); // Azul para -
+        const colorWire = new THREE.Color(0xdc2626); // Roja pura +
+
+        function updateChargeDistribution() {
+            const dummy = new THREE.Object3D();
+            for(let i=0; i<numParticles; i++) {
+                const y = (Math.random() - 0.5) * 18;
+                const theta = Math.random() * Math.PI * 2;
+                let r_val = 0;
+                let c = colorPos;
+
+                switch(params.material) {
+                    case 'c1': // Macizo Aislante (volumen)
+                        r_val = R2 * Math.sqrt(Math.random());
+                        break;
+                    case 'c2': // Macizo Conductor (superficie R2)
+                        r_val = R2;
+                        break;
+                    case 'c3': // Hueco Conductor (superficie R2)
+                        r_val = R2;
+                        break;
+                    case 'c4': // Hueco Aislante (volumen R1 a R2)
+                        r_val = Math.sqrt(R1*R1 + (R2*R2 - R1*R1)*Math.random());
+                        break;
+                    case 'c5': // Capacitor (Hilo r=0, y Cascarón r=R1)
+                        if (i < numParticles/2) {
+                            r_val = 0.06; c = colorWire; // Hilo central
+                        } else {
+                            r_val = R1; c = colorNeg; // Superficie interna del hueco
+                        }
+                        break;
+                }
+                
+                dummy.position.set(r_val * Math.cos(theta), y, r_val * Math.sin(theta));
+                dummy.updateMatrix();
+                particlesMesh.setMatrixAt(i, dummy.matrix);
+                particlesMesh.setColorAt(i, c);
+            }
+            particlesMesh.instanceMatrix.needsUpdate = true;
+            if(particlesMesh.instanceColor) particlesMesh.instanceColor.needsUpdate = true;
+
+            // Actualizar Geometrías y Materiales
+            wireMesh.visible = (params.material === 'c5');
+            
+            if (params.material === 'c1' || params.material === 'c2') {
+                mainMesh.geometry = geoSolid;
+            } else {
+                mainMesh.geometry = geoTube;
+            }
+
+            if (['c2', 'c3', 'c5'].includes(params.material)) {
+                mainMesh.material = materialMetal;
+            } else {
+                mainMesh.material = materialRed;
+            }
+        }
+
+        // --- CILINDRO GAUSSIANO ---
+        const gaussGroup = new THREE.Group(); scene.add(gaussGroup);
+        const gaussMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.3, side: THREE.DoubleSide, clippingPlanes: [clipPlane] });
+        const gaussWireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.5, clippingPlanes: [clipPlane] });
+        const capMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.4, side: THREE.DoubleSide, clippingPlanes: [clipPlane] });
+        let gaussMesh, gaussWire, topCap, botCap;
+        const fieldGroup = new THREE.Group(); scene.add(fieldGroup);
+
+        // ==========================================
+        // 4. MOTOR MATEMÁTICO (E y V)
+        // ==========================================
+        const K_SCALE = 72000 * Math.PI; // Constante visual base E(r=0.02)
+
+        function calculateE(r_cm) {
+            const rho_factor = params.rho / 4.0;
+            const r = r_cm / 100.0;
+            const r1 = R1 / 100.0;
+            const r2 = R2 / 100.0;
+            let E = 0;
+
+            switch(params.material) {
+                case 'c1': // Macizo Aislante
+                    if (r <= r2) E = K_SCALE * r;
+                    else E = K_SCALE * (r2*r2) / r;
+                    break;
+                case 'c2': // Macizo Conductor
+                    if (r <= r2) E = 0;
+                    else E = K_SCALE * (r2*r2) / r;
+                    break;
+                case 'c3': // Hueco Conductor
+                    if (r <= r2) E = 0;
+                    else E = K_SCALE * (r2*r2) / r; // Suponemos misma carga neta total
+                    break;
+                case 'c4': // Hueco Aislante
+                    if (r <= r1) E = 0;
+                    else if (r <= r2) E = K_SCALE * (r*r - r1*r1) / r;
+                    else E = K_SCALE * (r2*r2 - r1*r1) / r;
+                    break;
+                case 'c5': // Capacitor
+                    if (r <= r1) E = K_SCALE * (r2*r2) / r; // Misma lambda que C1 para r=a
+                    else E = 0; // Conductor y anulación exterior
+                    break;
+            }
+            return E * rho_factor;
+        }
+
+        // Integración numérica robusta para V(0) - V(r_target)
+        function calculateDeltaV(r_target) {
+            let start_r = (params.material === 'c5') ? 0.05 : 0; // Evitar log(0) en capacitor
+            if (r_target <= start_r) return 0;
+            
+            let sum = 0;
+            let steps = 1000;
+            let dr = (r_target - start_r) / steps;
+            
+            for(let i=0; i<steps; i++) {
+                let r_mid = start_r + (i + 0.5) * dr;
+                sum += calculateE(r_mid) * (dr / 100.0); // dr a metros
+            }
+            return sum;
+        }
+
+        // ==========================================
+        // 5. ACTUALIZACIÓN VISUAL 3D
+        // ==========================================
+        function updateGeometry() {
+            if(gaussMesh) gaussGroup.remove(gaussMesh, gaussWire, topCap, botCap);
+            
+            const r_vis = params.r; 
+            const L_vis = params.L;
+            const geoCyl = new THREE.CylinderGeometry(r_vis, r_vis, L_vis, 32, 1, true); // true = open ended
+            gaussMesh = new THREE.Mesh(geoCyl, gaussMat);
+            gaussWire = new THREE.Mesh(geoCyl, gaussWireMat);
+            
+            // Añadiendo las tapas
+            const geoCap = new THREE.CircleGeometry(r_vis, 32);
+            topCap = new THREE.Mesh(geoCap, capMat); topCap.rotation.x = -Math.PI/2; topCap.position.y = L_vis/2;
+            botCap = new THREE.Mesh(geoCap, capMat); botCap.rotation.x = Math.PI/2; botCap.position.y = -L_vis/2;
+
+            gaussGroup.add(gaussMesh, gaussWire, topCap, botCap);
+        }
+
+        function updateFieldVectors() {
+            fieldGroup.clear();
+            if(!document.getElementById('toggle-field').checked) return;
+
+            const r_vis = params.r;
+            const e_real = calculateE(params.r);
+            const maxE = K_SCALE * 0.02 * (params.rho/4.0); // Ref scale
+            const visualLen = (e_real / maxE) * 2.5;
+
+            if(visualLen < 0.1) return;
+
+            for(let y = -params.L/2 + 0.5; y <= params.L/2 - 0.5; y += 2) {
+                const numArrows = Math.max(6, Math.floor(2 * Math.PI * r_vis * 0.5));
+                for(let j = 0; j < numArrows; j++) {
+                    const angle = (j / numArrows) * Math.PI * 2;
+                    const px = r_vis * Math.cos(angle);
+                    const pz = r_vis * Math.sin(angle);
+                    const dir = new THREE.Vector3(px, 0, pz).normalize();
+                    const origin = new THREE.Vector3(px, y, pz);
+                    const color = new THREE.Color().setHSL(0.6 - Math.min((e_real/maxE)*0.6, 0.6), 1, 0.5);
+                    fieldGroup.add(new THREE.ArrowHelper(dir, origin, visualLen, color, visualLen*0.3, visualLen*0.15));
+                }
+            }
+        }
+
+        function updateUI() {
+            const e_real = calculateE(params.r);
+            document.getElementById('val-e-local').textContent = e_real.toLocaleString('es-ES', {maximumFractionDigits: 1});
+            
+            // Actualización segura del Potencial con LaTeX \(\)
+            const vDelta = calculateDeltaV(params.r);
+            const uiPotText = document.getElementById('ui-potential-text');
+            const newPotText = `\\( \\Delta V = ${vDelta.toFixed(1)} \\text{ V} \\)`;
+            
+            if (uiPotText.getAttribute('data-val') !== newPotText) {
+                uiPotText.innerHTML = newPotText;
+                uiPotText.setAttribute('data-val', newPotText);
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([uiPotText]).catch((e) => console.log(e));
+                }
+            }
+
+            const uiRegion = document.getElementById('ui-region');
+            let txt = "", cls = "";
+            if (params.r < R1) {
+                txt = "Región: Interior ($r < R_1$)"; cls = "text-purple-700";
+            } else if (params.r <= R2) {
+                txt = "Región: Material ($R_1 \\le r \\le R_2$)"; cls = "text-red-700";
+            } else {
+                txt = "Región: Exterior ($r > R_2$)"; cls = "text-blue-700";
+            }
+            uiRegion.innerHTML = `<span class='${cls}'>${txt}</span>`;
+            
+            // Label 3D del ángulo
+            const lbl = document.getElementById('lbl-angle');
+            if (e_real > 1) {
+                lbl.style.display = 'block';
+                lbl.innerHTML = e_real.toFixed(0) + " N/C";
+                const rad = params.theta * Math.PI / 180;
+                const worldPos = new THREE.Vector3(params.r * Math.cos(rad), 0, params.r * Math.sin(rad));
+                worldPos.add(new THREE.Vector3(Math.cos(rad), 0, Math.sin(rad)).multiplyScalar(1.5));
+                worldPos.project(cam);
+                lbl.style.left = ((worldPos.x * 0.5 + 0.5) * cont3D.clientWidth) + 'px';
+                lbl.style.top = (-(worldPos.y * 0.5 - 0.5) * cont3D.clientHeight) + 'px';
+            } else {
+                lbl.style.display = 'none';
+            }
+        }
+
+        // ==========================================
+        // 6. GRÁFICA 2D UNIVERSAL
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const canvas2D = document.getElementById('graph-2d');
+        const ctx = canvas2D.getContext('2d');
+
+        function resizeGraph() {
+            canvas2D.width = graphCont.clientWidth;
+            canvas2D.height = graphCont.clientHeight;
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const w = canvas2D.width; const h = canvas2D.height;
+            const padX = 40; const padY = 30;
+            ctx.clearRect(0, 0, w, h);
+
+            // Ejes
+            ctx.beginPath(); ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 2;
+            ctx.moveTo(padX, padY/2); ctx.lineTo(padX, h - padY);
+            ctx.lineTo(w - padX/2, h - padY); ctx.stroke();
+
+            ctx.fillStyle = "#475569"; ctx.font = "14px serif";
+            ctx.fillText("E", padX - 15, padY); ctx.fillText("r", w - padX + 5, h - padY + 15);
+
+            const maxR_graph = 15;
+            // Escala Y dinámica basada en el material
+            let maxE = K_SCALE * 0.02 * (params.rho/4.0); // C1, C2, C3 max
+            if (params.material === 'c4') maxE = calculateE(2.0); // Menor carga total
+            if (params.material === 'c5') maxE = calculateE(0.2); // El pico en C5 es infinito, cortamos en 0.2
+
+            const mapX = (rad) => padX + (rad / maxR_graph) * (w - padX * 1.5);
+            const mapY = (eVal) => (h - padY) - Math.min(eVal / maxE, 1.1) * (h - padY * 1.5);
+
+            // Área Integral Sombreada
+            ctx.beginPath();
+            let start_r = (params.material === 'c5') ? 0.05 : 0;
+            let startedArea = false;
+            for(let r = start_r; r <= params.r; r += 0.05) {
+                // Saltos verticales manuales para que el relleno no quede inclinado en discontinuidades
+                if (['c2','c3','c5'].includes(params.material)) {
+                    if (Math.abs(r - R1) < 0.05 && params.r >= R1) {
+                        ctx.lineTo(mapX(R1), mapY(calculateE(R1-0.001))); ctx.lineTo(mapX(R1), mapY(calculateE(R1+0.001)));
+                    }
+                    if (Math.abs(r - R2) < 0.05 && params.r >= R2) {
+                        ctx.lineTo(mapX(R2), mapY(calculateE(R2-0.001))); ctx.lineTo(mapX(R2), mapY(calculateE(R2+0.001)));
+                    }
+                }
+                const x = mapX(r); const y = mapY(calculateE(r));
+                if(!startedArea) { ctx.moveTo(x, h - padY); ctx.lineTo(x, y); startedArea = true; }
+                else ctx.lineTo(x, y);
+            }
+            ctx.lineTo(mapX(params.r), h - padY);
+            ctx.fillStyle = "rgba(59, 130, 246, 0.3)"; ctx.fill();
+
+            // Dibujar Segmentos de la Función E(r)
+            const drawSegment = (r_start, r_end, color) => {
+                ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3;
+                let started = false;
+                for(let r = r_start; r <= r_end; r += 0.05) {
+                    if(!started) { ctx.moveTo(mapX(r), mapY(calculateE(r))); started = true; }
+                    else ctx.lineTo(mapX(r), mapY(calculateE(r)));
+                }
+                ctx.stroke();
+            }
+
+            // Segmentos por zonas
+            drawSegment(start_r, R1, "#dc2626"); // Zona 1 (0 a R1)
+            drawSegment(R1 + 0.01, R2, "#9333ea"); // Zona 2 (R1 a R2)
+            drawSegment(R2 + 0.01, maxR_graph, "#2563eb"); // Zona 3 (R2 en adelante)
+
+            // Dibujar líneas verticales (saltos)
+            ctx.beginPath(); ctx.setLineDash([2, 2]); ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1.5;
+            if (calculateE(R1-0.01) !== calculateE(R1+0.01)) {
+                ctx.moveTo(mapX(R1), mapY(calculateE(R1-0.01))); ctx.lineTo(mapX(R1), mapY(calculateE(R1+0.01)));
+            }
+            if (calculateE(R2-0.01) !== calculateE(R2+0.01)) {
+                ctx.moveTo(mapX(R2), mapY(calculateE(R2-0.01))); ctx.lineTo(mapX(R2), mapY(calculateE(R2+0.01)));
+            }
+            ctx.stroke(); ctx.setLineDash([]);
+
+            // Marcadores R1 y R2
+            ctx.fillStyle = "#94a3b8"; 
+            if(params.material !== 'c1' && params.material !== 'c2') {
+                ctx.fillText("R1", mapX(R1) - 8, h - padY + 15);
+            }
+            ctx.fillText("R2", mapX(R2) - 8, h - padY + 15);
+
+            // Marcador r actual
+            const currX = mapX(params.r); const currY = mapY(calculateE(params.r));
+            ctx.beginPath(); ctx.setLineDash([5, 5]); ctx.strokeStyle = "#1e40af"; ctx.lineWidth = 2;
+            ctx.moveTo(currX, h - padY); ctx.lineTo(currX, currY); ctx.stroke(); ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(currX, currY, 5, 0, Math.PI*2); ctx.fillStyle = "#1e40af"; ctx.fill();
+        }
+
+        // ==========================================
+        // 7. EVENTOS Y BUCLE PRINCIPAL
+        // ==========================================
+        function updateAll() {
+            updateGeometry(); updateFieldVectors(); updateUI(); drawGraph();
+        }
+
+        document.getElementById('select-material').addEventListener('change', (e) => {
+            params.material = e.target.value;
+            
+            // Cambiar Teorías
+            const cases = ['c1', 'c2', 'c3', 'c4', 'c5'];
+            cases.forEach(c => {
+                const el = document.getElementById('teoria-' + c);
+                if (c === params.material) { el.classList.remove('hidden'); el.classList.add('flex'); } 
+                else { el.classList.add('hidden'); el.classList.remove('flex'); }
+            });
+            
+            // Actualizar 3D y UI
+            updateChargeDistribution();
+            updateAll();
+        });
+
+        const rSlider = document.getElementById('slider-r');
+        if (rSlider) {
+            rSlider.addEventListener('input', (e) => {
+                params.r = parseFloat(e.target.value);
+                const valR = document.getElementById('val-r');
+                if (valR) valR.textContent = params.r.toFixed(1);
+                updateAll();
+            });
+        }
+
+        const rhoSlider = document.getElementById('slider-rho');
+        if (rhoSlider) {
+            rhoSlider.addEventListener('input', (e) => {
+                params.rho = parseFloat(e.target.value);
+                const valRho = document.getElementById('val-rho');
+                if (valRho) valRho.textContent = params.rho.toFixed(1);
+                updateAll();
+            });
+        }
+
+        const thetaSlider = document.getElementById('slider-theta');
+        if (thetaSlider) {
+            thetaSlider.addEventListener('input', (e) => {
+                params.theta = parseInt(e.target.value);
+                updateUI();
+            });
+        }
+
+        const toggleField = document.getElementById('toggle-field');
+        if (toggleField) toggleField.addEventListener('change', updateFieldVectors);
+
+        const toggleRotate = document.getElementById('toggle-rotate');
+        if (toggleRotate) toggleRotate.addEventListener('change', (e) => { ctrl.autoRotate = e.target.checked; });
+
+        const toggleCut = document.getElementById('toggle-cut');
+        if (toggleCut) toggleCut.addEventListener('change', (e) => { 
+            renderer.localClippingEnabled = e.target.checked; 
+        });
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height);
+                } else if(entry.target.id === 'graph-container') {
+                    resizeGraph();
+                }
+            }
+        });
+        resizeObserver.observe(cont3D); resizeObserver.observe(graphCont);
+
+        // Init
+        updateChargeDistribution(); updateAll();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctrl.update(); updateUI(); 
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tip encima de todo 
+      (function () {
+          let globalTip = document.createElement("div");
+          globalTip.className = "tip-content";
+          globalTip.style.position = "fixed";
+          globalTip.style.zIndex = "999999";
+          globalTip.style.pointerEvents = "none";
+          globalTip.style.opacity = "0";
+          globalTip.style.visibility = "hidden";
+        
+          document.body.appendChild(globalTip);
+        
+          document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+            const localTip = wrapper.querySelector(".tip-content");
+        
+            wrapper.addEventListener("mouseenter", () => {
+              const rect = wrapper.getBoundingClientRect();
+        
+              globalTip.innerHTML = localTip.innerHTML;
+        
+              globalTip.style.top = rect.top + "px";
+              globalTip.style.left = (rect.right + 10) + "px";
+        
+              globalTip.style.opacity = "1";
+              globalTip.style.visibility = "visible";
+            });
+        
+            wrapper.addEventListener("mouseleave", () => {
+              globalTip.style.opacity = "0";
+              globalTip.style.visibility = "hidden";
+            });
+          });
+        })();
+    </script>
+</body>
+</html>

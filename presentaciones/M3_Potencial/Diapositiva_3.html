@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+        <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Integrales de Línea y Campos Vectoriales</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax Configuration: Ajuste estricto para evitar saltos de línea y desbordamientos -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            svg: { 
+                fontCache: 'none',
+                displayAlign: 'center'
+            },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady().then(() => {
+                        console.log('MathJax initial typesetting complete');
+                    });
+                }
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Plotly.js para la vista 3D Científica -->
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(13px, 1.1vw, 17px); line-height: 1.6; color: #1e293b; }
+        
+        /* FIX: Renderizado de Ecuaciones, cero saltos internos y márgenes justos */
+        .math-display { 
+            font-size: 0.95em; 
+            color: #1e3a8a; 
+            text-align: center; 
+            margin: 0.5vmin 0; /* Margen reducido para no separar innecesariamente */
+            overflow-x: auto; 
+            overflow-y: hidden;
+            padding-bottom: 2px;
+        }
+        mjx-container[jax="SVG"][display="true"] {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            min-width: 0 !important;
+            margin-top: 0.25em !important;
+            margin-bottom: 0.25em !important;
+        }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: #ffffff;
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden;
+            cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+        
+        .control-panel { background: #f1f5f9; border-radius: 0.5rem; padding: 1vmin 1.5vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: flex-start; border: 1px solid #cbd5e1; font-size: clamp(12px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.8vmin; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background-color: #64748b; }
+
+        .btn-ui { padding: 0.4rem 0.8rem; border-radius: 0.25rem; font-size: 0.9em; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-ui:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-ui:active { transform: translateY(0); }
+
+        .math-demo-container { display: none; animation: fadeIn 0.4s ease-out; }
+        .math-demo-container.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #canvas-2d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; touch-action: none; }
+        #canvas-3d { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; display: none; background: #fff; }
+        
+        .input-math { width: 70px; padding: 2px 4px; border: 1px solid #94a3b8; border-radius: 4px; font-family: monospace; font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-emerald-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="font-bold tracking-wide flex items-center gap-3" style="font-size: clamp(20px, 1.8vw, 32px);">
+                            📐 Integrales de Línea Avanzadas y Parametrización
+                        </h1>
+                        <p class="text-emerald-300 font-light" style="font-size: clamp(13px, 1vw, 16px);">
+                            Solución paso a paso, Diferenciales de Trayectoria y Topología del Trabajo Eléctrico
+                        </p>
+                    </div>
+                    <div class="text-right text-xs bg-slate-800 p-2 rounded border border-slate-700 shadow-inner">
+                        <span class="text-slate-300 font-mono">Teorema Fundamental del Trabajo ($t \in [0,1]$):</span><br>
+                        <span class="text-emerald-400 font-bold tracking-wider text-[13px]">
+                            $W = \int_{0}^{1} \vec{E}(\vec{r}(t)) \cdot \frac{d\vec{r}}{dt} dt = \int_{0}^{1} \left( E_x \frac{dx}{dt} + E_y \frac{dy}{dt} \right) dt$
+                        </span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA Y CÁLCULO NUMÉRICO -->
+                <div class="w-[50%] flex flex-col gap-[1.5vmin]" id="left-column">
+                    
+                    <!-- SECCIÓN TEÓRICA (ARRIBA, OCUPA EL ESPACIO RESTANTE) -->
+                    <div class="bg-indigo-50 border border-indigo-200 shadow-sm rounded-lg p-[1.5vmin] text-academic flex-1 overflow-y-auto custom-scroll relative">
+                        <h2 class="font-bold text-indigo-900 border-b-2 border-indigo-400 mb-3 pb-2 text-[1.1em] flex justify-between items-center sticky top-0 bg-indigo-50 z-10">
+                            <span>Solución Analítica Paso a Paso</span>
+                            <span id="math-title-badge" class="bg-indigo-600 text-white text-[10px] px-3 py-1.5 rounded-full font-sans shadow-sm tracking-wide">Teoría Clásica</span>
+                        </h2>
+                        
+                        <div class="relative mt-2">
+                            
+                            <!-- DEMO 1: CARTESIANAS -->
+                            <div id="math-cartesiano" class="math-demo-container active">
+                                <p class="text-[13px] text-slate-700 mb-2">Evaluemos un campo electrostático uniforme definido en el plano bidimensional como $\vec{E} = E_0 \hat{i} + E_0 \hat{j}$ sobre una trayectoria cerrada compuesta por tres desplazamientos rectilíneos.</p>
+                                
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Tramo 1: Desplazamiento Horizontal</h3>
+                                    <p class="text-[13px] text-slate-700">Para el primer tramo parametrizamos la recta horizontal en función del parámetro escalar $t \in [0,1]$ asumiendo $x(t) = 4t$ e $y(t) = 0$. Derivando estas posiciones obtenemos instantáneamente el vector diferencial de línea $d\vec{l} = 4\hat{i} \, dt$, el cual al ser multiplicado escalarmente por el vector campo nos entrega el valor exacto de la integral para el trabajo mecánico realizado:</p>
+                                    <div class="math-display">
+                                        $$W_1 = \int_0^1 (E_0 \hat{i} + E_0 \hat{j}) \cdot (4\hat{i}) \, dt = 4E_0$$
+                                    </div>
+                                </div>
+
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Tramo 2: Ascenso Vertical</h3>
+                                    <p class="text-[13px] text-slate-700">Durante el ascenso vertical la coordenada horizontal permanece inmutable por lo que parametrizamos la trayectoria como $x(t) = 4$ e $y(t) = 3t$, dando como resultado un vector diferencial de desplazamiento $d\vec{l} = 3\hat{j} \, dt$. Al aplicar el producto escalar entre el campo eléctrico total y nuestro nuevo vector de avance, se anula matemáticamente la componente horizontal dejando únicamente la contribución vertical de la fuerza:</p>
+                                    <div class="math-display">
+                                        $$W_2 = \int_0^1 (E_0 \hat{i} + E_0 \hat{j}) \cdot (3\hat{j}) \, dt = 3E_0$$
+                                    </div>
+                                </div>
+
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Tramo 3: Regreso Diagonal</h3>
+                                    <p class="text-[13px] text-slate-700">Para cerrar el ciclo geométrico regresando al origen de coordenadas formulamos la parametrización simultánea $x(t) = 4 - 4t$ e $y(t) = 3 - 3t$, de lo cual se desprende un vector diferencial compuesto $d\vec{l} = -4\hat{i} \, dt - 3\hat{j} \, dt$. La integral de línea correspondiente evalúa ambas dimensiones en conjunto sumando algebraicamente el efecto resistivo del campo:</p>
+                                    <div class="math-display">
+                                        \begin{aligned}
+                                        W_3 &= \int_0^1 (E_0 \hat{i} + E_0 \hat{j}) \cdot (-4\hat{i} - 3\hat{j}) \, dt \\
+                                        &= \int_0^1 (-4E_0 - 3E_0) \, dt = -7E_0
+                                        \end{aligned}
+                                    </div>
+                                </div>
+
+                                <div class="mt-2 bg-emerald-50 border-l-4 border-emerald-500 p-2 text-sm text-emerald-900 shadow-sm">
+                                    <strong>Conclusión del Teorema de Stokes:</strong> El trabajo neto ejercido sobre el trayecto cíclico es exactamente $\oint \vec{E} \cdot d\vec{l} = W_1 + W_2 + W_3 = 4E_0 + 3E_0 - 7E_0 = 0$. Esta cancelación total demuestra de manera rigurosa que el campo evaluado es de naturaleza puramente conservativa, permitiendo por ende la existencia de una función de potencial escalar asociada.
+                                </div>
+                            </div>
+
+                            <!-- DEMO 2: ESFÉRICAS -->
+                            <div id="math-esferico" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Analizamos la física topológica de un campo originado por una carga monopolar puntual estática ubicada en el origen cuyo vector característico es $\vec{E} = \frac{kQ}{r^2} \hat{r}$.</p>
+                                
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Integración Vectorial en Coordenadas Polares</h3>
+                                    <p class="text-[13px] text-slate-700">Expresando el diferencial analítico de línea en base polar geométrica como $d\vec{l} = dr \hat{r} + r d\theta \hat{\theta}$, se observa directamente que al efectuar el producto escalar con el vector fundamental del campo, la componente angular transversal se anula por estricta ortogonalidad matemática dado que $\hat{r} \cdot \hat{\theta} = 0$. Este filtro natural reduce la integral de trabajo a un diferencial exacto que depende exclusivamente de una única variable paramétrica, simplificando radicalmente su desarrollo algebraico hasta alcanzar la diferencia de potencias inversas clásica:</p>
+                                    <div class="math-display">
+                                        \begin{aligned}
+                                        W &= \int_{A}^{B} \left( \frac{kQ}{r^2} \hat{r} \right) \cdot (dr \hat{r} + r d\theta \hat{\theta}) \\
+                                        &= \int_{r_A}^{r_B} \frac{kQ}{r^2} dr = kQ \left[ \frac{1}{r_A} - \frac{1}{r_B} \right]
+                                        \end{aligned}
+                                    </div>
+                                    <p class="text-[13px] mt-2 text-slate-700"><strong>Significado Físico Profundo:</strong> La expresión final confirma que el intercambio de energía mecánica depende única y exclusivamente de las distancias radiales estáticas inicial y final del sistema evaluado. En consecuencia cualquier tipo de traslación transversal de la partícula de prueba sobre el lienzo topológico resulta energéticamente gratuita dado que el producto escalar anula toda interacción direccional ortogonal al campo.</p>
+                                </div>
+                            </div>
+
+                            <!-- DEMO 3: DIPOLO -->
+                            <div id="math-dipolo" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Un dipolo eléctrico real compuesto por un ensamble de cargas de prueba $+Q$ y $-Q$ separadas geométricamente por una distancia euclidiana de $2d$ sobre el eje primario genera un mapeo de potencial escalar bidimensional que obedece al principio inquebrantable de superposición clásica:</p>
+                                <div class="math-display">
+                                    $$V(x,y) = kQ \left[ \frac{1}{\sqrt{(x-d)^2 + y^2}} - \frac{1}{\sqrt{(x+d)^2 + y^2}} \right]$$
+                                </div>
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Análisis Topológico del Plano Ecuatorial Analítico</h3>
+                                    <p class="text-[13px] text-slate-700">Al restringir nuestra evaluación espacial exclusivamente al bisector perpendicular o plano ecuatorial forzando $x=0$, verificamos algebraicamente que la distancia medida desde cualquier punto de tránsito hasta ambas fuentes generadoras se iguala de manera perfecta asumiendo el valor $\sqrt{d^2+y^2}$. Reemplazando esta reducción simétrica directamente en la fórmula base del campo observamos una cancelación total de los términos energéticos resultando en una superficie equipotencial absoluta libre de trabajo mecánico acumulado:</p>
+                                    <div class="math-display">
+                                        $$V(0,y) = kQ \left[ \frac{1}{\sqrt{d^2+y^2}} - \frac{1}{\sqrt{d^2+y^2}} \right] = 0$$
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- DEMO 4: CUADRUPOLO -->
+                            <div id="math-cuadrupolo" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Un cuadrupolo planar electromagnético consta de cuatro fuentes de radiación estática dispuestas estratégicamente en vértices rectangulares alternando rigurosamente su signo operativo para inducir la existencia matemática de un punto topológico central inerte denominado "punto de silla" donde el campo principal se extingue absolutamente debido a una cancelación simétrica simultánea impuesta en todos los ejes.</p>
+                                <div class="math-display">
+                                    $$V_{cuad}(r) \approx \frac{kQ \cdot d^2}{r^3} f(\theta)$$
+                                </div>
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Topología Continua de Inversión Espacial Rápida</h3>
+                                    <p class="text-[13px] text-slate-700">El gradiente del potencial cuadrupolar muestra un decaimiento volumétrico notablemente veloz y agresivo dependiente del factor de atenuación inversamente proporcional al cubo radial $\sim 1/r^3$. Aquellas trayectorias dinámicas que se atrevan a transitar cerca del vértice de simetría experimentan inversiones paramétricas súbitas provocando que el ángulo de interacción vectorial $\theta$ fluctúe violentamente en los márgenes de discontinuidad cambiando la naturaleza de la fuerza electromotriz de un estado altamente repulsivo a uno de franca atracción en cuestión de milisegundos de avance diferencial.</p>
+                                </div>
+                            </div>
+
+                            <!-- DEMO 5: MISMO SIGNO -->
+                            <div id="math-mismosigno" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Un acoplamiento electrodinámico generado por dos cargas de emisión isopolar del mismo signo algebraico ($+Q, +Q$) modela una superposición topológica de dos crestas interactuantes que convergen en el espacio libre para sintetizar una auténtica barrera de restricción energética sobre su eje interconector central.</p>
+                                <div class="math-display">
+                                    $$V(x,y) = kQ \left[ \frac{1}{\sqrt{(x-d)^2 + y^2}} + \frac{1}{\sqrt{(x+d)^2 + y^2}} \right]$$
+                                </div>
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Cinética de Barreras y Transición Inestable</h3>
+                                    <p class="text-[13px] text-slate-700">Situado matemáticamente en el núcleo geométrico de intersección se consolida un foco de equilibrio inestable de alto orden. Al someter a la partícula de prueba a un avance frontal a través del eje transversal y en contra del gradiente de repulsión natural, el integrador numérico advierte inicialmente una fuerte inyección de trabajo negativo evidenciando la resistencia intrínseca del sistema a la penetración, seguida súbitamente de un escenario de fuga y franca aceleración inducida una vez sobrepasada la cresta del pico matricial.</p>
+                                </div>
+                            </div>
+
+                            <!-- DEMO 6: EQUIPOTENCIAL -->
+                            <div id="math-equipotencial" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Se plantea el estudio exhaustivo de un movimiento rotacional forzado de una carga puntual obligada a deslizarse ininterrumpidamente sobre el surco trazado por una superficie perimetral isopotencial, descrita geométricamente como un disco paramétrico perfecto de radio constante $R$ sumergido en un campo monopolar puramente divergente.</p>
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Demostración Vectorial de Condición de Ortogonalidad</h3>
+                                    <p class="text-[13px] text-slate-700">Modelando las ecuaciones constitutivas de la trayectoria curva como un oscilador temporal en cuadratura mediante las funciones $x(t) = R\cos(2\pi t)$ e $y(t) = R\sin(2\pi t)$, se deduce de forma inmediata que el diferencial primario de línea asume un carácter tangencial perpetuo frente al frente de onda del campo eléctrico que mantiene su naturaleza radial inquebrantable. Esta peculiar y afortunada característica arquitectónica de ortogonalidad continua se traduce sin apelación en la nulidad incondicional de cualquier trabajo físico asociado a este desplazamiento cerrado:</p>
+                                    <div class="math-display">
+                                        $$W = \oint \vec{E} \cdot d\vec{l} = \int |\vec{E}| |d\vec{l}| \cos(90^\circ) = 0$$
+                                    </div>
+                                    <p class="text-[13px] mt-2 text-emerald-800 bg-emerald-50 p-2 rounded border border-emerald-200"><strong>Verificación Teórica Asistida:</strong> Corroborando este postulado en tiempo real, el módulo telemétrico de la simulación ratificará visualmente y numéricamente que la desviación angular proyectada entre ambos vectores fundamentales mantendrá una lectura rígida e invariable centrada rigurosamente alrededor de la cota métrica de los noventa grados absolutos durante la totalidad del ciclo cronológico analizado.</p>
+                                </div>
+                            </div>
+
+                            <!-- DEMO 7: NO CONSERVATIVO -->
+                            <div id="math-noconservativo" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Para ilustrar las fallas sistémicas del electromagnetismo básico procedemos a inyectar en el simulador vectorial un patrón de líneas de fuerza altamente caóticas pertenecientes a un campo inducido artificial de naturaleza abstracta predefinido por la formulación no lineal $\vec{E} = y \hat{i} - x \hat{j}$. Mediante la simple aplicación del operador rotacional vectorial clásico es factible constatar que la expresión arroja un remanente no nulo que imposibilita de facto su tratamiento tradicional como gradiente de un escalar cerrado:</p>
+                                <div class="math-display">
+                                    $$\nabla \times \vec{E} = \left( \frac{\partial E_y}{\partial x} - \frac{\partial E_x}{\partial y} \right) \hat{k} = -2\hat{k} \neq 0$$
+                                </div>
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Desintegración Cíclica del Balance Energético</h3>
+                                    <p class="text-[13px] text-slate-700">Llevando a cabo la evaluación seccional meticulosa de la integral de línea en sentido horario a través del perímetro triangular estándar se advierten asimetrías críticas derivadas de esta anomalía. En el segmento inferior rasante al eje de las abscisas se logra una anulación transitoria registrando una contribución parcial equivalente a cero unidades. Posteriormente durante el cruce vertical sobre la frontera $x=4$ la integral de ascenso arroja una sangría energética equivalente a $\int_0^4 -4 \, dy = -16$ Joules. Culminando la demostración durante la hipotenusa de regreso diagonal al nodo central el producto diferencial vuelve a sufrir un proceso de inhibición cancelativa mutua rindiendo la cifra estática de cero Joules.</p>
+                                </div>
+                                <div class="mt-2 bg-red-50 border-l-4 border-red-500 p-3 text-[13px] text-red-900 shadow-sm">
+                                    <strong>Postulado de Invalidez Termodinámica:</strong> La sumatoria final acusa una pérdida neta irrecuperable de energía evaluada formalmente en 16 Joules negativos y dado que esta integral de bucle cíclico no retorna matemáticamente al vacío neutro absoluto se ratifica sin atisbo de duda que la métrica de conservación queda profanada y este mapeo vectorial específico es físicamente incapaz de sostener la existencia teórica de un voltaje potencial de estado puro $V(x,y)$.
+                                </div>
+                            </div>
+
+                            <!-- DEMO 8: POLINOMIOS (CUSTOM/TRAYECTORIAS) -->
+                            <div id="math-trayectorias" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Desplegamos un análisis exhaustivo enfocado en ponderar las implicaciones cinemáticas subyacentes derivadas del uso de familias paramétricas polinomiales como método de interpolación vectorial para forzar el tránsito efectivo de partículas subatómicas entre coordenadas de origen y destino dispares localizadas en la red de simulación algorítmica.</p>
+                                
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Morfología y Aceleración Tensorial de Rutas Matemáticas</h3>
+                                    <p class="text-[13px] text-slate-700">La implementación rudimentaria de una función de enlace basada en una <strong>Trayectoria Lineal</strong> simple se caracteriza primordialmente por exhibir tasas de variación de posición inmutables en el espectro del tiempo lo cual en la praxis física se materializa como un vuelo crucero desprovisto de aceleración tangencial. Al incrementar la complejidad inyectando un componente de segundo orden para conformar un <strong>Arco Parabólico</strong> dictado por la relación $y(t) = at^2 + bt + c$, sometemos al vector diferencial primario a una alteración progresiva pero constante de su rumbo obligando al sistema a aplicar correcciones de navegación. En el límite operacional se ofrece el enrutamiento mediante funciones de <strong>Base Cúbica</strong> que introducen zonas complejas con severos puntos de inflexión paramétrica, las cuales demandan inherentemente ráfagas intermitentes de aceleración extrema en las fases de aproximación o alejamiento.</p>
+                                </div>
+                                
+                                <div class="text-[13px] text-indigo-900 bg-indigo-100 p-3 rounded mt-2 shadow-sm border border-indigo-200">
+                                    <strong>Axioma Inviolable de Independencia Direccional:</strong> Sin importar las acrobacias numéricas requeridas por las variables t-dependientes para surcar el plano tridimensional, en caso de estar sumergidos bajo la influencia de uno de los campos calificados teóricamente como conservativos de gradiente escalar real, la ley estipula categóricamente que tras la sumatoria de las interacciones vectoriales a la altura del parámetro temporal de cierre absoluto la integral terminal arrojará irrevocablemente el mismo guarismo físico idéntico hasta el último decimal disponible certificando la simetría fundacional del espacio evaluado.
+                                </div>
+                            </div>
+
+                            <!-- DEMO 9: CUSTOM (USUARIO) -->
+                            <div id="math-custom" class="math-demo-container">
+                                <p class="text-[13px] text-slate-700 mb-2">Has desbloqueado exitosamente las restricciones operativas del front-end de evaluación accediendo en tiempo real al modo <strong>Laboratorio Abierto</strong> el cual transfiere el control absoluto de las rutinas generadoras de topología a merced de la imaginación del analista de sistemas permitiendo compilar en memoria ecuaciones crudas sin validación de sanidad geométrica previa.</p>
+                                <div class="mt-2 bg-white p-3 rounded border border-indigo-100 shadow-sm">
+                                    <h3 class="font-bold text-indigo-700 text-sm border-b border-indigo-100 pb-1 mb-1">▶ Método de Integración Heurística Vía Sumas de Riemann Multivariables</h3>
+                                    <p class="text-[13px] text-slate-700">Renunciando voluntariamente al confort y garantía que otorgan las simplificaciones algebraicas de libro de texto y las primitivas exactas cerradas, el motor iterativo principal de este esquema computacional procede mecánicamente a seccionar el flujo temporal en diferenciales minúsculos e inyectar el valor instantáneo del cruce vectorial directo entre los tensores de posición y los vectores resultantes para aproximar un valor numérico pseudo-continuo:</p>
+                                    <div class="math-display">
+                                        $$W \approx \sum_{k=0}^{N} \left[ E_x(x_k, y_k) \Delta x_k + E_y(x_k, y_k) \Delta y_k \right]$$
+                                    </div>
+                                    <p class="text-[12px] mt-2 text-slate-500 font-bold">Instrucción Operativa: Tras modificar las sentencias matemáticas inferiores es imperativo pulsar el pulsador táctil "Compilar Ecuaciones Numéricas" para forzar al parseador principal a refrescar la matriz de evaluación y relanzar el módulo simulador asimilando la nueva carga funcional y restableciendo el origen posicional dinámico.</p>
+                                </div>
+                            </div>
+
+                        </div>
+
+
+<!-- TELEMETRÍA DE LA INTEGRAL NUMÉRICA (ABAJO A LA IZQUIERDA) -->
+                    <div class="bg-slate-800 text-slate-100 p-[1.5vmin] shadow-sm rounded-lg border border-slate-700 flex-none z-20">
+                        <div class="flex justify-between items-end mb-2 border-b border-slate-600 pb-1">
+                            <p class="font-bold text-amber-400 text-[13px] tracking-wide uppercase">Cálculo Numérico Diferencial</p>
+                            <p class="text-[11px] font-mono text-emerald-400">Paso Integración Activo: $dt_{sim}$</p>
+                        </div>
+                        <div class="grid grid-cols-4 gap-2">
+                            <!-- Vectores E -->
+                            <div class="bg-slate-900 p-2 rounded border border-slate-600 shadow-inner col-span-2 flex flex-col justify-center">
+                                <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Campo Local $\vec{E}(x,y)$</span>
+                                <div class="font-mono text-[13px] mt-1 text-emerald-300">
+                                    [ <span id="ui-ex" class="w-14 inline-block text-right">0.00</span> $\hat{i}$ , <span id="ui-ey" class="w-14 inline-block text-right">0.00</span> $\hat{j}$ ]
+                                </div>
+                            </div>
+                            <!-- Vectores dl -->
+                            <div class="bg-slate-900 p-2 rounded border border-slate-600 shadow-inner col-span-2 flex flex-col justify-center">
+                                <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Desplazamiento $d\vec{l}(t)$</span>
+                                <div class="font-mono text-[13px] mt-1 text-fuchsia-300">
+                                    [ <span id="ui-dlx" class="w-14 inline-block text-right">0.00</span> $\hat{i}$ , <span id="ui-dly" class="w-14 inline-block text-right">0.00</span> $\hat{j}$ ]
+                                </div>
+                            </div>
+                            <!-- Ángulo y Progreso -->
+                            <div class="bg-slate-900 p-2 rounded border border-slate-600 shadow-inner col-span-2 flex flex-col justify-center">
+                                <div class="flex justify-between items-center px-1">
+                                    <div>
+                                        <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Ángulo $\theta$</span>
+                                        <div><span id="ui-angle" class="font-mono font-bold text-orange-300 text-lg tracking-tighter">0.0</span>°</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Progreso $t$</span>
+                                        <div><span id="ui-t" class="font-mono font-bold text-blue-300 text-lg tracking-tighter">0.00</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Trabajo Acumulado -->
+                            <div class="bg-slate-900 p-2 rounded border border-emerald-600 shadow-[0_0_12px_rgba(16,185,129,0.15)] relative overflow-hidden flex flex-col justify-center col-span-2">
+                                <span class="text-slate-300 text-[11px] uppercase font-bold tracking-wider text-center border-b border-emerald-900 pb-1 mb-1">Integral de Trabajo $W = \sum \vec{E}\cdot d\vec{l}$</span>
+                                <div class="text-center"><span id="ui-work" class="font-mono font-bold text-yellow-400 text-[28px] tracking-tighter">0.000</span> <span class="text-sm font-bold">J</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    </div>
+
+                    
+
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[50%] flex flex-col min-w-0 gap-[1.5vmin]">
+
+                    <!-- PANEL DE CONTROL UI -->
+                    <div class="control-panel shadow-sm relative z-20 flex-col !items-start bg-white">
+                        
+                        <!-- Fila 1: Configuración Global y Trayectoria -->
+                        <div class="flex w-full gap-[2vmin] border-b border-slate-200 pb-2 mb-1 items-center flex-wrap">
+                            <div class="control-group border-r border-slate-200 pr-3">
+                                <label class="font-bold text-slate-700 text-xs">Topología de Campo $\vec{E}$:</label>
+                                <select id="select-config" class="bg-slate-50 border border-slate-300 rounded px-1 py-1 font-semibold text-emerald-700 outline-none focus:ring-2 focus:ring-emerald-200 transition-all cursor-pointer text-xs">
+                                    <option value="cartesiano">Uniforme Cartesianas</option>
+                                    <option value="esferico">Monopolo (+Q) Esféricas</option>
+                                    <option value="dipolo">Dipolo Eléctrico (+Q, -Q)</option>
+                                    <option value="cuadrupolo">Cuadrupolo (4 Cargas)</option>
+                                    <option value="mismosigno">Cargas Mismo Signo (+Q, +Q)</option>
+                                    <option value="equipotencial">Equipotencial Circular</option>
+                                    <option value="noconservativo">Campo Inducido No Conservativo</option>
+                                    <option value="custom" class="bg-yellow-100">🛠️ Ecuación de Campo Arbitraria</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group border-r border-slate-200 pr-3">
+                                <label class="font-bold text-slate-700 text-xs">Trayectoria Integración:</label>
+                                <select id="select-path-type" class="bg-indigo-50 border border-indigo-300 rounded px-1 py-1 font-semibold text-indigo-800 outline-none focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer text-xs">
+                                    <option value="default">Geometría Por Defecto</option>
+                                    <option value="lineal">Polinomios: Lineal (Recta)</option>
+                                    <option value="cuadratica">Polinomios: Cuadrática (Parábola)</option>
+                                    <option value="cubica">Polinomios: Cúbica</option>
+                                    <option value="custom">🛠️ Ecuaciones Paramétricas Manuales</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end">
+                                <button id="btn-toggle-engine" class="btn-ui bg-slate-200 text-slate-800 hover:bg-slate-300 border border-slate-400 text-xs shadow-sm font-bold">Ver Superficie 3D (Plotly)</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2: Inputs Custom (Ocultos por defecto) -->
+                        <div id="custom-inputs-panel" class="hidden w-full flex-col gap-2 border-b border-slate-200 pb-2 mb-1">
+                            <div class="flex items-center gap-3 bg-amber-50 p-1.5 rounded border border-amber-200">
+                                <span class="font-bold text-amber-900 text-xs">Campo Matemático $\vec{E}(x,y)$:</span>
+                                <label class="text-xs">Ex = <input type="text" id="in-ex" value="-y" class="input-math"></label>
+                                <label class="text-xs">Ey = <input type="text" id="in-ey" value="x" class="input-math"></label>
+                                <span class="text-[10px] text-amber-700 ml-2">(Sintaxis Estándar: x, y, sin(x), x^2, pi)</span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="bg-indigo-50 p-1.5 rounded border border-indigo-200 flex flex-col gap-1">
+                                    <span class="font-bold text-indigo-900 text-[10px]">Tramo 1 ($t \in [0,1]$):</span>
+                                    <label class="text-[10px] flex">x(t)=<input type="text" id="in-x1" value="4*t" class="input-math w-full ml-1"></label>
+                                    <label class="text-[10px] flex">y(t)=<input type="text" id="in-y1" value="0" class="input-math w-full ml-1"></label>
+                                </div>
+                                <div class="bg-indigo-50 p-1.5 rounded border border-indigo-200 flex flex-col gap-1">
+                                    <span class="font-bold text-indigo-900 text-[10px]">Tramo 2 ($t \in [0,1]$):</span>
+                                    <label class="text-[10px] flex">x(t)=<input type="text" id="in-x2" value="4" class="input-math w-full ml-1"></label>
+                                    <label class="text-[10px] flex">y(t)=<input type="text" id="in-y2" value="4*t" class="input-math w-full ml-1"></label>
+                                </div>
+                                <div class="bg-indigo-50 p-1.5 rounded border border-indigo-200 flex flex-col gap-1">
+                                    <span class="font-bold text-indigo-900 text-[10px]">Tramo 3 ($t \in [0,1]$):</span>
+                                    <label class="text-[10px] flex">x(t)=<input type="text" id="in-x3" value="4-4*t" class="input-math w-full ml-1"></label>
+                                    <label class="text-[10px] flex">y(t)=<input type="text" id="in-y3" value="4-4*t" class="input-math w-full ml-1"></label>
+                                </div>
+                            </div>
+                            <button id="btn-apply-custom" class="btn-ui bg-amber-500 text-white hover:bg-amber-600 text-xs self-start shadow-md">Compilar Ecuaciones Numéricas</button>
+                        </div>
+
+                        <!-- Fila 3: Control de Animación de las Trayectorias -->
+                        <div class="flex w-full gap-[1vmin] items-center pt-1 overflow-x-auto">
+                            <span class="font-bold text-slate-700 text-[11px] mr-1 uppercase">Módulo Animación:</span>
+                            <button id="btn-t1" class="btn-ui bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 text-xs px-3 py-1 font-bold">Tramo 1</button>
+                            <button id="btn-t2" class="btn-ui bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 text-xs px-3 py-1 font-bold">Tramo 2</button>
+                            <button id="btn-t3" class="btn-ui bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 text-xs px-3 py-1 font-bold">Tramo 3</button>
+                            <button id="btn-tall" class="btn-ui bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700 shadow-sm ml-1 text-xs px-3 py-1">▶ Ciclo Continuo</button>
+                            
+                            <div class="flex-1 text-right">
+                                <button id="btn-reset-view" class="btn-ui bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-300 text-[10px] px-2 py-1 mr-1">Centrar Zoom</button>
+                                <button id="btn-reset" class="btn-ui bg-red-100 text-red-600 hover:bg-red-200 border border-red-300 text-[10px] px-2 py-1 font-bold">⏹ Reset Integral</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- LIENZOS 2D y 3D (ZONA GRÁFICA INTERACTIVA) -->
+                    <div class="flex-1 canvas-wrapper shadow-inner" id="main-canvas-container">
+                        <div class="hint-overlay shadow-md flex flex-col gap-1 backdrop-blur-sm bg-white/95 border-b border-r border-slate-200">
+                            <span id="hint-text" class="text-slate-800"><strong>Simulador Vectorial 2D:</strong> <br>👆 Arrastra el fondo para hacer Pan | 🖱️ Rueda del ratón para Zoom In/Out. <br>🟢 Verde: Vector $d\vec{l}$ (Desplazamiento) | 🔴 Rojo: Vector $\vec{E}$ (Campo Local)</span>
+                        </div>
+                        
+                        <!-- Lienzo 2D -->
+                        <canvas id="canvas-2d"></canvas>
+
+                        <!-- Contenedor Plotly 3D -->
+                        <div id="canvas-3d"></div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT PRINCIPAL Y MOTOR DE SIMULACIÓN NUMÉRICA -->
+    <script>
+        // ==========================================
+        // CONFIGURACIÓN CENTRAL DEL ESTADO DE LA SIMULACIÓN
+        // ==========================================
+        const configTitles = {
+            'cartesiano': 'Campo Uniforme (Cartesianas)',
+            'esferico': 'Campo Radial (Carga Puntual)',
+            'dipolo': 'Topología: Dipolo Eléctrico',
+            'cuadrupolo': 'Topología: Cuadrupolo Eléctrico',
+            'mismosigno': 'Topología: Cargas del Mismo Signo',
+            'equipotencial': 'Trayectoria Equipotencial',
+            'noconservativo': 'Campo Inducido (No Conservativo)',
+            'custom': 'Ecuaciones Arbitrarias Compiladas'
+        };
+
+        const state = {
+            config: 'cartesiano',
+            pathType: 'default', 
+            mode2D: true,
+            isAnimating: false,
+            animProgress: 0, 
+            activeSegmentIdx: -1, 
+            playAll: false,
+            workAccumulated: 0,
+            pos: {x: 0, y: 0},
+            E: {x: 0, y: 0},
+            dlVec: {x: 0, y: 0},
+            angle: 0,
+            E0: 2.0, 
+            k: 15.0,
+            sourceDist: 3.0, 
+            
+            customField: { Ex: null, Ey: null },
+            customPaths: [ {x:null, y:null}, {x:null, y:null}, {x:null, y:null} ]
+        };
+
+        let viewParams = {
+            offsetX: 0, offsetY: 0, zoom: 1.0, isDragging: false, lastX: 0, lastY: 0
+        };
+
+        // ==========================================
+        // COMPILADOR MATH SEGURO Y ROBUSTO
+        // ==========================================
+        function compileMath(expr, variables) {
+            try {
+                let cleanExpr = expr.replace(/Math\./gi, ''); 
+                let safeExpr = cleanExpr
+                    .replace(/sin/gi, 'Math.sin').replace(/cos/gi, 'Math.cos')
+                    .replace(/tan/gi, 'Math.tan').replace(/sqrt/gi, 'Math.sqrt')
+                    .replace(/exp/gi, 'Math.exp').replace(/pi/gi, 'Math.PI')
+                    .replace(/abs/gi, 'Math.abs')
+                    .replace(/\^/g, '**'); 
+                
+                return new Function(...variables, 'return ' + safeExpr + ';');
+            } catch (e) {
+                console.error("Error compilando math expression:", expr, e);
+                return () => 0; // Fallback seguro
+            }
+        }
+
+        function updateCustomFunctions() {
+            state.customField.Ex = compileMath(document.getElementById('in-ex').value, ['x', 'y']);
+            state.customField.Ey = compileMath(document.getElementById('in-ey').value, ['x', 'y']);
+            for(let i=1; i<=3; i++) {
+                state.customPaths[i-1].x = compileMath(document.getElementById('in-x'+i).value, ['t']);
+                state.customPaths[i-1].y = compileMath(document.getElementById('in-y'+i).value, ['t']);
+            }
+        }
+
+        // ==========================================
+        // DICCIONARIO DE TRAYECTORIAS PARAMÉTRICAS (t en [0,1])
+        // ==========================================
+        const pathsDefConfig = {
+            'cartesiano': [
+                { getPos: (t) => ({ x: 4*t, y: 0 }) },
+                { getPos: (t) => ({ x: 4, y: 3*t }) },
+                { getPos: (t) => ({ x: 4*(1-t), y: 3*(1-t) }) } 
+            ],
+            'esferico': [
+                { getPos: (t) => ({ x: 5 - 3*t, y: 0 }) }, 
+                { getPos: (t) => ({ x: 2*Math.cos(t*Math.PI/2), y: 2*Math.sin(t*Math.PI/2) }) }, 
+                { getPos: (t) => ({ x: 0, y: 2 + 3*t }) } 
+            ],
+            'equipotencial': [
+                { getPos: (t) => ({ x: 3*Math.cos(2*Math.PI*t), y: 3*Math.sin(2*Math.PI*t) }) }, 
+                { getPos: (t) => ({ x: 3*Math.cos(2*Math.PI), y: 3*Math.sin(2*Math.PI) }) }, 
+                { getPos: (t) => ({ x: 3*Math.cos(2*Math.PI), y: 3*Math.sin(2*Math.PI) }) }
+            ],
+            'noconservativo': [
+                { getPos: (t) => ({ x: 4*t, y: 0 }) },
+                { getPos: (t) => ({ x: 4, y: 4*t }) },
+                { getPos: (t) => ({ x: 4*(1-t), y: 4*(1-t) }) } 
+            ],
+            'dipolo': [
+                { getPos: (t) => ({ x: -5 + 10*t, y: 1.0 }) }, 
+                { getPos: (t) => ({ x: 5, y: 1.0 - 2.0*t }) }, 
+                { getPos: (t) => ({ x: 5 - 10*t, y: -1.0 }) }  
+            ],
+            'cuadrupolo': [
+                { getPos: (t) => ({ x: -5 + 10*t, y: 0 }) }, 
+                { getPos: (t) => ({ x: 5 - 5*t, y: 5*t }) }, 
+                { getPos: (t) => ({ x: -5*t, y: 5 - 5*t }) } 
+            ],
+            'mismosigno': [
+                { getPos: (t) => ({ x: 0, y: 5 - 10*t }) }, 
+                { getPos: (t) => ({ x: 4*t, y: -5 }) }, 
+                { getPos: (t) => ({ x: 4 - 4*t, y: -5 + 10*t }) } 
+            ]
+        };
+
+        const pathsPolinomios = {
+            'lineal': [
+                { getPos: (t) => ({ x: -4 + 8*t, y: -4 + 8*t }) }, 
+                { getPos: (t) => ({ x: 4, y: 4 - 2*t }) },         
+                { getPos: (t) => ({ x: 4 - 8*t, y: 2 - 6*t }) }    
+            ],
+            'cuadratica': [
+                { getPos: (t) => { let nx = -4 + 8*t; return { x: nx, y: 0.25*nx*nx - 3 }; } }, 
+                { getPos: (t) => ({ x: 4 - 8*t, y: 1.0 }) }, 
+                { getPos: (t) => ({ x: -4, y: 1.0 - 4.0*t }) } 
+            ],
+            'cubica': [
+                { getPos: (t) => { let nx = -4 + 8*t; return { x: nx, y: 0.05*nx*nx*nx }; } }, 
+                { getPos: (t) => { let nx = 4 - 8*t; return { x: nx, y: 3.2*t }; } }, 
+                { getPos: (t) => ({ x: -4, y: 3.2 - 6.4*t }) } 
+            ]
+        };
+
+        function getActivePaths() {
+            if(state.pathType === 'default') {
+                return pathsDefConfig[state.config];
+            } else if (state.pathType === 'custom') {
+                return [
+                    { getPos: (t) => ({ x: state.customPaths[0].x(t), y: state.customPaths[0].y(t) }) },
+                    { getPos: (t) => ({ x: state.customPaths[1].x(t), y: state.customPaths[1].y(t) }) },
+                    { getPos: (t) => ({ x: state.customPaths[2].x(t), y: state.customPaths[2].y(t) }) }
+                ];
+            } else {
+                return pathsPolinomios[state.pathType];
+            }
+        }
+
+        // ==========================================
+        // MOTOR MATEMÁTICO: CÁLCULO DE CAMPOS VECTORIALES
+        // ==========================================
+        function getField(x, y) {
+            let Ex = 0, Ey = 0;
+            const r_sq = x*x + y*y; 
+            const r = Math.sqrt(r_sq) + 0.001; 
+            const d = state.sourceDist;
+            const kQ = state.k;
+
+            const r1_2 = (x-d)**2 + y**2; const r1 = Math.sqrt(r1_2)+0.01;
+            const r2_2 = (x+d)**2 + y**2; const r2 = Math.sqrt(r2_2)+0.01; 
+            
+            const rc1_2 = (x-d)**2 + (y-d)**2; const rc1 = Math.sqrt(rc1_2)+0.01;
+            const rc2_2 = (x+d)**2 + (y+d)**2; const rc2 = Math.sqrt(rc2_2)+0.01;
+            const rc3_2 = (x-d)**2 + (y+d)**2; const rc3 = Math.sqrt(rc3_2)+0.01;
+            const rc4_2 = (x+d)**2 + (y-d)**2; const rc4 = Math.sqrt(rc4_2)+0.01;
+
+            switch(state.config) {
+                case 'cartesiano': 
+                    Ex = state.E0; Ey = state.E0; 
+                    break;
+                case 'esferico':
+                case 'equipotencial':
+                    Ex = kQ * x / (r*r_sq); Ey = kQ * y / (r*r_sq); 
+                    break;
+                case 'dipolo':
+                    Ex = kQ * ((x-d)/(r1*r1_2) - (x+d)/(r2*r2_2));
+                    Ey = kQ * (y/(r1*r1_2) - y/(r2*r2_2));
+                    break;
+                case 'mismosigno':
+                    Ex = kQ * ((x-d)/(r1*r1_2) + (x+d)/(r2*r2_2));
+                    Ey = kQ * (y/(r1*r1_2) + y/(r2*r2_2));
+                    break;
+                case 'cuadrupolo':
+                    Ex = kQ * ((x-d)/(rc1*rc1_2) + (x+d)/(rc2*rc2_2) - (x-d)/(rc3*rc3_2) - (x+d)/(rc4*rc4_2));
+                    Ey = kQ * ((y-d)/(rc1*rc1_2) + (y+d)/(rc2*rc2_2) - (y+d)/(rc3*rc3_2) - (y-d)/(rc4*rc4_2));
+                    break;
+                case 'noconservativo':
+                    Ex = y; Ey = -x; 
+                    break;
+                case 'custom':
+                    try { Ex = state.customField.Ex(x,y); Ey = state.customField.Ey(x,y); } 
+                    catch(e) { Ex=0; Ey=0; }
+                    break;
+            }
+            return {x: Ex, y: Ey};
+        }
+
+        function getScalarPotential(x, y) {
+            const r = Math.sqrt(x*x + y*y) + 0.001;
+            const d = state.sourceDist;
+            const kQ = state.k;
+            const r1 = Math.sqrt((x-d)**2 + y**2)+0.01;
+            const r2 = Math.sqrt((x+d)**2 + y**2)+0.01;
+            
+            const rc1 = Math.sqrt((x-d)**2 + (y-d)**2)+0.01;
+            const rc2 = Math.sqrt((x+d)**2 + (y+d)**2)+0.01;
+            const rc3 = Math.sqrt((x-d)**2 + (y+d)**2)+0.01;
+            const rc4 = Math.sqrt((x+d)**2 + (y-d)**2)+0.01;
+
+            switch(state.config) {
+                case 'cartesiano': return -state.E0*x - state.E0*y; 
+                case 'esferico':
+                case 'equipotencial': return kQ / r; 
+                case 'dipolo': return kQ * (1/r1 - 1/r2);
+                case 'mismosigno': return kQ * (1/r1 + 1/r2);
+                case 'cuadrupolo': return kQ * (1/rc1 + 1/rc2 - 1/rc3 - 1/rc4);
+                case 'noconservativo': return 0; 
+                case 'custom': 
+                    const E = getField(x,y); return Math.sqrt(E.x*E.x + E.y*E.y); 
+            }
+            return 0;
+        }
+
+        // ==========================================
+        // MOTOR GRÁFICO 2D AVANZADO (CANVAS, PAN & ZOOM)
+        // ==========================================
+        const canvas2d = document.getElementById('canvas-2d');
+        const ctx = canvas2d.getContext('2d');
+        let width, height, centerX, centerY, scaleBase;
+
+        function resize2D() {
+            const container = document.getElementById('main-canvas-container');
+            width = container.clientWidth || 800;
+            height = container.clientHeight || 600;
+            canvas2d.width = width;
+            canvas2d.height = height;
+            
+            centerX = width / 2;
+            centerY = height / 2;
+            scaleBase = Math.max(10, Math.min(width, height) / 12); 
+            
+            if (state.mode2D) render2D();
+        }
+        window.addEventListener('resize', resize2D);
+
+        function mathToScreen(x, y) { 
+            return { 
+                px: centerX + viewParams.offsetX + x * scaleBase * viewParams.zoom, 
+                py: centerY + viewParams.offsetY - y * scaleBase * viewParams.zoom 
+            }; 
+        }
+        
+        canvas2d.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomSensitivity = 0.001;
+            viewParams.zoom *= Math.exp(-e.deltaY * zoomSensitivity);
+            viewParams.zoom = Math.max(0.1, Math.min(6.0, viewParams.zoom)); 
+            render2D();
+        });
+        canvas2d.addEventListener('pointerdown', (e) => {
+            viewParams.isDragging = true;
+            viewParams.lastX = e.clientX; viewParams.lastY = e.clientY;
+            canvas2d.style.cursor = 'grabbing';
+        });
+        canvas2d.addEventListener('pointermove', (e) => {
+            if (!viewParams.isDragging) return;
+            viewParams.offsetX += (e.clientX - viewParams.lastX);
+            viewParams.offsetY += (e.clientY - viewParams.lastY);
+            viewParams.lastX = e.clientX; viewParams.lastY = e.clientY;
+            render2D();
+        });
+        const stopDrag = () => { viewParams.isDragging = false; canvas2d.style.cursor = 'grab'; };
+        window.addEventListener('pointerup', stopDrag);
+        canvas2d.addEventListener('pointerleave', stopDrag);
+
+        document.getElementById('btn-reset-view').addEventListener('click', () => {
+            viewParams.offsetX = 0; viewParams.offsetY = 0; viewParams.zoom = 1.0;
+            render2D();
+        });
+
+        function drawArrow2D(fromX, fromY, vecX, vecY, color, isDiferencial = false) {
+            const headlen = isDiferencial ? 10 : 7; 
+            const angle = Math.atan2(-vecY, vecX); 
+            const {px, py} = mathToScreen(fromX, fromY);
+            
+            const mag = Math.sqrt(vecX*vecX + vecY*vecY);
+            let visualLen = isDiferencial ? 45 : Math.min(mag * 8 * viewParams.zoom, scaleBase * viewParams.zoom * 0.9);
+            
+            if (visualLen < 2) return; 
+
+            const endPx = px + visualLen * Math.cos(angle);
+            const endPy = py + visualLen * Math.sin(angle);
+
+            ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = isDiferencial ? 3 : 1.5;
+            ctx.moveTo(px, py); ctx.lineTo(endPx, endPy);
+            ctx.lineTo(endPx - headlen * Math.cos(angle - Math.PI / 6), endPy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(endPx, endPy);
+            ctx.lineTo(endPx - headlen * Math.cos(angle + Math.PI / 6), endPy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+        }
+
+        function renderVectorField2D() {
+            const currentScale = scaleBase * viewParams.zoom;
+            const mathLeft = (0 - centerX - viewParams.offsetX) / currentScale;
+            const mathRight = (width - centerX - viewParams.offsetX) / currentScale;
+            const mathBottom = (0 - centerY - viewParams.offsetY) / -currentScale;
+            const mathTop = (height - centerY - viewParams.offsetY) / -currentScale;
+
+            let step = 1.0;
+            if(viewParams.zoom > 1.8) step = 0.5;
+            if(viewParams.zoom < 0.6) step = 2.0;
+
+            let startX = Math.floor(mathLeft/step)*step; let endX = Math.ceil(mathRight/step)*step;
+            let startY = Math.floor(mathTop/step)*step; let endY = Math.ceil(mathBottom/step)*step;
+
+            if((endX - startX)/step > 60 || isNaN(startX)) return;
+
+            for(let x = startX; x <= endX; x += step) {
+                for(let y = startY; y <= endY; y += step) {
+                    const E = getField(x, y);
+                    drawArrow2D(x, y, E.x, E.y, "rgba(59, 130, 246, 0.4)"); 
+                }
+            }
+
+            const d = state.sourceDist;
+            const drawSource = (sx, sy, isPos) => {
+                const {px, py} = mathToScreen(sx, sy);
+                ctx.beginPath(); ctx.arc(px, py, 6 * viewParams.zoom, 0, Math.PI*2);
+                ctx.fillStyle = isPos ? "#ef4444" : "#3b82f6"; ctx.fill();
+                ctx.strokeStyle = "#fff"; ctx.lineWidth=1; ctx.stroke();
+            };
+            
+            if(state.config==='dipolo') { drawSource(d,0,true); drawSource(-d,0,false); }
+            if(state.config==='mismosigno') { drawSource(d,0,true); drawSource(-d,0,true); }
+            if(state.config==='cuadrupolo') { drawSource(d,d,true); drawSource(-d,-d,true); drawSource(-d,d,false); drawSource(d,-d,false); }
+            if(state.config==='esferico' || state.config==='equipotencial') { drawSource(0,0,true); }
+        }
+
+        function drawPaths2D() {
+            const paths = getActivePaths();
+            if(!paths || paths.length === 0) return;
+            
+            paths.forEach((seg, idx) => {
+                ctx.beginPath(); ctx.lineWidth = 3;
+                if (idx === state.activeSegmentIdx) { 
+                    ctx.strokeStyle = "#8b5cf6"; 
+                    ctx.setLineDash([]); 
+                } 
+                else { 
+                    ctx.strokeStyle = "#94a3b8"; 
+                    ctx.setLineDash([6, 6]); 
+                }
+
+                let pts = 50; 
+                for(let i=0; i<=pts; i++){
+                    try {
+                        const p = seg.getPos(i/pts);
+                        const {px, py} = mathToScreen(p.x, p.y);
+                        if(i===0) ctx.moveTo(px, py);
+                        else ctx.lineTo(px, py);
+                    } catch(e) {}
+                }
+                ctx.stroke(); ctx.setLineDash([]);
+            });
+
+            if (state.activeSegmentIdx !== -1 || state.pos.x !== 0 || state.pos.y !== 0) {
+                const {px, py} = mathToScreen(state.pos.x, state.pos.y);
+                
+                const E = getField(state.pos.x, state.pos.y);
+                drawArrow2D(state.pos.x, state.pos.y, E.x, E.y, "#ef4444"); 
+
+                if(state.isAnimating && (Math.abs(state.dlVec.x)>0.001 || Math.abs(state.dlVec.y)>0.001)) {
+                    let dlNormX = state.dlVec.x * 25; 
+                    let dlNormY = state.dlVec.y * 25;
+                    drawArrow2D(state.pos.x, state.pos.y, dlNormX, dlNormY, "#10b981", true); 
+                }
+
+                ctx.beginPath(); ctx.arc(px, py, 7 * Math.max(0.6, viewParams.zoom), 0, Math.PI*2);
+                ctx.fillStyle = "#facc15"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#000"; ctx.stroke();
+            }
+        }
+
+        function render2D() {
+            if(!state.mode2D) return;
+            ctx.clearRect(0, 0, width, height);
+            
+            ctx.beginPath(); ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.5;
+            const ori = mathToScreen(0,0);
+            ctx.moveTo(0, ori.py); ctx.lineTo(width, ori.py);
+            ctx.moveTo(ori.px, 0); ctx.lineTo(ori.px, height);
+            ctx.stroke();
+
+            renderVectorField2D();
+            drawPaths2D();
+        }
+
+        // ==========================================
+        // VISTA TOPOLÓGICA 3D (PLOTLY.JS SCIENTIFIC)
+        // ==========================================
+        function renderPlotly3D() {
+            const size = 12;
+            const steps = 40; 
+            let x_data = [], y_data = [], z_data = [];
+
+            for(let i=0; i<=steps; i++) {
+                let x = -size/2 + (size/steps)*i;
+                x_data.push(x);
+                let row_z = [], row_y = [];
+                for(let j=0; j<=steps; j++) {
+                    let y = -size/2 + (size/steps)*j;
+                    row_y.push(y);
+                    let V = getScalarPotential(x, y);
+                    row_z.push(Math.max(-10, Math.min(10, V)));
+                }
+                z_data.push(row_z);
+                if(i===0) y_data = row_y; 
+            }
+
+            let titleZ = (state.config === 'custom' || state.config === 'noconservativo') ? '|E| Magnitud' : 'Voltaje V(x,y)';
+            let surface = {
+                x: y_data, 
+                y: x_data,
+                z: z_data,
+                type: 'surface',
+                colorscale: 'RdBu', 
+                showscale: false,
+                opacity: 0.85,
+                contours: { z: { show: true, usecolormap: true, highlightcolor: "limegreen", project: { z: true } } }
+            };
+
+            let traces = [surface];
+            const paths = getActivePaths();
+            if (paths && paths.length > 0) {
+                paths.forEach((seg, idx) => {
+                    let px=[], py=[], pz=[];
+                    for(let t=0; t<=1; t+=0.02) {
+                        try {
+                            let pos = seg.getPos(t);
+                            px.push(pos.y); py.push(pos.x);
+                            pz.push(getScalarPotential(pos.x, pos.y) + 0.6); 
+                        } catch(e){}
+                    }
+                    traces.push({
+                        x: px, y: py, z: pz,
+                        type: 'scatter3d', mode: 'lines',
+                        line: { color: idx === state.activeSegmentIdx ? '#00ff00' : 'white', width: 6 },
+                        name: `Tramo ${idx+1}`
+                    });
+                });
+            }
+
+            let layout = {
+                margin: {l:0, r:0, b:0, t:0},
+                scene: {
+                    xaxis: {title: 'Y'}, yaxis: {title: 'X'}, zaxis: {title: titleZ},
+                    camera: { eye: {x: 1.4, y: -1.4, z: 1.1} }
+                },
+                paper_bgcolor: 'transparent', plot_bgcolor: 'transparent'
+            };
+
+            Plotly.newPlot('canvas-3d', traces, layout, {displayModeBar: false, responsive: true});
+        }
+
+        // ==========================================
+        // ALGORITMO NUMÉRICO CENTRAL (INTEGRACIÓN)
+        // ==========================================
+        let lastTime = 0;
+        
+        function animatePath(timestamp) {
+            if (!lastTime) { 
+                lastTime = timestamp; 
+                requestAnimationFrame(animatePath); 
+                return; 
+            }
+            
+            const dtReal = Math.min((timestamp - lastTime) / 1000, 0.1); 
+            lastTime = timestamp;
+
+            if (state.isAnimating && state.activeSegmentIdx !== -1) {
+                const paths = getActivePaths();
+                const seg = paths[state.activeSegmentIdx];
+                
+                const speed = 0.25; 
+                const tOld = state.animProgress;
+                state.animProgress += speed * dtReal;
+                if (state.animProgress >= 1.0) state.animProgress = 1.0;
+
+                try {
+                    const pOld = seg.getPos(tOld);
+                    const pNew = seg.getPos(state.animProgress);
+                    
+                    const dx = pNew.x - pOld.x;
+                    const dy = pNew.y - pOld.y;
+                    
+                    const simDt = (speed * dtReal + 0.000001); 
+                    state.dlVec.x = dx / simDt; 
+                    state.dlVec.y = dy / simDt;
+
+                    const pMidX = (pOld.x + pNew.x)/2;
+                    const pMidY = (pOld.y + pNew.y)/2;
+                    const E = getField(pMidX, pMidY);
+                    
+                    const dW = E.x * dx + E.y * dy;
+                    state.workAccumulated += dW;
+                    
+                    const magE = Math.sqrt(E.x*E.x + E.y*E.y);
+                    const magDl = Math.sqrt(dx*dx + dy*dy);
+                    let angleDeg = 0;
+                    if(magE > 0.0001 && magDl > 0.00001) {
+                        let cosTheta = dW / (magE * magDl);
+                        cosTheta = Math.max(-1, Math.min(1, cosTheta)); 
+                        angleDeg = Math.acos(cosTheta) * (180 / Math.PI);
+                    }
+                    state.angle = angleDeg;
+
+                    state.pos = pNew;
+                    state.E = E;
+
+                    updateTelemetryUI();
+
+                } catch(e) {
+                    console.error("Crash crítico procesando matemática paramétrica:", e);
+                    state.isAnimating = false;
+                }
+
+                if (state.animProgress >= 1.0) {
+                    if (state.playAll) {
+                        if (state.activeSegmentIdx < paths.length - 1) {
+                            state.activeSegmentIdx++;
+                            state.animProgress = 0;
+                            updateSegmentButtonsUI();
+                        } else {
+                            state.isAnimating = false;
+                            state.playAll = false;
+                        }
+                    } else {
+                        state.isAnimating = false;
+                    }
+                }
+            }
+
+            if(state.mode2D) render2D();
+            requestAnimationFrame(animatePath);
+        }
+
+        // ==========================================
+        // SUPERVISOR DE LA INTERFAZ Y REACTIVIDAD
+        // ==========================================
+        function updateMathPanelUI() {
+            document.querySelectorAll('.math-demo-container').forEach(el => el.classList.remove('active'));
+            
+            let blockId = `math-${state.config}`;
+            if(state.pathType !== 'default' && state.pathType !== 'custom') {
+                blockId = 'math-trayectorias';
+                document.getElementById('math-title-badge').textContent = 'Análisis de Parametrizaciones';
+            } else if (state.pathType === 'custom') {
+                blockId = 'math-custom';
+                document.getElementById('math-title-badge').textContent = 'Cálculo de Rutas Libres';
+            } else {
+                if(!document.getElementById(blockId)) blockId = 'math-cartesiano'; 
+                document.getElementById('math-title-badge').textContent = configTitles[state.config];
+            }
+            
+            const tgt = document.getElementById(blockId);
+            if(tgt) tgt.classList.add('active');
+            
+            const cPanel = document.getElementById('custom-inputs-panel');
+            if(state.config === 'custom' || state.pathType === 'custom') {
+                cPanel.classList.remove('hidden'); cPanel.classList.add('flex');
+            } else {
+                cPanel.classList.add('hidden'); cPanel.classList.remove('flex');
+            }
+
+            // Reprocesamiento dinámico del SVG MathJax
+            if(window.MathJax) {
+                try { MathJax.typesetPromise(); } catch(e){}
+            }
+        }
+
+        function updateTelemetryUI() {
+            document.getElementById('ui-ex').textContent = state.E.x.toFixed(2);
+            document.getElementById('ui-ey').textContent = state.E.y.toFixed(2);
+            document.getElementById('ui-t').textContent = state.animProgress.toFixed(2);
+            
+            document.getElementById('ui-dlx').textContent = state.dlVec.x.toFixed(2);
+            document.getElementById('ui-dly').textContent = state.dlVec.y.toFixed(2);
+            document.getElementById('ui-angle').textContent = state.angle.toFixed(1);
+
+            const wEl = document.getElementById('ui-work');
+            wEl.textContent = state.workAccumulated.toFixed(3);
+            
+            if(state.workAccumulated > 0.05) wEl.className = "font-mono font-bold text-emerald-400 text-[28px] tracking-tighter drop-shadow-md";
+            else if(state.workAccumulated < -0.05) wEl.className = "font-mono font-bold text-red-400 text-[28px] tracking-tighter drop-shadow-md";
+            else wEl.className = "font-mono font-bold text-slate-300 text-[28px] tracking-tighter";
+        }
+
+        function updateSegmentButtonsUI() {
+            ['btn-t1', 'btn-t2', 'btn-t3'].forEach((id, idx) => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    if (idx === state.activeSegmentIdx) {
+                        btn.className = "btn-ui bg-indigo-600 text-white border-indigo-700 shadow-md transform scale-105 text-xs px-3 py-1 font-bold";
+                    } else {
+                        btn.className = "btn-ui bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 text-xs px-3 py-1 font-bold";
+                    }
+                }
+            });
+            if(!state.mode2D) renderPlotly3D(); 
+        }
+
+        function startSegment(idx) {
+            const paths = getActivePaths();
+            if(!paths || idx >= paths.length) return;
+
+            state.activeSegmentIdx = idx;
+            state.animProgress = 0;
+            state.isAnimating = true;
+            state.playAll = false;
+            
+            try { state.pos = paths[idx].getPos(0); } catch(e){}
+            updateSegmentButtonsUI();
+        }
+
+        function resetSim() {
+            state.activeSegmentIdx = -1;
+            state.animProgress = 0;
+            state.isAnimating = false;
+            state.playAll = false;
+            state.workAccumulated = 0;
+            state.dlVec = {x:0, y:0};
+            state.angle = 0;
+            try { 
+                const paths = getActivePaths();
+                state.pos = paths[0].getPos(0);
+                state.E = getField(state.pos.x, state.pos.y);
+            } catch(e) {}
+            
+            updateTelemetryUI();
+            updateSegmentButtonsUI();
+            if(state.mode2D) render2D();
+        }
+
+        // ==========================================
+        // CONTROL DE INTERACCIÓN (Listeners)
+        // ==========================================
+        document.getElementById('select-config').addEventListener('change', (e) => {
+            state.config = e.target.value;
+            if(state.config === 'custom') updateCustomFunctions();
+            updateMathPanelUI(); resetSim(); resize2D();
+            if(!state.mode2D) renderPlotly3D();
+        });
+
+        document.getElementById('select-path-type').addEventListener('change', (e) => {
+            state.pathType = e.target.value;
+            if(state.pathType === 'custom') updateCustomFunctions();
+            updateMathPanelUI(); resetSim(); resize2D();
+            if(!state.mode2D) renderPlotly3D();
+        });
+
+        document.getElementById('btn-apply-custom').addEventListener('click', () => {
+            updateCustomFunctions(); resetSim();
+            if(!state.mode2D) renderPlotly3D();
+        });
+
+        document.getElementById('btn-t1').addEventListener('click', () => startSegment(0));
+        document.getElementById('btn-t2').addEventListener('click', () => startSegment(1));
+        document.getElementById('btn-t3').addEventListener('click', () => startSegment(2));
+        
+        document.getElementById('btn-tall').addEventListener('click', () => {
+            resetSim(); state.playAll = true; startSegment(0); state.playAll = true; 
+        });
+        document.getElementById('btn-reset').addEventListener('click', resetSim);
+
+        document.getElementById('btn-toggle-engine').addEventListener('click', (e) => {
+            state.mode2D = !state.mode2D;
+            const c2 = document.getElementById('canvas-2d');
+            const c3 = document.getElementById('canvas-3d');
+            const hint = document.getElementById('hint-text');
+            
+            if(state.mode2D) {
+                c2.style.display = 'block'; c3.style.display = 'none';
+                e.target.textContent = "Ver Superficie 3D (Plotly)";
+                e.target.className = "btn-ui bg-slate-200 text-slate-800 hover:bg-slate-300 border border-slate-400 text-xs shadow-sm font-bold";
+                hint.innerHTML = "<strong>Simulador Vectorial 2D:</strong> <br>👆 Arrastra el fondo para hacer Pan | 🖱️ Rueda del ratón para Zoom In/Out. <br>🟢 Verde: Vector $d\\vec{l}$ (Desplazamiento) | 🔴 Rojo: Vector $\\vec{E}$ (Campo Local)";
+                resize2D();
+            } else {
+                c2.style.display = 'none'; c3.style.display = 'block';
+                e.target.textContent = "Volver al Gráfico 2D";
+                e.target.className = "btn-ui bg-indigo-600 text-white border-indigo-700 shadow-md text-xs font-bold";
+                let ttext = (state.config === 'noconservativo' || state.config === 'custom') ? "|E(x,y)| Físico" : "Potencial V(x,y)";
+                hint.innerHTML = `<strong>Plotly 3D Renderizado:</strong> Evaluando Espacio de ${ttext}. Rota la cámara usando el ratón o dispositivo táctil.`;
+                renderPlotly3D();
+            }
+        });
+
+        // ==========================================
+        // BOOTSTRAP: INICIO DE LA APLICACIÓN
+        // ==========================================
+        window.onload = () => {
+            updateCustomFunctions(); 
+            updateMathPanelUI();     
+            resize2D();              
+            resetSim();              
+            requestAnimationFrame(animatePath); 
+        };
+
+    </script>
+</body>
+</html>

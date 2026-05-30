@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Interactivo: Leyes de Kirchhoff</title>
+    
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Motores Matemáticos y Exportación -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary-color: #0f172a; --secondary-color: #3b82f6; --success-color: #10b981; --error-color: #ef4444; }
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; transition: background-color 0.3s; }
+        
+        .problem-card { break-inside: avoid; transition: all 0.3s ease; }
+        .problem-text { margin-bottom: 0.75rem; padding-left: 0.5rem; border-left: 3px solid #cbd5e1; }
+        .compact-text { font-size: 0.85rem; line-height: 1.5; color: #334155; }
+        .hint-content { display: none; margin-top: 0.5rem; padding: 0.75rem; background: #eff6ff; border-radius: 0.5rem; border: 1px solid #bfdbfe; font-size: 0.8rem; color: #1e40af; }
+        .hint-content.show { display: block; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Canvas Glassmorphism */
+        .neon-container { border-radius: 0.75rem; position: relative; width: 100%; overflow: hidden; cursor: grab; transition: all 0.3s ease; }
+        .neon-container:active { cursor: grabbing; }
+        body.light-theme .neon-container { background: #ffffff; border: 2px solid #e2e8f0; box-shadow: inset 0 2px 10px rgba(0,0,0,0.02); }
+        body.dark-theme .neon-container { background: #0f172a; border: 2px solid #334155; box-shadow: inset 0 0 30px rgba(0,0,0,0.8); }
+
+        .circuit-scale-wrapper { position: absolute; top: 0; left: 0; width: 850px; height: 480px; transform-origin: 0 0; will-change: transform; }
+        .labels-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        .katex-label { position: absolute; transform: translate(-50%, -50%); font-size: 1.15em; font-weight: 600; transition: color 0.3s, text-shadow 0.3s; }
+        body.light-theme .katex-label { color: #1e293b; text-shadow: 0 0 4px rgba(255, 255, 255, 1); }
+        body.dark-theme .katex-label { color: #ffffff; text-shadow: 0 0 8px rgba(255, 255, 255, 0.9), 0 0 15px rgba(56, 189, 248, 0.6); }
+
+        /* Paneles */
+        .values-panel, .equations-panel { display: none; animation: fadeIn 0.2s ease-out; }
+        .values-panel.active, .equations-panel.active { display: block; }
+        
+        .editor-input-box { display: flex; flex-direction: column; gap: 4px; }
+        .editor-input-box input { width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #0f172a; text-align: center; font-weight: 600; outline: none; transition: all 0.2s; font-size: 0.9rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        body.dark-theme .editor-input-box input { background: #1e293b; border-color: #475569; color: #f8fafc; }
+        .editor-input-box input:focus { border-color: var(--secondary-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+
+        /* Ecuaciones interactivas */
+        .eq-input { width: 45px; text-align: center; font-weight: 800; padding: 2px; margin: 0 4px; border: 2px solid #94a3b8; border-radius: 6px; outline: none; transition: 0.3s; background: #f8fafc; color:#334155; font-size: 0.9rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);}
+        body.dark-theme .eq-input { background: #0f172a; border-color: #475569; color: #f8fafc;}
+        .eq-input:focus { border-color: var(--secondary-color); background: #fff; }
+        body.dark-theme .eq-input:focus { background: #1e293b; }
+        .eq-input.correct { border-color: var(--success-color); background: #d1fae5; color: #065f46; }
+        .eq-input.incorrect { border-color: var(--error-color); background: #fee2e2; color: #991b1b; }
+
+        /* Tablas */
+        .verify-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .verify-table th, .verify-table td { border: 1px solid #e2e8f0; padding: 0.3rem; text-align: center; }
+        .verify-table th { background: #f1f5f9; color: #475569; font-weight: 600; }
+        .verify-table td { background: #ffffff; }
+        body.dark-theme .verify-table th, body.dark-theme .verify-table td { border-color: #334155; }
+        body.dark-theme .verify-table th { background: #1e293b; color: #cbd5e1; }
+        body.dark-theme .verify-table td { background: #0f172a; }
+
+        input.verify-cell { width: 100%; min-width: 50px; padding: 0.25rem; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center; font-size: 0.8rem; outline: none; background: #f8fafc; font-weight: 600; transition: all 0.2s; }
+        body.dark-theme input.verify-cell { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+        input.verify-cell:focus { border-color: var(--secondary-color); }
+        input.verify-cell.correct { background-color: #d1fae5; border-color: var(--success-color); color: #065f46; }
+        input.verify-cell.incorrect { background-color: #fee2e2; border-color: var(--error-color); color: #991b1b; }
+
+        .toolbar-btn { transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; }
+        .toolbar-btn:hover { transform: translateY(-1px); }
+
+        .canvas-controls { position: absolute; bottom: 10px; right: 10px; z-index: 20; display: flex; gap: 4px; background: rgba(255,255,255,0.9); padding: 4px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        body.dark-theme .canvas-controls { background: rgba(15,23,42,0.9); border-color: #334155; }
+        .canvas-controls button { padding: 6px; border-radius: 4px; color: #475569; transition: all 0.2s; }
+        body.dark-theme .canvas-controls button { color: #cbd5e1; }
+        .canvas-controls button:hover { background: #e2e8f0; color: #0f172a; }
+
+        /* Capa de Dibujo Global */
+        .drawing-layer { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 50; width: 100vw; height: 100vh; }
+        .drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white; padding: 0; }
+            .problem-card { border: 1px solid #e2e8f0; box-shadow: none; margin-bottom: 1rem; }
+            .neon-container { background: #ffffff !important; border: 1px solid #cbd5e1 !important; }
+            .katex-label { color: #000 !important; text-shadow: none !important; }
+            main { display: block !important; }
+            .grid { display: block !important; }
+        }
+    </style>
+</head>
+<body class="light-theme p-4 md:p-8">
+
+    <canvas id="globalDrawingCanvas" class="drawing-layer"></canvas>
+
+    <!-- Toolbar Superior -->
+    <nav class="no-print sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 mb-6 px-4 py-3 flex flex-wrap gap-3 items-center justify-between rounded-xl shadow-sm transition-colors">
+        <div class="flex items-center gap-2 md:gap-3 overflow-x-auto">
+            <h1 class="font-bold text-slate-800 dark:text-slate-100 text-sm md:text-base whitespace-nowrap">Physics.10easy</h1>
+            <div class="h-6 w-px bg-slate-300 dark:bg-slate-700 hidden md:block"></div>
+            <button onclick="window.toggleCanvasTheme()" class="toolbar-btn bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-600 hover:bg-slate-200">Tema</button>
+            <button onclick="window.exportToPDF()" class="toolbar-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-blue-700">PDF</button>
+            <button onclick="window.toggleAllHints()" class="toolbar-btn bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-200">Pistas</button>
+            <button id="btnFlowToggle" onclick="window.toggleFlowType()" class="toolbar-btn bg-rose-100 text-rose-800 border border-rose-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-rose-200"><span id="flowText">Vectores (+ a -)</span></button>
+        </div>
+        <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 mt-2 md:mt-0">
+            <button id="penBtn" onclick="window.setDrawingMode('pen')" class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300" title="Lápiz">✏️</button>
+            <button id="eraserBtn" onclick="window.setDrawingMode('eraser')" class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300" title="Borrador">🧽</button>
+            <button onclick="window.clearCanvas()" class="p-1.5 rounded hover:bg-white dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300" title="Limpiar todo">🗑️</button>
+            <button id="toggleDrawBtn" onclick="window.toggleDrawing()" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 border-l border-slate-300 ml-1">Dibujo OFF</button>
+        </div>
+    </nav>
+
+    <header class="text-center mb-8 border-b border-blue-100 dark:border-slate-700 pb-6">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Taller Analítico: Redes y Leyes de Kirchhoff</h2>
+        <p class="text-slate-500 dark:text-slate-400 mt-2 text-sm">Escalado progresivo: De mallas básicas a redes complejas • Motor Interactivo</p>
+    </header>
+
+    <section class="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4 no-print">
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 border-l-4 border-l-rose-500">
+            <h3 class="font-bold text-slate-800 dark:text-slate-100">Ley de Corrientes (Nodos - LCK)</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">La suma algebraica de corrientes en un nodo es cero.</p>
+            <div id="tex_lck" class="mt-2 text-rose-600 font-semibold"></div>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 border-l-4 border-l-blue-500">
+            <h3 class="font-bold text-slate-800 dark:text-slate-100">Ley de Voltajes (Mallas - LVK)</h3>
+            <p class="text-xs text-slate-600 dark:text-slate-400 mt-2">La suma de caídas y elevaciones de potencial en un lazo cerrado es cero.</p>
+            <div id="tex_lvk" class="mt-2 text-blue-600 font-semibold"></div>
+        </div>
+    </section>
+
+    <!-- Contenedor Principal Generado Dinámicamente -->
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" id="taller-content"></main>
+
+    <script>
+        // ==========================================
+        // 1. ESTADO Y CONFIGURACIÓN GLOBAL
+        // ==========================================
+        window.NUM_CIRCUITS = 11;
+        window.animationTime = 0;
+        window.lastTime = 0;
+        window.flowType = 'conventional'; 
+        window.isDarkMode = false;
+        
+        window.contexts = {};
+        window.viewStates = {};
+        for(let i=1; i<=11; i++) window.viewStates[i] = { x: 0, y: 0, zoom: 1 };
+        
+        window.showEqOverlay = {}; 
+        window.currentAnswers = {}; 
+        for(let i=1; i<=11; i++) window.currentAnswers[i] = {};
+
+        // Estados ordenados de Menor a Mayor Dificultad
+        window.state = {
+            1: { Vs1: 10, Vs2: 5, R1: 5, R2: 4, R3: 3, R4: 2, R5: 1 }, 
+            2: { Vs1: 12, Vs2: 10, Vs3: 12, R1: 1, R2: 1, R3: 1, R4: 1, R5: 1 }, 
+            3: { Vs1: 12, Vs2: 8, Vs3: 6, R1: 20, R2: 30, R3: 30, R4: 40, R5: 10 }, 
+            4: { Vs1: 12, Vs2: 8, Vs3: 6, R1: 10, R2: 2, R3: 4, R4: 1, R5: 5 }, 
+            5: { Vs1: 30, R1: 2, R2: 6, R3: 6, R4: 4, R5: 4, R6: 2 }, 
+            6: { Vs1: 12, Vs2: 8, Vs3: 6, R1: 3, R2: 4, R3: 2, R4: 5, R5: 1, R6: 10 }, 
+            7: { Vs1: 80, Vs2: 80, R1: 20, R2: 20, R3: 20, R4: 30, R5: 30, R6: 30 }, 
+            8: { Vs1: 8, Vs2: 4, Vs3: 10, R1: 5, R2: 2, R3: 4, R4: 1, R5: 4 }, 
+            9: { Vs1: 30, Vs2: 45, R1: 10, R2: 5, R3: 4, R4: 20, R5: 8, R6: 4, R7: 16, R8: 8 }, 
+            10: { Vs1: 24, Vs2: 12, Vs3: 10, R1: 50, R2: 40, R3: 30, R4: 10, R5: 20, R6: 80, R7: 60 }, 
+            11: { Vs1: 10, Vs2: 4, Vs3: 6, Vs4: 12, R1: 5, R2: 2, R3: 2, R4: 2, R5: 4, R6: 3, R7: 4, R8: 1, R9: 1, R10: 3 } 
+        };
+
+        window.problemTexts = {
+            1: { title: "Lazos y Cruces Básicos", desc: "Aplique mallas o nodos para hallar las corrientes en las ramas cruzadas." },
+            2: { title: "Tres Mallas Uniformes", desc: "Circuito con resistores idénticos de 1kΩ y fuentes polarizadas en contraposición." },
+            3: { title: "Lazos Independientes", desc: "Halle las corrientes de lazo prestando atención a la polaridad de las fuentes." },
+            4: { title: "Lazos Anidados Simples", desc: "Sistema de 3 mallas donde una fuente empuja corriente contra la polaridad de las otras." },
+            5: { title: "Puente Diamante de Entrada", desc: "La corriente entra por el nodo superior. Utilice las Leyes de Kirchhoff para resolverlo." },
+            6: { title: "Circuito Nodal con kΩ", desc: "Resuelva las ecuaciones. Los resistores están en kΩ, por lo que las corrientes estarán en mA." },
+            7: { title: "Puente Doble Múltiple", desc: "Aplique análisis de mallas para resolver esta red extensa. Determine todas las corrientes." },
+            8: { title: "Supernodos Mixtos", desc: "Aplique análisis de Supernodos considerando que la línea base es el nivel de 0V." },
+            9: { title: "Red Nodal Completa con Tierra", desc: "Resuelva con el nodo central a tierra como referencia (0V)." },
+            10: { title: "Puente Diagonal 5x5", desc: "Topología de 5 lazos con resistencia cruzada. Evalúe el sistema matricial completo." },
+            11: { title: "Red de Alta Densidad", desc: "Circuito con 4 fuentes y 10 resistores. Plantee las ecuaciones nodales o de malla del sistema." }
+        };
+
+        window.tips = {
+            1: "La línea superior conecta al polo positivo de 10V. Usa la inferior como 0V.",
+            2: "La fuente derecha (Vs3) está invertida (+ hacia abajo). Ojo con el signo al analizar el nodo.",
+            3: "Asigna corriente en sentido horario a cada malla. Aplica LVK secuencialmente.",
+            4: "Tres mallas anidadas. Identifica mallas horarias y la contribución de la fuente central.",
+            5: "Observa la simetría del puente. ¿Habrá corriente cruzando por R6? Analiza la LCK en los nodos L y R.",
+            6: "El nodo A está fijo a Vs1 y D a -Vs3 respecto a tierra. Plantea nodos intermedios B y C.",
+            7: "Asigna un nodo de referencia en la esquina inferior izquierda. Ojo con la LCK para el nodo central.",
+            8: "El nodo inferior es 0V. Las fuentes fijan los voltajes relativos entre los nodos de arriba.",
+            9: "El nodo central es 0V. Plantea 4 ecuaciones nodales periféricas. Cruza las fuentes correctamente.",
+            10: "Sistema de 5 mallas. Plantea las ecuaciones teniendo cuidado con la diagonal transversal R8.",
+            11: "Elige un nodo de referencia en la línea base. Las fuentes directas al GND simplifican enormemente tus variables nodales."
+        };
+
+        // ==========================================
+        // 2. CONSTRUCCIÓN DINÁMICA DEL DOM
+        // ==========================================
+        window.buildGridDOM = function() {
+            const main = document.getElementById('taller-content');
+            if(!main) return;
+            main.innerHTML = '';
+            for(let i=1; i<=window.NUM_CIRCUITS; i++) {
+                const isLarge = (i >= 10); 
+                const cardHtml = `
+                <section class="problem-card bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col gap-3 ${isLarge ? 'lg:col-span-2' : ''}">
+                    <div class="flex justify-between items-start">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">CIRCUITO ${(i < 10 ? '0' : '') + i}</span>
+                        <button onclick="window.toggleHint(this)" class="text-slate-400 text-[10px] uppercase font-semibold hover:text-blue-500 transition-colors flex items-center gap-1">
+                            💡 Pista
+                        </button>
+                        <div class="hint-content w-full absolute left-0 mt-8 z-20 shadow-lg dark:bg-slate-700 dark:border-slate-600 dark:text-blue-200" style="position:relative;">${window.tips[i]}</div>
+                    </div>
+                    
+                    <div class="problem-text compact-text border-l-blue-400 dark:text-slate-300">
+                        <strong class="dark:text-slate-100">${i}. ${window.problemTexts[i].title}:</strong> ${window.problemTexts[i].desc}
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 justify-between items-center bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                        <button onclick="window.toggleValuesPanel(${i})" class="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-md text-[10px] uppercase font-bold hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                            ⚙️ Variables
+                        </button>
+                        <button onclick="window.toggleEquations(${i})" class="flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-700 px-3 py-1.5 rounded-md text-[10px] uppercase font-bold hover:bg-indigo-100 dark:hover:bg-indigo-800 transition-colors shadow-sm">
+                            📝 Ecuaciones
+                        </button>
+                    </div>
+
+                    <div id="values-panel-${i}" class="values-panel bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div class="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Modificar Valores</div>
+                        <div id="editor-${i}" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+                    </div>
+
+                    <div id="equations-panel-${i}" class="hidden mt-1 bg-slate-100 dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-inner">
+                        <h4 class="text-indigo-600 dark:text-indigo-400 font-bold mb-2 text-[10px] uppercase tracking-wider">Sistema Analítico</h4>
+                        <div id="eq-content-${i}" class="text-slate-700 dark:text-slate-300 text-xs overflow-x-auto custom-scrollbar"></div>
+                    </div>
+
+                    <div id="neon-container-${i}" class="neon-container mt-2" style="padding-top: 56.47%;">
+                        <div class="circuit-scale-wrapper" id="wrapper-${i}">
+                            <canvas id="canvas-${i}" width="850" height="480"></canvas>
+                            <div id="labels-${i}" class="labels-overlay"></div>
+                        </div>
+                        <div class="canvas-controls no-print">
+                            <button onclick="window.zoomCanvas(${i}, 1.2)" title="Acercar">➕</button>
+                            <button onclick="window.zoomCanvas(${i}, 0.8)" title="Alejar">➖</button>
+                            <button onclick="window.resetZoom(${i})" title="Restaurar Vista">🔄</button>
+                        </div>
+                    </div>
+
+                    <div class="mt-2 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800 px-3 py-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex justify-between">
+                            <span>Tabla Analítica (Redondeo a 2 Decimales)</span>
+                        </div>
+                        <div class="overflow-x-auto custom-scrollbar">
+                            <table class="verify-table">
+                                <thead>
+                                    <tr><th>Comp.</th><th>V</th><th>A/mA</th><th>W</th></tr>
+                                </thead>
+                                <tbody id="tbody-${i}"></tbody>
+                            </table>
+                        </div>
+                        <div class="p-2 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                            <button onclick="window.verifyAnswers(${i})" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-md transition-colors shadow-sm">
+                                Validar
+                            </button>
+                            <div id="feedback-${i}" class="hidden mt-2 p-2 rounded-md text-xs font-semibold text-center border"></div>
+                        </div>
+                    </div>
+                </section>`;
+                main.innerHTML += cardHtml;
+            }
+        };
+
+        // ==========================================
+        // 3. MOTOR MATEMÁTICO
+        // ==========================================
+        window.solveLinearSystem = function(A, B) {
+            let n = B.length;
+            for (let i = 0; i < n; i++) {
+                let maxEl = Math.abs(A[i][i]), maxRow = i;
+                for (let k = i + 1; k < n; k++) { if (Math.abs(A[k][i]) > maxEl) { maxEl = Math.abs(A[k][i]); maxRow = k; } }
+                for (let k = i; k < n; k++) { let tmp = A[maxRow][k]; A[maxRow][k] = A[i][k]; A[i][k] = tmp; }
+                let tmpB = B[maxRow]; B[maxRow] = B[i]; B[i] = tmpB;
+                for (let k = i + 1; k < n; k++) {
+                    let c = -A[k][i] / A[i][i];
+                    for (let j = i; j < n; j++) { if (i === j) A[k][j] = 0; else A[k][j] += c * A[i][j]; }
+                    B[k] += c * B[i];
+                }
+            }
+            let x = new Array(n).fill(0);
+            for (let i = n - 1; i >= 0; i--) { 
+                x[i] = B[i] / A[i][i]; 
+                for (let k = i - 1; k >= 0; k--) B[k] -= A[k][i] * x[i]; 
+            }
+            return x;
+        };
+
+        window.circuitDB = [
+            {
+                id: 1,
+                solve: (s) => {
+                    let A = [[1/s.R1 + 1/s.R2 + 1/s.R5, -1/s.R5], [-1/s.R5, 1/s.R3 + 1/s.R4 + 1/s.R5]];
+                    let B = [ s.Vs1/s.R1, s.Vs1/s.R3 + s.Vs2/s.R4 ];
+                    let V = window.solveLinearSystem(A, B); let vC = V[0], vD = V[1];
+                    let iR1 = (s.Vs1 - vC)/s.R1, iR2 = vC/s.R2, iR3 = (s.Vs1 - vD)/s.R3, iR4 = (vD - s.Vs2)/s.R4, iR5 = (vC - vD)/s.R5;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)} }, total: {i: Math.max(Math.abs(iR1), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5} = raw;
+                    const nTL={x: 150, y: 100}, nBL={x: 150, y: 380}, nTM={x: 450, y: 100}, nBM={x: 450, y: 380}, nCM={x: 450, y: 240}, nTR={x: 750, y: 100}, nBR={x: 750, y: 380}, nCR={x: 750, y: 240};
+                    window.drawWire(ctx, [nBL, {x:150, y:260}], iR1+iR3); window.drawSource(ctx, 150, 240, 'V', 'normal'); window.drawWire(ctx, [{x:150, y:220}, nTL], iR1+iR3);
+                    window.drawWire(ctx, [nTL, nTM], iR1+iR3); window.drawWire(ctx, [nTM, nTR], iR3);
+                    window.drawWire(ctx, [nBR, nBM], iR4); window.drawWire(ctx, [nBM, nBL], iR1+iR3);
+                    window.drawWire(ctx, [nTM, {x:450, y:130}], iR1); window.drawResistor(ctx, 450, 130, 450, 210); window.drawWire(ctx, [{x:450, y:210}, nCM], iR1);
+                    window.drawWire(ctx, [nCM, {x:450, y:270}], iR2); window.drawResistor(ctx, 450, 270, 450, 350); window.drawWire(ctx, [{x:450, y:350}, nBM], iR2);
+                    window.drawWire(ctx, [nTR, {x:750, y:130}], iR3); window.drawResistor(ctx, 750, 130, 750, 210); window.drawWire(ctx, [{x:750, y:210}, nCR], iR3);
+                    window.drawWire(ctx, [nCR, {x:750, y:260}], iR4); window.drawResistor(ctx, 750, 260, 750, 320); window.drawWire(ctx, [{x:750, y:320}, {x:750, y:330}], iR4, false); window.drawSource(ctx, 750, 350, 'V', 'normal'); window.drawWire(ctx, [{x:750, y:370}, nBR], iR4);
+                    window.drawWire(ctx, [nCM, {x:560, y:240}], iR5); window.drawResistor(ctx, 560, 240, 640, 240); window.drawWire(ctx, [{x:640, y:240}, nCR], iR5);
+                    [nTL, nTM, nTR, nBL, nBM, nBR, nCM, nCR].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayNode(ctx, 450, 240, "C", "#ef4444"); window.drawOverlayNode(ctx, 750, 240, "D", "#3b82f6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 100, 240); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 800, 350);
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 400, 170); window.addLabel(id, `R_2=${s.R2}\\Omega`, 400, 310); window.addLabel(id, `R_3=${s.R3}\\Omega`, 800, 170); window.addLabel(id, `R_4=${s.R4}\\Omega`, 800, 290); window.addLabel(id, `R_5=${s.R5}\\Omega`, 600, 215);
+                },
+                equations: [
+                    { name: "Nodo C", color: "text-red-500", eq: [{type:'frac', num:[{type:'tx', val:'V_C - '},{type:'in', key:'Vs1'}], den:[{type:'in', key:'R1'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_C'}], den:[{type:'in', key:'R2'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_C - V_D'}], den:[{type:'in', key:'R5'}]}, {type:'tx', val:'= 0'}] },
+                    { name: "Nodo D", color: "text-blue-500", eq: [{type:'frac', num:[{type:'tx', val:'V_D - '},{type:'in', key:'Vs1'}], den:[{type:'in', key:'R3'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_D - '},{type:'in', key:'Vs2'}], den:[{type:'in', key:'R4'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_D - V_C'}], den:[{type:'in', key:'R5'}]}, {type:'tx', val:'= 0'}] }
+                ]
+            },
+            {
+                id: 2,
+                solve: (s) => {
+                    let A = [[1/s.R1 + 1/s.R4 + 1/s.R2, -1/s.R2], [-1/s.R2, 1/s.R2 + 1/s.R3 + 1/s.R5]];
+                    let B = [ s.Vs1/s.R1 + s.Vs2/s.R4, -(-s.Vs3)/s.R3 ];
+                    let V = window.solveLinearSystem(A, B); let v1 = V[0], v2 = V[1];
+                    let iR1 = (s.Vs1 - v1)/s.R1, iR2 = (v1 - v2)/s.R2, iR3 = (v2 - (-s.Vs3))/s.R3, iR4 = (v1 - s.Vs2)/s.R4, iR5 = v2/s.R5;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)} }, total: {i: Math.max(Math.abs(iR1), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5} = raw;
+                    const n1={x: 200, y: 100}, n2={x: 450, y: 100}, n3={x: 700, y: 100};
+                    window.drawWire(ctx, [{x:200,y:350}, {x:200,y:260}], iR1); window.drawSource(ctx, 200, 240, 'V', 'normal'); window.drawWire(ctx, [{x:200,y:220}, n1], iR1);
+                    window.drawWire(ctx, [n1, {x:280, y:100}], iR1); window.drawResistor(ctx, 280, 100, 360, 100); window.drawWire(ctx, [{x:360, y:100}, n2], iR1);
+                    window.drawWire(ctx, [n2, {x:450, y:140}], iR4); window.drawResistor(ctx, 450, 140, 450, 220); window.drawWire(ctx, [{x:450, y:220}, {x:450, y:230}], iR4, false); window.drawSource(ctx, 450, 250, 'V', 'normal'); window.drawWire(ctx, [{x:450, y:270}, {x:450, y:350}], iR4);
+                    window.drawWire(ctx, [n2, {x:530, y:100}], iR2); window.drawResistor(ctx, 530, 100, 610, 100); window.drawWire(ctx, [{x:610, y:100}, n3], iR2);
+                    window.drawWire(ctx, [n3, {x:700, y:160}], iR5); window.drawResistor(ctx, 700, 160, 700, 350);
+                    window.drawWire(ctx, [n3, {x:800, y:100}, {x:800, y:200}], iR3); window.drawSource(ctx, 800, 220, 'V', 'reversed'); window.drawWire(ctx, [{x:800, y:240}, {x:800, y:350}], iR3);
+                    window.drawWire(ctx, [{x:800, y:350}, {x:200, y:350}], iR1+iR4+iR5+iR3, true); window.drawGround(ctx, 450, 350);
+                    [n1, n2, n3].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayMesh(ctx, 325, 220, "i1", "#ef4444"); window.drawOverlayMesh(ctx, 575, 220, "i2", "#3b82f6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 100, 240); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 350, 260); window.addLabel(id, `V_{s3}=${s.Vs3}V`, 750, 240);
+                    window.addLabel(id, `R_1=${s.R1}k\\Omega`, 250, 70); window.addLabel(id, `R_2=${s.R2}k\\Omega`, 450, 70); window.addLabel(id, `R_3=${s.R3}k\\Omega`, 650, 70); window.addLabel(id, `R_4=${s.R4}k\\Omega`, 350, 170); window.addLabel(id, `R_5=${s.R5}k\\Omega`, 550, 240);
+                },
+                equations: [
+                    { name: "Malla 1", color: "text-red-500", eq: [{type:'in', key:'R1'}, {type:'tx', val:'i_1 +'}, {type:'in', key:'R4'}, {type:'tx', val:'(i_1 - i_2) ='}, {type:'in', key:'Vs1'}, {type:'tx', val:'-'}, {type:'in', key:'Vs2'}] },
+                    { name: "Malla 2", color: "text-blue-500", eq: [{type:'tx', val:'-'}, {type:'in', key:'R4'}, {type:'tx', val:'i_1 + ('}, {type:'in', key:'R4'}, {type:'tx', val:'+'}, {type:'in', key:'R2'}, {type:'tx', val:'+'}, {type:'in', key:'R5'}, {type:'tx', val:')i_2 ='}, {type:'in', key:'Vs2'}] }
+                ]
+            },
+            {
+                id: 3,
+                solve: (s) => {
+                    let A = [[s.R1 + s.R2, -s.R2, 0], [-s.R2, s.R2 + s.R3 + s.R4, -s.R4], [0, -s.R4, s.R4 + s.R5]];
+                    let B = [s.Vs1, -s.Vs2, s.Vs3]; let I = window.solveLinearSystem(A, B);
+                    return { raw: {i1: I[0], i2: I[1], i3: I[2]}, ans: { R1: {v: Math.abs(I[0]*s.R1), i: Math.abs(I[0])}, R2: {v: Math.abs((I[0]-I[1])*s.R2), i: Math.abs(I[0]-I[1])}, R3: {v: Math.abs(I[1]*s.R3), i: Math.abs(I[1])}, R4: {v: Math.abs((I[1]-I[2])*s.R4), i: Math.abs(I[1]-I[2])}, R5: {v: Math.abs(I[2]*s.R5), i: Math.abs(I[2])} }, total: {i: Math.max(Math.abs(I[0]), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {i1, i2, i3} = raw;
+                    const nTL={x: 150, y: 100}, nBL={x: 150, y: 380}, nT1={x: 350, y: 100}, nB1={x: 350, y: 380}, nT2={x: 550, y: 100}, nB2={x: 550, y: 380}, nTR={x: 750, y: 100}, nBR={x: 750, y: 380};
+                    window.drawWire(ctx, [nBL, {x: 150, y: 262}], i1); window.drawWire(ctx, [{x: 150, y: 262}, {x: 150, y: 218}], i1, false); window.drawWire(ctx, [{x: 150, y: 218}, nTL], i1); window.drawSource(ctx, 150, 240, 'V', 'normal');
+                    window.drawWire(ctx, [nTL, {x: 210, y: 100}], i1); window.drawWire(ctx, [{x: 210, y: 100}, {x: 290, y: 100}], i1, false); window.drawWire(ctx, [{x: 290, y: 100}, nT1], i1); window.drawResistor(ctx, 210, 100, 290, 100);
+                    let ib3 = i1 - i2; window.drawWire(ctx, [nT1, {x: 350, y: 200}], ib3); window.drawWire(ctx, [{x: 350, y: 200}, {x: 350, y: 280}], ib3, false); window.drawWire(ctx, [{x: 350, y: 280}, nB1], ib3); window.drawResistor(ctx, 350, 200, 350, 280);
+                    window.drawWire(ctx, [nB1, nBL], i1);
+                    window.drawWire(ctx, [nT1, {x: 410, y: 100}], i2); window.drawWire(ctx, [{x: 410, y: 100}, {x: 490, y: 100}], i2, false); window.drawWire(ctx, [{x: 490, y: 100}, nT2], i2); window.drawResistor(ctx, 410, 100, 490, 100);
+                    let ib6 = i2 - i3; window.drawWire(ctx, [nT2, {x: 550, y: 200}], ib6); window.drawWire(ctx, [{x: 550, y: 200}, {x: 550, y: 280}], ib6, false); window.drawWire(ctx, [{x: 550, y: 280}, nB2], ib6); window.drawResistor(ctx, 550, 200, 550, 280);
+                    window.drawWire(ctx, [nB2, {x: 472, y: 380}], i2); window.drawWire(ctx, [{x: 472, y: 380}, {x: 428, y: 380}], i2, false); window.drawWire(ctx, [{x: 428, y: 380}, nB1], i2); window.drawSource(ctx, 450, 380, 'H', 'normal');
+                    window.drawWire(ctx, [nT2, {x: 610, y: 100}], i3); window.drawWire(ctx, [{x: 610, y: 100}, {x: 690, y: 100}], i3, false); window.drawWire(ctx, [{x: 690, y: 100}, nTR], i3); window.drawResistor(ctx, 610, 100, 690, 100);
+                    window.drawWire(ctx, [nTR, {x: 750, y: 218}], i3); window.drawWire(ctx, [{x: 750, y: 218}, {x: 750, y: 262}], i3, false); window.drawWire(ctx, [{x: 750, y: 262}, nBR], i3); window.drawSource(ctx, 750, 240, 'V', 'reversed');
+                    window.drawWire(ctx, [nBR, nB2], i3);
+                    [nTL, nBL, nT1, nB1, nT2, nB2, nTR, nBR].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayMesh(ctx, 250, 240, "i1", "#ef4444"); window.drawOverlayMesh(ctx, 450, 240, "i2", "#10b981"); window.drawOverlayMesh(ctx, 650, 240, "i3", "#3b82f6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 90, 240); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 450, 420); window.addLabel(id, `V_{s3}=${s.Vs3}V`, 810, 240);
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 250, 70); window.addLabel(id, `R_2=${s.R2}\\Omega`, 310, 240); window.addLabel(id, `R_3=${s.R3}\\Omega`, 450, 70); window.addLabel(id, `R_4=${s.R4}\\Omega`, 510, 240); window.addLabel(id, `R_5=${s.R5}\\Omega`, 650, 70);
+                },
+                equations: [
+                    { name: "LVK i1", color: "text-red-500", eq: [{type:'tx', val:'('}, {type:'in', key:'R1'}, {type:'tx', val:'+'}, {type:'in', key:'R2'}, {type:'tx', val:')i_1 -'}, {type:'in', key:'R2'}, {type:'tx', val:'i_2 ='}, {type:'in', key:'Vs1'}] },
+                    { name: "LVK i2", color: "text-green-500", eq: [{type:'tx', val:'-'}, {type:'in', key:'R2'}, {type:'tx', val:'i_1 + ('}, {type:'in', key:'R2'}, {type:'tx', val:'+'}, {type:'in', key:'R3'}, {type:'tx', val:'+'}, {type:'in', key:'R4'}, {type:'tx', val:')i_2 -'}, {type:'in', key:'R4'}, {type:'tx', val:'i_3 = -'}, {type:'in', key:'Vs2'}] },
+                    { name: "LVK i3", color: "text-blue-500", eq: [{type:'tx', val:'-'}, {type:'in', key:'R4'}, {type:'tx', val:'i_2 + ('}, {type:'in', key:'R4'}, {type:'tx', val:'+'}, {type:'in', key:'R5'}, {type:'tx', val:')i_3 ='}, {type:'in', key:'Vs3'}] }
+                ]
+            },
+            {
+                id: 4,
+                solve: (s) => {
+                    let A = [[s.R1 + s.R2, -s.R2, 0], [-s.R2, s.R2 + s.R3 + s.R4, -s.R3], [0, -s.R3, s.R3 + s.R5]];
+                    let B = [s.Vs1, -s.Vs2, s.Vs3]; let I = window.solveLinearSystem(A, B);
+                    return { raw: {i1: I[0], i2: I[1], i3: I[2]}, ans: { R1: {v: Math.abs(I[0]*s.R1), i: Math.abs(I[0])}, R2: {v: Math.abs((I[0]-I[1])*s.R2), i: Math.abs(I[0]-I[1])}, R3: {v: Math.abs((I[1]-I[2])*s.R3), i: Math.abs(I[1]-I[2])}, R4: {v: Math.abs(I[1]*s.R4), i: Math.abs(I[1])}, R5: {v: Math.abs(I[2]*s.R5), i: Math.abs(I[2])} }, total: {i: Math.max(Math.abs(I[0]), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {i1, i2, i3} = raw;
+                    const nTL={x:150,y:100}, nBL={x:150,y:380}, nT1={x:350,y:100}, nB1={x:350,y:380}, nT2={x:550,y:100}, nB2={x:550,y:380}, nTR={x:750,y:100}, nBR={x:750,y:380};
+                    window.drawWire(ctx, [nBL, {x:150,y:220}], i1); window.drawSource(ctx, 150, 240, 'V', 'normal'); window.drawWire(ctx, [{x:150,y:260}, nTL], i1);
+                    window.drawWire(ctx, [nTL, {x:230,y:100}], i1); window.drawResistor(ctx, 230,100,310,100); window.drawWire(ctx, [{x:310,y:100}, nT1], i1);
+                    window.drawWire(ctx, [nT1, {x:350,y:220}], i1 - i2); window.drawResistor(ctx, 350, 220, 350, 300); window.drawWire(ctx, [{x:350,y:300}, nB1], i1 - i2);
+                    window.drawWire(ctx, [nB1, nBL], i1);
+                    window.drawWire(ctx, [nT1, {x:430,y:100}], i2); window.drawResistor(ctx, 430,100,510,100); window.drawWire(ctx, [{x:510,y:100}, nT2], i2);
+                    window.drawWire(ctx, [nT2, {x:550,y:220}], i2 - i3); window.drawResistor(ctx, 550, 220, 550, 300); window.drawWire(ctx, [{x:550,y:300}, nB2], i2 - i3);
+                    window.drawWire(ctx, [nB2, {x:472,y:380}], i2); window.drawSource(ctx, 450, 380, 'H', 'normal'); window.drawWire(ctx, [{x:428,y:380}, nB1], i2);
+                    window.drawWire(ctx, [nT2, nTR, {x:750,y:190}], i3); window.drawSource(ctx, 750, 210, 'V', 'reversed'); window.drawWire(ctx, [{x:750,y:230}, {x:750,y:260}], i3);
+                    window.drawResistor(ctx, 750, 260, 750, 340); window.drawWire(ctx, [{x:750,y:340}, nBR, nB2], i3);
+                    [nTL, nBL, nT1, nB1, nT2, nB2, nTR, nBR].forEach(n => window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayMesh(ctx, 250, 240, "i1", "#ef4444"); window.drawOverlayMesh(ctx, 450, 240, "i2", "#10b981"); window.drawOverlayMesh(ctx, 650, 240, "i3", "#3b82f6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 90, 240); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 450, 420); window.addLabel(id, `V_{s3}=${s.Vs3}V`, 810, 210);
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 270, 70); window.addLabel(id, `R_2=${s.R2}\\Omega`, 310, 260); window.addLabel(id, `R_3=${s.R3}\\Omega`, 470, 70); window.addLabel(id, `R_4=${s.R4}\\Omega`, 510, 260); window.addLabel(id, `R_5=${s.R5}\\Omega`, 710, 300);
+                },
+                equations: [
+                    { name: "LVK i1", color: "text-red-500", eq: [{type:'tx', val:'('}, {type:'in', key:'R1'}, {type:'tx', val:'+'}, {type:'in', key:'R2'}, {type:'tx', val:')i_1 -'}, {type:'in', key:'R2'}, {type:'tx', val:'i_2 ='}, {type:'in', key:'Vs1'}] },
+                    { name: "LVK i2", color: "text-green-500", eq: [{type:'tx', val:'-'}, {type:'in', key:'R2'}, {type:'tx', val:'i_1 + ('}, {type:'in', key:'R2'}, {type:'tx', val:'+'}, {type:'in', key:'R3'}, {type:'tx', val:'+'}, {type:'in', key:'R4'}, {type:'tx', val:')i_2 -'}, {type:'in', key:'R3'}, {type:'tx', val:'i_3 = -'}, {type:'in', key:'Vs2'}] },
+                    { name: "LVK i3", color: "text-blue-500", eq: [{type:'tx', val:'-'}, {type:'in', key:'R3'}, {type:'tx', val:'i_2 + ('}, {type:'in', key:'R3'}, {type:'tx', val:'+'}, {type:'in', key:'R5'}, {type:'tx', val:')i_3 ='}, {type:'in', key:'Vs3'}] }
+                ]
+            },
+            {
+                id: 5,
+                solve: (s) => {
+                    let A = [[1/s.R1 + 1/s.R2 + 1/s.R3, -1/s.R2, -1/s.R3], [-1/s.R2, 1/s.R2 + 1/s.R6 + 1/s.R4, -1/s.R6], [-1/s.R3, -1/s.R6, 1/s.R3 + 1/s.R6 + 1/s.R5]];
+                    let B = [ s.Vs1/s.R1, 0, 0 ]; let V = window.solveLinearSystem(A, B); let vT = V[0], vL = V[1], vR = V[2];
+                    let iR1 = (s.Vs1 - vT)/s.R1, iR2 = (vT - vL)/s.R2, iR3 = (vT - vR)/s.R3, iR4 = vL/s.R4, iR5 = vR/s.R5, iR6 = (vL - vR)/s.R6;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5, iR6}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)}, R6: {v: Math.abs(iR6*s.R6), i: Math.abs(iR6)} }, total: {i: Math.max(Math.abs(iR1), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5, iR6} = raw;
+                    const nS={x: 100, y: 240}, nT={x: 450, y: 80}, nB={x: 450, y: 400}, nL={x: 300, y: 240}, nR={x: 600, y: 240};
+                    window.drawWire(ctx, [{x:100, y:400}, nB], iR1, true);
+                    window.drawWire(ctx, [{x:100, y:400}, {x:100, y:262}], iR1); window.drawSource(ctx, 100, 240, 'V', 'normal'); window.drawWire(ctx, [{x:100, y:218}, {x:100, y:80}], iR1);
+                    window.drawWire(ctx, [{x:100, y:80}, {x:160, y:80}], iR1); window.drawResistor(ctx, 160, 80, 240, 80); window.drawWire(ctx, [{x:240, y:80}, nT], iR1);
+                    window.drawWire(ctx, [nT, {x:360, y:144}], iR2); window.drawResistor(ctx, 360, 144, 300, 240); 
+                    window.drawWire(ctx, [nT, {x:540, y:144}], iR3); window.drawResistor(ctx, 540, 144, 600, 240); 
+                    window.drawWire(ctx, [nL, {x:360, y:336}], iR4); window.drawResistor(ctx, 360, 336, 450, 400); 
+                    window.drawWire(ctx, [nR, {x:540, y:336}], iR5); window.drawResistor(ctx, 540, 336, 450, 400); 
+                    window.drawWire(ctx, [nL, {x:410, y:240}], iR6); window.drawResistor(ctx, 410, 240, 490, 240); window.drawWire(ctx, [{x:490, y:240}, nR], iR6);
+                    [nT, nB, nL, nR].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayNode(ctx, 450, 80, "T", "#ef4444"); window.drawOverlayNode(ctx, 300, 240, "L", "#10b981"); window.drawOverlayNode(ctx, 600, 240, "R", "#3b82f6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 100, 240); window.addLabel(id, `R_1=${s.R1}\\Omega`, 220, 70); window.addLabel(id, `R_2=${s.R2}\\Omega`, 340, 140); window.addLabel(id, `R_3=${s.R3}\\Omega`, 560, 140);
+                    window.addLabel(id, `R_4=${s.R4}\\Omega`, 340, 330); window.addLabel(id, `R_5=${s.R5}\\Omega`, 560, 330); window.addLabel(id, `R_6=${s.R6}\\Omega`, 450, 210);
+                },
+                equations: [
+                    { name: "Nodo T", color: "text-red-500", eq: [{type:'frac', num:[{type:'tx', val:'V_T - '},{type:'in', key:'Vs1'}], den:[{type:'in', key:'R1'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_T - V_L'}], den:[{type:'in', key:'R2'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_T - V_R'}], den:[{type:'in', key:'R3'}]}, {type:'tx', val:'= 0'}] },
+                    { name: "Nodo L", color: "text-green-500", eq: [{type:'frac', num:[{type:'tx', val:'V_L - V_T'}], den:[{type:'in', key:'R2'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_L'}], den:[{type:'in', key:'R4'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_L - V_R'}], den:[{type:'in', key:'R6'}]}, {type:'tx', val:'= 0'}] }
+                ]
+            },
+            {
+                id: 6,
+                solve: (s) => {
+                    let A = [[1/s.R2 + 1/s.R3 + 1/s.R5, -1/s.R3], [-1/s.R3, 1/s.R3 + 1/s.R4 + 1/s.R6]];
+                    let B = [ s.Vs1/s.R2 + s.Vs2/s.R5, s.Vs3/s.R6 ];
+                    let V = window.solveLinearSystem(A, B); let vB = V[0], vC = V[1];
+                    let iR1 = (s.Vs1 - (-s.Vs3)) / s.R1, iR2 = (s.Vs1 - vB) / s.R2, iR3 = (vB - vC) / s.R3, iR4 = vC / s.R4, iR5 = (vB - s.Vs2) / s.R5, iR6 = (vC - (-s.Vs3)) / s.R6;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5, iR6}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)}, R6: {v: Math.abs(iR6*s.R6), i: Math.abs(iR6)} }, total: {i: Math.max(Math.abs(iR1), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5, iR6} = raw; let iVs1 = iR1 + iR2; let iVs3 = iR1 + iR4;
+                    const nA = {x: 150, y: 100}, nB = {x: 350, y: 100}, nC = {x: 550, y: 100}, nD = {x: 750, y: 100};
+                    window.drawWire(ctx, [{x:150, y:380}, {x:750, y:380}], iVs1, true); window.drawGround(ctx, 450, 380);
+                    window.drawWire(ctx, [{x:150, y:380}, {x:150, y:280}], iVs1); window.drawSource(ctx, 150, 260, 'V', 'normal'); window.drawWire(ctx, [{x:150, y:240}, nA], iVs1);
+                    window.drawWire(ctx, [nA, {x:150, y:40}], iR1); window.drawWire(ctx, [{x:150, y:40}, {x:400, y:40}], iR1); window.drawResistor(ctx, 400, 40, 500, 40); window.drawWire(ctx, [{x:500, y:40}, {x:750, y:40}], iR1); window.drawWire(ctx, [{x:750, y:40}, nD], iR1);
+                    window.drawWire(ctx, [nA, {x:210, y:100}], iR2); window.drawResistor(ctx, 210, 100, 290, 100); window.drawWire(ctx, [{x:290, y:100}, nB], iR2);
+                    window.drawWire(ctx, [nB, {x:410, y:100}], iR3); window.drawResistor(ctx, 410, 100, 490, 100); window.drawWire(ctx, [{x:490, y:100}, nC], iR3);
+                    window.drawWire(ctx, [nC, {x:610, y:100}], iR4); window.drawResistor(ctx, 610, 100, 690, 100); window.drawWire(ctx, [{x:690, y:100}, nD], iR4);
+                    window.drawWire(ctx, [nB, {x:350, y:150}], iR5); window.drawResistor(ctx, 350, 150, 350, 230); window.drawWire(ctx, [{x:350, y:230}, {x:350, y:290}], iR5); window.drawSource(ctx, 350, 310, 'V', 'normal'); window.drawWire(ctx, [{x:350, y:330}, {x:350, y:380}], iR5);
+                    window.drawWire(ctx, [nC, {x:550, y:200}], iR6); window.drawResistor(ctx, 550, 200, 550, 280); window.drawWire(ctx, [{x:550, y:280}, {x:550, y:380}], iR6);
+                    window.drawWire(ctx, [nD, {x:750, y:220}], iVs3); window.drawSource(ctx, 750, 240, 'V', 'reversed'); window.drawWire(ctx, [{x:750, y:260}, {x:750, y:380}], iVs3);
+                    [{x:150, y:380}, {x:350, y:380}, {x:550, y:380}, {x:750, y:380}, nA, nB, nC, nD].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayNode(ctx, 350, 100, "B", "#ef4444"); window.drawOverlayNode(ctx, 550, 100, "C", "#3b82f6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 100, 260); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 285, 310); window.addLabel(id, `V_{s3}=${s.Vs3}V`, 810, 240);
+                    window.addLabel(id, `R_1=${s.R1}k\\Omega`, 450, 10); window.addLabel(id, `R_2=${s.R2}k\\Omega`, 250, 75); window.addLabel(id, `R_3=${s.R3}k\\Omega`, 450, 75); window.addLabel(id, `R_4=${s.R4}k\\Omega`, 650, 75); window.addLabel(id, `R_5=${s.R5}k\\Omega`, 285, 190); window.addLabel(id, `R_6=${s.R6}k\\Omega`, 585, 240);
+                },
+                equations: [
+                    { name: "Nodo B", color: "text-red-500", eq: [{type:'frac', num:[{type:'tx', val:'V_B - '},{type:'in', key:'Vs1'}], den:[{type:'in', key:'R2'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_B - V_C'}], den:[{type:'in', key:'R3'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_B - '},{type:'in', key:'Vs2'}], den:[{type:'in', key:'R5'}]}, {type:'tx', val:'= 0'}] },
+                    { name: "Nodo C", color: "text-blue-500", eq: [{type:'frac', num:[{type:'tx', val:'V_C - V_B'}], den:[{type:'in', key:'R3'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_C'}], den:[{type:'in', key:'R6'}]}, {type:'tx', val:'+'}, {type:'frac', num:[{type:'tx', val:'V_C - (-'},{type:'in', key:'Vs3'},{type:'tx', val:')'}], den:[{type:'in', key:'R4'}]}, {type:'tx', val:'= 0'}] }
+                ]
+            },
+            {
+                id: 7,
+                solve: (s) => {
+                    let g11 = 1/s.R1 + 1/s.R4 + 1/s.R6; let g12 = -1/s.R6; let g13 = -1/s.R4;
+                    let g21 = -1/s.R6; let g22 = 1/s.R3 + 1/s.R5 + 1/s.R6; let g23 = -1/s.R5;
+                    let g31 = -1/s.R4; let g32 = -1/s.R5; let g33 = 1/s.R2 + 1/s.R4 + 1/s.R5;
+                    let i1 = (s.Vs1 + s.Vs2)/s.R1; let i2 = 0; let i3 = s.Vs2/s.R2;
+                    let D = g11*(g22*g33 - g23*g32) - g12*(g21*g33 - g23*g31) + g13*(g21*g32 - g22*g31);
+                    let DvB = i1*(g22*g33 - g23*g32) - g12*(i2*g33 - g23*i3) + g13*(i2*g32 - g22*i3);
+                    let DvC = g11*(i2*g33 - g23*i3) - i1*(g21*g33 - g23*g31) + g13*(g21*i3 - i2*g31);
+                    let DvD = g11*(g22*i3 - i2*g32) - g12*(g21*i3 - i2*g31) + i1*(g21*g32 - g22*g31);
+                    let vB = DvB / D; let vC = DvC / D; let vD = DvD / D;
+                    let iR1 = ((s.Vs1 + s.Vs2) - vB) / s.R1; let iR2 = (s.Vs2 - vD) / s.R2;
+                    let iR3 = -vC / s.R3; let iR4 = (vD - vB) / s.R4; let iR5 = (vD - vC) / s.R5; let iR6 = (vB - vC) / s.R6;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5, iR6}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)}, R6: {v: Math.abs(iR6*s.R6), i: Math.abs(iR6)} }, total: {i: Math.max(Math.abs(iR1), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5, iR6} = raw; let iVs1 = iR1, iVs2 = iR1 + iR2;
+                    const nTL={x:150,y:100}, nML={x:150,y:250}, nBL={x:150,y:400}, nTR={x:650,y:100}, nBR={x:650,y:400}, nCEN={x:400,y:250};
+                    window.drawWire(ctx, [nML, {x:150, y:197}], iVs1); window.drawWire(ctx, [{x:150, y:197}, {x:150, y:153}], iVs1, false); window.drawWire(ctx, [{x:150, y:153}, nTL], iVs1); window.drawSource(ctx, 150, 175, 'V', 'normal'); 
+                    window.drawWire(ctx, [nBL, {x:150, y:347}], iVs2); window.drawWire(ctx, [{x:150, y:347}, {x:150, y:303}], iVs2, false); window.drawWire(ctx, [{x:150, y:303}, nML], iVs2); window.drawSource(ctx, 150, 325, 'V', 'normal'); window.drawNode(ctx, nML.x, nML.y);
+                    window.drawWire(ctx, [nTL, {x:360, y:100}], iR1); window.drawResistor(ctx, 360, 100, 440, 100); window.drawWire(ctx, [{x:360, y:100}, {x:440, y:100}], iR1, false); window.drawWire(ctx, [{x:440, y:100}, nTR], iR1);
+                    window.drawWire(ctx, [nML, {x:235, y:250}], iR2); window.drawResistor(ctx, 235, 250, 315, 250); window.drawWire(ctx, [{x:235, y:250}, {x:315, y:250}], iR2, false); window.drawWire(ctx, [{x:315, y:250}, nCEN], iR2); window.drawNode(ctx, nCEN.x, nCEN.y);
+                    window.drawWire(ctx, [nBR, {x:440, y:400}], iR3); window.drawResistor(ctx, 440, 400, 360, 400); window.drawWire(ctx, [{x:440, y:400}, {x:360, y:400}], iR3, false); window.drawWire(ctx, [{x:360, y:400}, nBL], iR3);
+                    let r4p1 = {x: 488, y: 197}, r4p2 = {x: 563, y: 152}; window.drawWire(ctx, [nCEN, r4p1], iR4); window.drawResistor(ctx, r4p1.x, r4p1.y, r4p2.x, r4p2.y); window.drawWire(ctx, [r4p1, r4p2], iR4, false); window.drawWire(ctx, [r4p2, nTR], iR4); window.drawNode(ctx, nTR.x, nTR.y);
+                    let r5p1 = {x: 488, y: 303}, r5p2 = {x: 563, y: 347}; window.drawWire(ctx, [nCEN, r5p1], iR5); window.drawResistor(ctx, r5p1.x, r5p1.y, r5p2.x, r5p2.y); window.drawWire(ctx, [r5p1, r5p2], iR5, false); window.drawWire(ctx, [r5p2, nBR], iR5); window.drawNode(ctx, nBR.x, nBR.y);
+                    let r6p1 = {x: 650, y: 210}, r6p2 = {x: 650, y: 290}; window.drawWire(ctx, [nTR, r6p1], iR6); window.drawResistor(ctx, r6p1.x, r6p1.y, r6p2.x, r6p2.y); window.drawWire(ctx, [r6p1, r6p2], iR6, false); window.drawWire(ctx, [r6p2, nBR], iR6);
+                    window.drawNode(ctx, nTL.x, nTL.y); window.drawNode(ctx, nBL.x, nBL.y);
+                    if(showEq) { window.drawOverlayNode(ctx, 400, 250, "C", "#10b981"); window.drawOverlayNode(ctx, 650, 100, "B", "#3b82f6"); window.drawOverlayNode(ctx, 650, 400, "D", "#ef4444"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 75, 175); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 75, 325);
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 400, 70); window.addLabel(id, `R_2=${s.R2}\\Omega`, 275, 220); window.addLabel(id, `R_3=${s.R3}\\Omega`, 400, 430); window.addLabel(id, `R_4=${s.R4}\\Omega`, 500, 160); window.addLabel(id, `R_5=${s.R5}\\Omega`, 500, 340); window.addLabel(id, `R_6=${s.R6}\\Omega`, 700, 250);
+                },
+                equations: [
+                    { name: "LVK M1", color: "text-red-500", eq: [{type:'in', key:'Vs1'}, {type:'tx', val:'- I_1('}, {type:'in', key:'R1'}, {type:'tx', val:') - (I_1-I_3)'}, {type:'in', key:'R4'}, {type:'tx', val:'- (I_1-I_2)'}, {type:'in', key:'R2'}, {type:'tx', val:'= 0'}] },
+                    { name: "LVK M2", color: "text-blue-500", eq: [{type:'in', key:'Vs2'}, {type:'tx', val:'- (I_2-I_1)'}, {type:'in', key:'R2'}, {type:'tx', val:'- (I_2-I_3)'}, {type:'in', key:'R5'}, {type:'tx', val:'- I_2('}, {type:'in', key:'R3'}, {type:'tx', val:') = 0'}] }
+                ]
+            },
+            {
+                id: 8,
+                solve: (s) => {
+                    let g_sys = 1/s.R1 + 1/s.R2 + 1/s.R5 + 1/s.R3 + 1/s.R4;
+                    let i_sys = s.Vs1/s.R1 + s.Vs3/s.R5 - s.Vs2/s.R3 - (s.Vs2 - s.Vs3)/s.R4;
+                    let v2 = i_sys / g_sys; let v4 = s.Vs3; let v1 = v2 - s.Vs1; let v3 = v2 + s.Vs2;
+                    let iR1 = v1 / s.R1; let iR2 = v2 / s.R2; let iR3 = v3 / s.R3; let iR4 = (v3 - v4) / s.R4; let iR5 = (v2 - v4) / s.R5;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)} }, total: {i: Math.max(Math.abs(iR2), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5} = raw;
+                    const n1={x: 150, y: 220}, n2={x: 350, y: 220}, n3={x: 550, y: 220}, n4={x: 750, y: 220}, b1={x: 150, y: 380}, b2={x: 350, y: 380}, b3={x: 550, y: 380}, b4={x: 750, y: 380};
+                    window.drawWire(ctx, [n1, {x: 150, y: 260}], iR1); window.drawWire(ctx, [{x: 150, y: 260}, {x: 150, y: 340}], iR1, false); window.drawWire(ctx, [{x: 150, y: 340}, b1], iR1); window.drawResistor(ctx, 150, 260, 150, 340);
+                    let iVs1 = -iR1; window.drawWire(ctx, [n1, {x: 228, y: 220}], iVs1); window.drawWire(ctx, [{x: 228, y: 220}, {x: 272, y: 220}], iVs1, false); window.drawWire(ctx, [{x: 272, y: 220}, n2], iVs1); window.drawSource(ctx, 250, 220, 'H', 'reversed');
+                    window.drawWire(ctx, [n2, {x: 350, y: 260}], iR2); window.drawWire(ctx, [{x: 350, y: 260}, {x: 350, y: 340}], iR2, false); window.drawWire(ctx, [{x: 350, y: 340}, b2], iR2); window.drawResistor(ctx, 350, 260, 350, 340);
+                    let iVs2 = iR3 + iR4; window.drawWire(ctx, [n2, {x: 428, y: 220}], iVs2); window.drawWire(ctx, [{x: 428, y: 220}, {x: 472, y: 220}], iVs2, false); window.drawWire(ctx, [{x: 472, y: 220}, n3], iVs2); window.drawSource(ctx, 450, 220, 'H', 'reversed');
+                    window.drawWire(ctx, [n3, {x: 550, y: 260}], iR3); window.drawWire(ctx, [{x: 550, y: 260}, {x: 550, y: 340}], iR3, false); window.drawWire(ctx, [{x: 550, y: 340}, b3], iR3); window.drawResistor(ctx, 550, 260, 550, 340);
+                    window.drawWire(ctx, [n3, {x: 610, y: 220}], iR4); window.drawWire(ctx, [{x: 610, y: 220}, {x: 690, y: 220}], iR4, false); window.drawWire(ctx, [{x: 690, y: 220}, n4], iR4); window.drawResistor(ctx, 610, 220, 690, 220);
+                    let iVs3 = iR4 + iR5; window.drawWire(ctx, [n4, {x: 750, y: 278}], iVs3); window.drawWire(ctx, [{x: 750, y: 278}, {x: 750, y: 322}], iVs3, false); window.drawWire(ctx, [{x: 750, y: 322}, b4], iVs3); window.drawSource(ctx, 750, 300, 'V', 'normal');
+                    window.drawWire(ctx, [n2, {x: 350, y: 80}, {x: 510, y: 80}], iR5); window.drawWire(ctx, [{x: 510, y: 80}, {x: 590, y: 80}], iR5, false); window.drawWire(ctx, [{x: 590, y: 80}, {x: 750, y: 80}, n4], iR5); window.drawResistor(ctx, 510, 80, 590, 80);
+                    window.drawWire(ctx, [b4, b3], -iVs3); window.drawWire(ctx, [b3, b2], -(iVs3 + iR3)); window.drawWire(ctx, [b2, b1], iR1);
+                    [n1, n2, n3, n4].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayNode(ctx, 150, 220, "1", "#ef4444"); window.drawOverlayNode(ctx, 350, 220, "2", "#10b981"); window.drawOverlayNode(ctx, 550, 220, "3", "#3b82f6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 250, 180); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 450, 180); window.addLabel(id, `V_{s3}=${s.Vs3}V`, 790, 300);
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 110, 300); window.addLabel(id, `R_2=${s.R2}\\Omega`, 310, 300); window.addLabel(id, `R_3=${s.R3}\\Omega`, 510, 300); window.addLabel(id, `R_4=${s.R4}\\Omega`, 650, 190); window.addLabel(id, `R_5=${s.R5}\\Omega`, 550, 50);
+                },
+                equations: [
+                    { name: "Supernodo", eq: ['tx:V_2 - V_1 =', 'in:Vs1', 'tx:, \\; V_3 - V_2 =', 'in:Vs2'] },
+                    { name: "Nodal Eq", eq: ['tx:\\frac{V_1}{', 'in:R1', 'tx:} + \\frac{V_2}{', 'in:R2', 'tx:} + \\frac{V_3}{', 'in:R3', 'tx:} + \\frac{V_3 -', 'in:Vs3', 'tx:}{', 'in:R4', 'tx:} + \\frac{V_2 -', 'in:Vs3', 'tx:}{', 'in:R5', 'tx:} = 0'] }
+                ]
+            },
+            {
+                id: 9,
+                solve: (s) => {
+                    let gC = 1/s.R1 + 1/s.R2 + 1/s.R3; let gD = 1/s.R1 + 1/s.R4 + 1/s.R6; let gB = 1/s.R3 + 1/s.R5 + 1/s.R8; let gA = 1/s.R7 + 1/s.R6 + 1/s.R8;
+                    let A = [[gC, -1/s.R1, -1/s.R3, 0], [-1/s.R1, gD, 0, -1/s.R6], [-1/s.R3, 0, gB, -1/s.R8], [0, -1/s.R6, -1/s.R8, gA]];
+                    let B = [0, -s.Vs1 / s.R6, s.Vs2 / s.R8, s.Vs1 / s.R6 - s.Vs2 / s.R8];
+                    let V = window.solveLinearSystem(A, B); let vC = V[0], vD = V[1], vB = V[2], vA = V[3];
+                    let iR1 = (vD - vC) / s.R1; let iR2 = -vC / s.R2; let iR3 = (vC - vB) / s.R3; let iR4 = -vD / s.R4; let iR5 = -vB / s.R5; let iR6 = (vD - vA + s.Vs1) / s.R6; let iR7 = -vA / s.R7; let iR8 = (vB - vA - s.Vs2) / s.R8;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5, iR6, iR7, iR8}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)}, R6: {v: Math.abs(iR6*s.R6), i: Math.abs(iR6)}, R7: {v: Math.abs(iR7*s.R7), i: Math.abs(iR7)}, R8: {v: Math.abs(iR8*s.R8), i: Math.abs(iR8)} }, total: {i: Math.max(Math.abs(iR7), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5, iR6, iR7, iR8} = raw;
+                    const nTL={x: 150, y: 50}, nC={x: 425, y: 50}, nTR={x: 700, y: 50}, nD={x: 150, y: 220}, nGND={x: 425, y: 220}, nB={x: 700, y: 220}, nBL={x: 150, y: 400}, nA={x: 425, y: 400}, nBR={x: 700, y: 400};
+                    window.drawWire(ctx, [nD, {x: 150, y: 175}], iR1); window.drawWire(ctx, [{x: 150, y: 175}, {x: 150, y: 95}], iR1, false); window.drawWire(ctx, [{x: 150, y: 95}, nTL, nC], iR1); window.drawResistor(ctx, 150, 175, 150, 95);
+                    window.drawWire(ctx, [nGND, {x: 425, y: 175}], iR2); window.drawWire(ctx, [{x: 425, y: 175}, {x: 425, y: 95}], iR2, false); window.drawWire(ctx, [{x: 425, y: 95}, nC], iR2); window.drawResistor(ctx, 425, 175, 425, 95);
+                    window.drawWire(ctx, [nC, nTR, {x: 700, y: 95}], iR3); window.drawWire(ctx, [{x: 700, y: 95}, {x: 700, y: 175}], iR3, false); window.drawWire(ctx, [{x: 700, y: 175}, nB], iR3); window.drawResistor(ctx, 700, 95, 700, 175);
+                    window.drawWire(ctx, [nGND, {x: 325, y: 220}], iR4); window.drawWire(ctx, [{x: 325, y: 220}, {x: 245, y: 220}], iR4, false); window.drawWire(ctx, [{x: 245, y: 220}, nD], iR4); window.drawResistor(ctx, 325, 220, 245, 220);
+                    window.drawWire(ctx, [nGND, {x: 525, y: 220}], iR5); window.drawWire(ctx, [{x: 525, y: 220}, {x: 605, y: 220}], iR5, false); window.drawWire(ctx, [{x: 605, y: 220}, nB], iR5); window.drawResistor(ctx, 525, 220, 605, 220);
+                    window.drawWire(ctx, [nD, {x: 150, y: 240}], iR6); window.drawWire(ctx, [{x: 150, y: 240}, {x: 150, y: 300}], iR6, false); window.drawWire(ctx, [{x: 150, y: 300}, {x: 150, y: 328}], iR6); window.drawWire(ctx, [{x: 150, y: 328}, {x: 150, y: 372}], iR6, false); window.drawWire(ctx, [{x: 150, y: 372}, nBL, nA], iR6);
+                    window.drawResistor(ctx, 150, 240, 150, 300); window.drawSource(ctx, 150, 350, 'V', 'reversed');
+                    window.drawWire(ctx, [nGND, {x: 425, y: 270}], iR7); window.drawWire(ctx, [{x: 425, y: 270}, {x: 425, y: 350}], iR7, false); window.drawWire(ctx, [{x: 425, y: 350}, nA], iR7); window.drawResistor(ctx, 425, 270, 425, 350);
+                    window.drawWire(ctx, [nB, {x: 700, y: 240}], iR8); window.drawWire(ctx, [{x: 700, y: 240}, {x: 700, y: 300}], iR8, false); window.drawWire(ctx, [{x: 700, y: 300}, {x: 700, y: 328}], iR8); window.drawWire(ctx, [{x: 700, y: 328}, {x: 700, y: 372}], iR8, false); window.drawWire(ctx, [{x: 700, y: 372}, nBR, nA], iR8);
+                    window.drawResistor(ctx, 700, 240, 700, 300); window.drawSource(ctx, 700, 350, 'V', 'normal');
+                    [nC, nD, nB, nA].forEach(n => window.drawNode(ctx, n.x, n.y)); window.drawNode(ctx, nGND.x, nGND.y); window.drawGround(ctx, nGND.x, nGND.y);
+                    if(showEq) { window.drawOverlayNode(ctx, 425, 50, "C", "#ef4444"); window.drawOverlayNode(ctx, 150, 220, "D", "#10b981"); window.drawOverlayNode(ctx, 700, 220, "B", "#3b82f6"); window.drawOverlayNode(ctx, 425, 400, "A", "#8b5cf6"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 90, 350); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 760, 350);
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 110, 135); window.addLabel(id, `R_2=${s.R2}\\Omega`, 380, 135); window.addLabel(id, `R_3=${s.R3}\\Omega`, 740, 135); window.addLabel(id, `R_4=${s.R4}\\Omega`, 285, 195); window.addLabel(id, `R_5=${s.R5}\\Omega`, 565, 195); window.addLabel(id, `R_6=${s.R6}\\Omega`, 110, 270); window.addLabel(id, `R_7=${s.R7}\\Omega`, 380, 310); window.addLabel(id, `R_8=${s.R8}\\Omega`, 740, 270);
+                },
+                equations: [
+                    { name: "Nodo C", eq: ['tx:\\frac{V_C}{', 'in:R1', 'tx:} + \\frac{V_C}{', 'in:R2', 'tx:} + \\frac{V_C - V_B}{', 'in:R3', 'tx:} = 0'] },
+                    { name: "Nodo D", eq: ['tx:\\frac{V_D - V_C}{', 'in:R1', 'tx:} + \\frac{V_D}{', 'in:R4', 'tx:} + \\frac{V_D - V_A +', 'in:Vs1', 'tx:}{', 'in:R6', 'tx:} = 0'] }
+                ]
+            },
+            {
+                id: 10,
+                solve: (s) => {
+                    let A = [[s.R1+s.R2+s.R6, -s.R2, 0, -s.R6, 0], [-s.R2, s.R2+s.R3+s.R4, -s.R3, -s.R4, 0], [0, -s.R3, s.R3+s.R5, 0, -s.R5], [-s.R6, -s.R4, 0, s.R6+s.R4, 0], [0, 0, -s.R5, 0, s.R5+s.R7]];
+                    let B = [s.Vs1, 0, -s.Vs2, -s.Vs3, s.Vs3];
+                    let I = window.solveLinearSystem(A, B);
+                    return { raw: {i1: I[0], i2: I[1], i3: I[2], i4: I[3], i5: I[4]}, ans: { R1: {v: Math.abs(I[0]*s.R1), i: Math.abs(I[0])}, R2: {v: Math.abs((I[0]-I[1])*s.R2), i: Math.abs(I[0]-I[1])}, R3: {v: Math.abs((I[1]-I[2])*s.R3), i: Math.abs(I[1]-I[2])}, R4: {v: Math.abs((I[1]-I[3])*s.R4), i: Math.abs(I[1]-I[3])}, R5: {v: Math.abs((I[2]-I[4])*s.R5), i: Math.abs(I[2]-I[4])}, R6: {v: Math.abs((I[0]-I[3])*s.R6), i: Math.abs(I[0]-I[3])}, R7: {v: Math.abs(I[4]*s.R7), i: Math.abs(I[4])} }, total: {i: Math.max(Math.abs(I[0]), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    const {i1, i2, i3, i4, i5} = raw;
+                    const n1={x:80,y:50}, n2={x:425,y:50}, n3={x:200,y:240}, n4={x:425,y:240}, n5={x:650,y:240}, n6={x:425,y:430}, n7={x:80,y:430};
+                    window.drawWire(ctx, [n7, {x:80,y:258}], i1); window.drawSource(ctx, 80, 240, 'V', 'normal'); window.drawWire(ctx, [{x:80,y:222}, n1], i1);
+                    window.drawWire(ctx, [n1, {x:200,y:50}], i1); window.drawResistor(ctx, 200,50,300,50); window.drawWire(ctx, [{x:300,y:50}, n2], i1);
+                    window.drawWire(ctx, [n2, {x:312.5,y:145}], i1-i2); window.drawResistor(ctx, 312.5,145, 200, 240); 
+                    window.drawWire(ctx, [n2, {x:425,y:145}], i2-i3); window.drawResistor(ctx, 425,50,425,145); window.drawWire(ctx, [{x:425,y:145}, n4], i2-i3);
+                    window.drawWire(ctx, [n2, {x:537.5,y:145}], i3); window.drawSource(ctx, 537.5, 145, 'H', 'normal'); window.drawWire(ctx, [{x:537.5,y:145}, n5], i3);
+                    window.drawWire(ctx, [n3, {x:312.5,y:240}], i2-i4); window.drawResistor(ctx, 312.5,240,412.5,240); window.drawWire(ctx, [{x:412.5,y:240}, n4], i2-i4);
+                    window.drawWire(ctx, [n4, {x:537.5,y:240}], i3-i5); window.drawResistor(ctx, 537.5,240,637.5,240); window.drawWire(ctx, [{x:637.5,y:240}, n5], i3-i5);
+                    window.drawWire(ctx, [n3, {x:312.5,y:335}], i1-i4); window.drawResistor(ctx, 312.5,335,425,430);
+                    window.drawWire(ctx, [n4, {x:425,y:335}], i4-i5); window.drawSource(ctx, 425,335, 'V', 'normal'); window.drawWire(ctx, [{x:425,y:335}, n6], i4-i5);
+                    window.drawWire(ctx, [n5, {x:537.5,y:335}], i5); window.drawResistor(ctx, 537.5,335,425,430);
+                    window.drawWire(ctx, [n6, n7], i1);
+                    [n1,n2,n3,n4,n5,n6,n7].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                    if(showEq) { window.drawOverlayMesh(ctx, 200, 240, "M1"); window.drawOverlayMesh(ctx, 425, 140, "M2"); window.drawOverlayMesh(ctx, 550, 140, "M3"); window.drawOverlayMesh(ctx, 300, 330, "M4"); window.drawOverlayMesh(ctx, 550, 330, "M5"); }
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 250, 20); window.addLabel(id, `R_2=${s.R2}\\Omega`, 230, 180); window.addLabel(id, `R_3=${s.R3}\\Omega`, 455, 95); window.addLabel(id, `R_4=${s.R4}\\Omega`, 362, 210); window.addLabel(id, `R_5=${s.R5}\\Omega`, 587, 210); window.addLabel(id, `R_6=${s.R6}\\Omega`, 340, 390); window.addLabel(id, `R_7=${s.R7}\\Omega`, 510, 390); window.addLabel(id, `V_{s1}=${s.Vs1}V`, 35, 240); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 537, 115); window.addLabel(id, `V_{s3}=${s.Vs3}V`, 465, 335);
+                },
+                equations: [
+                    { name: "Malla 1", eq: ['tx:i_1(', 'in:R1', 'tx:+', 'in:R2', 'tx:+', 'in:R6', 'tx:) - i_2(', 'in:R2', 'tx:) - i_4(', 'in:R6', 'tx:) =', 'in:Vs1'] },
+                    { name: "Malla 2", eq: ['tx:-i_1(', 'in:R2', 'tx:) + i_2(', 'in:R2', 'tx:+', 'in:R3', 'tx:+', 'in:R4', 'tx:) - i_3(', 'in:R3', 'tx:) - i_4(', 'in:R4', 'tx:) = 0'] }
+                ]
+            },
+            {
+                id: 11,
+                solve: (s) => {
+                    let A = [[1/s.R1 + 1/s.R2 + 1/s.R4, -1/s.R1, -1/s.R4, 0, -1/s.R2], [-1/s.R1, 1/s.R1 + 1/s.R3 + 1/s.R6, 0, 0, -1/s.R3], [-1/s.R4, 0, 1/s.R4 + 1/s.R5 + 1/s.R8, -1/s.R8, 0], [0, 0, -1/s.R8, 1/s.R8 + 1/s.R10 + 1/s.R9, 0], [-1/s.R2, -1/s.R3, 0, 0, 1/s.R2 + 1/s.R3 + 1/s.R7]];
+                    let B = [ s.Vs2/s.R2 + s.Vs1/s.R4, s.Vs4/s.R6, -s.Vs1/s.R4, -(-s.Vs3)/s.R9, -s.Vs2/s.R2 - (-s.Vs3)/s.R7 ];
+                    let V = window.solveLinearSystem(A, B); let v1 = V[0], v2 = V[1], v3 = V[2], v4 = V[3], v6 = V[4], v5 = -s.Vs3;
+                    let iR1 = (v1 - v2)/s.R1, iR2 = (v1 - s.Vs2 - v6)/s.R2, iR3 = (v6 - v2)/s.R3, iR4 = (v1 - s.Vs1 - v3)/s.R4, iR5 = v3/s.R5, iR6 = (v2 - s.Vs4)/s.R6, iR7 = (v6 - v5)/s.R7, iR8 = (v3 - v4)/s.R8, iR9 = (v4 - v5)/s.R9, iR10 = v4/s.R10;
+                    return { raw: {iR1, iR2, iR3, iR4, iR5, iR6, iR7, iR8, iR9, iR10}, ans: { R1: {v: Math.abs(iR1*s.R1), i: Math.abs(iR1)}, R2: {v: Math.abs(iR2*s.R2), i: Math.abs(iR2)}, R3: {v: Math.abs(iR3*s.R3), i: Math.abs(iR3)}, R4: {v: Math.abs(iR4*s.R4), i: Math.abs(iR4)}, R5: {v: Math.abs(iR5*s.R5), i: Math.abs(iR5)}, R6: {v: Math.abs(iR6*s.R6), i: Math.abs(iR6)}, R7: {v: Math.abs(iR7*s.R7), i: Math.abs(iR7)}, R8: {v: Math.abs(iR8*s.R8), i: Math.abs(iR8)}, R9: {v: Math.abs(iR9*s.R9), i: Math.abs(iR9)}, R10: {v: Math.abs(iR10*s.R10), i: Math.abs(iR10)} }, total: {i: Math.max(Math.abs(iR1), 0.001)} };
+                },
+                renderCanvas: (ctx, s, raw, showEq) => {
+                    let {iR1, iR2, iR3, iR4, iR5, iR6, iR7, iR8, iR9, iR10} = raw;
+                    const n1={x: 200, y: 120}, n2={x: 700, y: 120}, n3={x: 200, y: 260}, n4={x: 450, y: 260}, n5={x: 450, y: 350}, n6={x: 450, y: 120};
+                    window.drawWire(ctx, [n1, {x:200, y:50}, {x:700, y:50}, n2], iR1); window.drawResistor(ctx, 400, 50, 500, 50); 
+                    window.drawWire(ctx, [n1, {x:250, y:120}], iR2); window.drawResistor(ctx, 250, 120, 330, 120); window.drawWire(ctx, [{x:330, y:120}, {x:360, y:120}], iR2, false); window.drawSource(ctx, 380, 120, 'H', 'reversed'); window.drawWire(ctx, [{x:400, y:120}, n6], iR2);
+                    window.drawWire(ctx, [n6, {x:530, y:120}], iR3); window.drawResistor(ctx, 530, 120, 610, 120); window.drawWire(ctx, [{x:610, y:120}, n2], iR3);
+                    window.drawWire(ctx, [n1, {x:200, y:160}], iR4); window.drawResistor(ctx, 200, 160, 200, 200); window.drawWire(ctx, [{x:200, y:200}, {x:200, y:210}], iR4, false); window.drawSource(ctx, 200, 230, 'V', 'normal'); window.drawWire(ctx, [{x:200, y:250}, n3], iR4);
+                    window.drawWire(ctx, [n3, {x:200, y:300}], iR5); window.drawResistor(ctx, 200, 300, 200, 380); window.drawWire(ctx, [{x:200, y:380}, {x:200, y:420}], iR5, false);
+                    window.drawWire(ctx, [n2, {x:700, y:160}], iR6); window.drawResistor(ctx, 700, 160, 700, 240); window.drawWire(ctx, [{x:700, y:240}, {x:700, y:280}], iR6, false); window.drawSource(ctx, 700, 300, 'V', 'normal'); window.drawWire(ctx, [{x:700, y:320}, {x:700, y:420}], iR6);
+                    window.drawWire(ctx, [n6, {x:450, y:160}], iR7); window.drawResistor(ctx, 450, 160, 450, 240); window.drawWire(ctx, [{x:450, y:240}, n4], iR7, false);
+                    window.drawWire(ctx, [n3, {x:260, y:260}], iR8); window.drawResistor(ctx, 260, 260, 340, 260); window.drawWire(ctx, [{x:340, y:260}, {x:400, y:260}], iR8, false);
+                    window.drawWire(ctx, [{x:400, y:260}, {x:410, y:260}], iR9); window.drawResistor(ctx, 410, 260, 440, 260); window.drawWire(ctx, [{x:440, y:260}, n4], iR9, false);
+                    window.drawWire(ctx, [n4, {x:450, y:300}], iR10); window.drawResistor(ctx, 450, 300, 450, 340); window.drawWire(ctx, [{x:450, y:340}, n5], iR10, false);
+                    window.drawWire(ctx, [n5, {x:450, y:370}], iR10); window.drawSource(ctx, 450, 390, 'V', 'reversed'); window.drawWire(ctx, [{x:450, y:410}, {x:450, y:420}], iR10);
+                    window.drawWire(ctx, [{x:200, y:420}, {x:700, y:420}], iR5+iR10+iR6, true); window.drawGround(ctx, 450, 420);
+                    [n1,n2,n3,n4,n6].forEach(n=>window.drawNode(ctx, n.x, n.y));
+                },
+                renderLabels: (id, s) => {
+                    window.addLabel(id, `V_{s1}=${s.Vs1}V`, 160, 220); window.addLabel(id, `V_{s2}=${s.Vs2}V`, 390, 80); window.addLabel(id, `V_{s3}=${s.Vs3}V`, 450, 360); window.addLabel(id, `V_{s4}=${s.Vs4}V`, 740, 300);
+                    window.addLabel(id, `R_1=${s.R1}\\Omega`, 450, 30); window.addLabel(id, `R_2=${s.R2}\\Omega`, 250, 80); window.addLabel(id, `R_3=${s.R3}\\Omega`, 600, 80); window.addLabel(id, `R_4=${s.R4}\\Omega`, 160, 160); window.addLabel(id, `R_5=${s.R5}\\Omega`, 160, 310); window.addLabel(id, `R_6=${s.R6}\\Omega`, 740, 190); window.addLabel(id, `R_7=${s.R7}\\Omega`, 450, 190); window.addLabel(id, `R_8=${s.R8}\\Omega`, 300, 240); window.addLabel(id, `R_9=${s.R9}\\Omega`, 400, 240); window.addLabel(id, `R_{10}=${s.R10}\\Omega`, 350, 310);
+                },
+                equations: [
+                    { name: "Supernodo", eq: ['tx:V_{ref} = 0, \\text{ Múltiples Lazos}'] }
+                ]
+            }
+        ];
+
+        // ==========================================
+        // 4. CONSTRUCCIÓN DE INTERFAZ Y ECUACIONES
+        // ==========================================
+        window.toggleValuesPanel = function(id) { document.getElementById(`values-panel-${id}`).classList.toggle('active'); };
+        
+        window.toggleEquations = function(id) {
+            const p = document.getElementById(`equations-panel-${id}`);
+            if(!p) return;
+            p.classList.toggle('hidden');
+            window.showEqOverlay[id] = !p.classList.contains('hidden');
+            if(window.showEqOverlay[id]) window.checkEqInputs(id);
+        };
+
+        window.checkEqInputs = function(id) {
+            document.querySelectorAll(`#eq-content-${id} .eq-input`).forEach(inp => {
+                let key = inp.getAttribute('data-key');
+                let expected = window.state[id][key];
+                if(inp.value) {
+                    if(parseFloat(inp.value) === expected) { inp.classList.add('correct'); inp.classList.remove('incorrect'); }
+                    else { inp.classList.add('incorrect'); inp.classList.remove('correct'); }
+                } else { inp.classList.remove('correct', 'incorrect'); }
+            });
+        };
+
+        window.buildEditorPanel = function(id) {
+            const panel = document.getElementById(`editor-${id}`);
+            if(!panel) return;
+            panel.innerHTML = '';
+            Object.keys(window.state[id]).forEach(key => {
+                const isVolt = key.startsWith('Vs');
+                const texName = key.replace(/([0-9a-c]+)/, "_{$1}");
+                const div = document.createElement('div'); div.className = 'editor-input-box';
+                const label = document.createElement('label'); label.className = "text-xs font-semibold text-slate-500 dark:text-slate-400 flex justify-between";
+                const spanName = document.createElement('span'); katex.render(texName, spanName, {throwOnError: false});
+                const spanUnit = document.createElement('span'); katex.render(isVolt ? 'V' : '\\Omega', spanUnit, {throwOnError: false});
+                label.appendChild(spanName); label.appendChild(spanUnit);
+                const input = document.createElement('input'); input.type = 'number'; input.step = '0.1'; input.min = '0.01'; input.value = window.state[id][key];
+                
+                input.oninput = (e) => {
+                    const val = parseFloat(e.target.value);
+                    if(val > 0) {
+                        window.state[id][key] = val; 
+                        let config = window.circuitDB.find(c => c.id === id);
+                        if(config) {
+                            let solved = config.solve(window.state[id]);
+                            window.currentAnswers[id] = solved;
+                        }
+                        document.querySelectorAll(`#tbody-${id} .verify-cell`).forEach(i => i.className = "verify-cell");
+                        const feedback = document.getElementById(`feedback-${id}`);
+                        if(feedback) feedback.style.display = 'none';
+                        window.checkEqInputs(id); 
+                    }
+                };
+                div.appendChild(label); div.appendChild(input); panel.appendChild(div);
+            });
+        };
+
+        window.buildEquationsPanel = function(id) {
+            const eqDiv = document.getElementById(`eq-content-${id}`);
+            if(!eqDiv) return;
+            const config = window.circuitDB.find(c => c.id === id);
+            if(!config || !config.equations) return;
+            
+            let html = "";
+            config.equations.forEach(eqObj => {
+                html += `<div class="flex items-center flex-wrap mb-3"><strong class="mr-2 ${eqObj.color || 'text-indigo-600'}">${eqObj.name}: </strong>`;
+                eqObj.eq.forEach(el => {
+                    if(el.type === 'in') {
+                        html += `<input type="number" class="eq-input" data-key="${el.key}" placeholder="?">`;
+                    } else if(el.type === 'tx') {
+                        html += `<span class="katex-inline">$$${el.val}$$</span>`;
+                    } else if(el.type === 'frac') {
+                        html += `<div class="inline-flex flex-col items-center justify-center mx-1 translate-y-[5px]">
+                                    <div class="border-b-2 border-slate-400 dark:border-slate-500 pb-1 flex items-center justify-center w-full min-w-[2rem]">`;
+                        el.num.forEach(n => {
+                            if(n.type === 'in') html += `<input type="number" class="eq-input" data-key="${n.key}" placeholder="?">`;
+                            else if(n.type === 'tx') html += `<span class="katex-inline">$$${n.val}$$</span>`;
+                        });
+                        html += `</div><div class="pt-1 flex items-center justify-center w-full min-w-[2rem]">`;
+                        el.den.forEach(d => {
+                            if(d.type === 'in') html += `<input type="number" class="eq-input" data-key="${d.key}" placeholder="?">`;
+                            else if(d.type === 'tx') html += `<span class="katex-inline">$$${d.val}$$</span>`;
+                        });
+                        html += `</div></div>`;
+                    }
+                });
+                html += `</div>`;
+            });
+            eqDiv.innerHTML = html;
+
+            eqDiv.querySelectorAll('.katex-inline').forEach(span => {
+                katex.render(span.innerText.replace(/\$\$/g, ''), span, {throwOnError: false});
+            });
+            eqDiv.querySelectorAll('.eq-input').forEach(inp => {
+                inp.addEventListener('input', () => window.checkEqInputs(id));
+            });
+        };
+
+        window.buildTable = function(id) {
+            const tbody = document.getElementById(`tbody-${id}`);
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            Object.keys(window.state[id]).filter(k => !k.startsWith('Vs')).forEach(comp => {
+                const texName = comp.replace(/([0-9a-c]+)/, "_{$1}"); 
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700"><span id="tbl_${id}_${comp}"></span></td>
+                    <td><input type="number" id="v_${id}_${comp}" class="verify-cell" step="0.01"></td>
+                    <td><input type="number" id="i_${id}_${comp}" class="verify-cell" step="0.01"></td>
+                    <td><input type="number" id="p_${id}_${comp}" class="verify-cell" step="0.01"></td>
+                `;
+                tbody.appendChild(tr);
+                katex.render(texName, document.getElementById(`tbl_${id}_${comp}`), {throwOnError: false});
+            });
+        };
+
+        window.buildLabelsDOM = function(id) {
+            const overlay = document.getElementById(`labels-${id}`);
+            if(!overlay) return;
+            overlay.innerHTML = '';
+            let config = window.circuitDB.find(c => c.id === id);
+            if(config && config.renderLabels) config.renderLabels(id, window.state[id]);
+        };
+
+        window.addLabel = function(id, tex, x, y) {
+            const overlay = document.getElementById(`labels-${id}`);
+            if(!overlay) return;
+            const div = document.createElement('div'); div.className = 'katex-label'; div.style.left = `${x}px`; div.style.top = `${y}px`;
+            katex.render(tex, div, {throwOnError: false}); overlay.appendChild(div);
+        };
+
+        window.drawOverlayNode = function(ctx, x, y, text, color="rgba(16, 185, 129, 0.4)") {
+            ctx.beginPath(); ctx.arc(x, y, 20, 0, Math.PI*2);
+            ctx.fillStyle = color; ctx.fill();
+            ctx.fillStyle = window.isDarkMode ? "white" : "#1e293b"; ctx.font = "bold 16px Inter"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(text, x, y);
+        };
+        window.drawOverlayMesh = function(ctx, x, y, text, color="rgba(59, 130, 246, 0.6)") {
+            ctx.beginPath(); ctx.arc(x, y, 15, 0, Math.PI*2);
+            ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.stroke();
+            ctx.fillStyle = color.replace('0.6', '0.2'); ctx.fill();
+            ctx.fillStyle = window.isDarkMode ? "white" : "#1e293b"; ctx.font = "bold 14px Inter"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(text, x, y);
+            ctx.beginPath(); ctx.arc(x, y, 25, Math.PI*0.8, Math.PI*2.2); ctx.stroke();
+        };
+        window.drawNode = function(ctx, x, y) {
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, 2*Math.PI);
+            ctx.fillStyle = window.isDarkMode ? "#ffffff" : "#1e293b"; 
+            if(window.isDarkMode){ ctx.shadowBlur = 8; ctx.shadowColor = "#ffffff"; }
+            ctx.fill(); ctx.shadowBlur = 0; 
+        };
+        window.drawArrowTip = function(ctx, x, y, angle, color) {
+            ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+            ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(-4, 4); ctx.lineTo(-2, 0); ctx.lineTo(-4, -4); ctx.closePath();
+            ctx.fillStyle = color; 
+            if(window.isDarkMode) { ctx.shadowBlur = 10; ctx.shadowColor = color; }
+            ctx.fill(); ctx.restore();
+        };
+        window.drawWire = function(ctx, points, current, drawPhysicalLine = true) {
+            let pathLengths = [], totalLen = 0;
+            const outerStroke = window.isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)";
+            const outerGlow   = window.isDarkMode ? "rgba(56, 189, 248, 0.4)" : "transparent";
+            const innerStroke = window.isDarkMode ? "rgba(255, 255, 255, 0.6)" : "#64748b";
+
+            if(drawPhysicalLine) {
+                ctx.beginPath(); ctx.strokeStyle = outerStroke; 
+                ctx.lineWidth = 7; ctx.lineCap = "round"; ctx.lineJoin = "round";
+                ctx.shadowBlur = window.isDarkMode ? 10 : 0; ctx.shadowColor = outerGlow; 
+                ctx.moveTo(points[0].x, points[0].y);
+                for(let i=1; i<points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+                ctx.stroke();
+                ctx.beginPath(); ctx.strokeStyle = innerStroke; 
+                ctx.lineWidth = 1.5; ctx.shadowBlur = 0; 
+                ctx.moveTo(points[0].x, points[0].y);
+                for(let i=1; i<points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+                ctx.stroke();
+            }
+
+            for(let i=1; i<points.length; i++) {
+                let dx = points[i].x - points[i-1].x; let dy = points[i].y - points[i-1].y;
+                let len = Math.hypot(dx, dy); pathLengths.push(len); totalLen += len;
+            }
+
+            if (current === undefined || Math.abs(current) < 0.0001) return;
+            
+            let iTot = window.currentAnswers[window.currentCircuitId]?.total?.i || 1;
+            if(iTot < 0.0001) iTot = 1;
+
+            let isNegative = current < 0;
+            let speedFactor = Math.abs(current / iTot);
+            let speed = Math.max(30, Math.min(220, 150 * speedFactor)); 
+            let spacing = window.flowType === 'electron' ? 25 : 45; 
+            let numDots = Math.floor(totalLen / spacing) + 1;
+            
+            for(let i=0; i<=numDots; i++) {
+                let validTotalLen = Math.max(0.1, totalLen);
+                let distance = ((window.animationTime * speed + i * spacing) % validTotalLen + validTotalLen) % validTotalLen;
+                if (window.flowType === 'electron') distance = validTotalLen - distance;
+
+                let accumulated = 0, dotPos = null, angle = 0;
+                for(let j=0; j<pathLengths.length; j++) {
+                    if (distance <= accumulated + pathLengths[j]) {
+                        let ratio = (distance - accumulated) / pathLengths[j];
+                        dotPos = { x: points[j].x + (points[j+1].x - points[j].x) * ratio, y: points[j].y + (points[j+1].y - points[j].y) * ratio };
+                        angle = Math.atan2(points[j+1].y - points[j].y, points[j+1].x - points[j].x);
+                        break;
+                    }
+                    accumulated += pathLengths[j];
+                }
+                if (dotPos) {
+                    if (isNegative !== (window.flowType === 'electron')) angle += Math.PI; 
+                    if (window.flowType === 'electron') {
+                        ctx.beginPath(); ctx.arc(dotPos.x, dotPos.y, 3, 0, Math.PI*2); 
+                        ctx.fillStyle = window.isDarkMode ? '#38bdf8' : '#0284c7'; 
+                        if(window.isDarkMode) { ctx.shadowBlur = 12; ctx.shadowColor = '#0ea5e9'; }
+                        ctx.fill(); ctx.shadowBlur = 0;
+                    } else {
+                        window.drawArrowTip(ctx, dotPos.x, dotPos.y, angle, window.isDarkMode ? '#f43f5e' : '#e11d48'); 
+                    }
+                }
+            }
+        };
+        window.drawResistor = function(ctx, x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1, dist = Math.hypot(dx, dy), angle = Math.atan2(dy, dx);
+            ctx.save(); ctx.translate(x1, y1); ctx.rotate(angle);
+            const zW = 36, startZ = (dist - zW) / 2, s = zW / 6;
+
+            const outerStroke = window.isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)";
+            const innerStroke = window.isDarkMode ? "rgba(255, 255, 255, 0.9)" : "#334155";
+            const innerShadow = window.isDarkMode ? "rgba(56, 189, 248, 1)" : "transparent";
+
+            ctx.beginPath(); ctx.strokeStyle = outerStroke; ctx.lineWidth = 7; ctx.lineCap = "round"; ctx.lineJoin = "round";
+            ctx.moveTo(0, 0); ctx.lineTo(startZ, 0);
+            ctx.lineTo(startZ + s, -10); ctx.lineTo(startZ + 2*s, 10); ctx.lineTo(startZ + 3*s, -10); ctx.lineTo(startZ + 4*s, 10); ctx.lineTo(startZ + 5*s, -10); ctx.lineTo(startZ + 6*s, 0);
+            ctx.lineTo(dist, 0); ctx.stroke();
+
+            ctx.beginPath(); ctx.strokeStyle = innerStroke; 
+            if(window.isDarkMode) { ctx.shadowBlur = 8; ctx.shadowColor = innerShadow; }
+            ctx.lineWidth = 1.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+            ctx.moveTo(0, 0); ctx.lineTo(startZ, 0);
+            ctx.lineTo(startZ + s, -10); ctx.lineTo(startZ + 2*s, 10); ctx.lineTo(startZ + 3*s, -10); ctx.lineTo(startZ + 4*s, 10); ctx.lineTo(startZ + 5*s, -10); ctx.lineTo(startZ + 6*s, 0);
+            ctx.lineTo(dist, 0); ctx.stroke();
+            ctx.restore();
+        };
+        window.drawGround = function(ctx, x, y) {
+            ctx.save();
+            ctx.strokeStyle = window.isDarkMode ? "rgba(255, 255, 255, 0.9)" : "#334155"; ctx.lineWidth = 2;
+            if(window.isDarkMode) { ctx.shadowBlur = 8; ctx.shadowColor = "rgba(56, 189, 248, 1)"; }
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + 15); ctx.moveTo(x - 12, y + 15); ctx.lineTo(x + 12, y + 15);
+            ctx.moveTo(x - 8, y + 20); ctx.lineTo(x + 8, y + 20); ctx.moveTo(x - 4, y + 25); ctx.lineTo(x + 4, y + 25);
+            ctx.stroke(); ctx.restore();
+        };
+        window.drawSource = function(ctx, x, y, orient='V', pol='normal') {
+            const bgFill = window.isDarkMode ? "rgba(15, 23, 42, 1)" : "#f8fafc";
+            const borderCol = window.isDarkMode ? "rgba(255, 255, 255, 0.9)" : "#334155";
+            ctx.save(); ctx.beginPath(); ctx.arc(x, y, 22, 0, 2*Math.PI); ctx.fillStyle = bgFill; ctx.fill();
+            ctx.lineWidth = 2.5; ctx.strokeStyle = borderCol; 
+            if(window.isDarkMode) { ctx.shadowBlur = 12; ctx.shadowColor = "#ffffff"; }
+            ctx.stroke(); ctx.shadowBlur = window.isDarkMode ? 10 : 0; 
+            let plusColor = window.isDarkMode ? "#f43f5e" : "#e11d48", minusColor = window.isDarkMode ? "#38bdf8" : "#0284c7";
+            let plusShadow = window.isDarkMode ? "#e11d48" : "transparent", minusShadow = window.isDarkMode ? "#0ea5e9" : "transparent";
+            ctx.font = "bold 22px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            if (orient === 'V') {
+                ctx.fillStyle = pol === 'normal' ? plusColor : minusColor; ctx.shadowColor = pol === 'normal' ? plusShadow : minusShadow;
+                ctx.fillText(pol === 'normal' ? "+" : "-", x, y - 9);
+                ctx.fillStyle = pol === 'normal' ? minusColor : plusColor; ctx.shadowColor = pol === 'normal' ? minusShadow : plusShadow;
+                ctx.fillText(pol === 'normal' ? "-" : "+", x, y + 7);
+            } else {
+                ctx.fillStyle = pol === 'normal' ? plusColor : minusColor; ctx.shadowColor = pol === 'normal' ? plusShadow : minusShadow;
+                ctx.fillText(pol === 'normal' ? "+" : "-", x - 10, y);
+                ctx.fillStyle = pol === 'normal' ? minusColor : plusColor; ctx.shadowColor = pol === 'normal' ? minusShadow : plusShadow;
+                ctx.fillText(pol === 'normal' ? "-" : "+", x + 10, y);
+            }
+            ctx.restore();
+        };
+
+        window.animate = function(time) {
+            if(!window.lastTime) window.lastTime = time;
+            const dt = (time - window.lastTime) / 1000; 
+            window.lastTime = time; window.animationTime += dt;
+
+            for(let id=1; id<=window.NUM_CIRCUITS; id++) {
+                if(window.contexts[id]) {
+                    let ctx = window.contexts[id]; window.currentCircuitId = id; ctx.clearRect(0, 0, 850, 480);
+                    let config = window.circuitDB.find(c => c.id === id);
+                    if(config) config.renderCanvas(ctx, window.state[id], window.currentAnswers[id].raw || {}, window.showEqOverlay[id]);
+                }
+            }
+            requestAnimationFrame(window.animate);
+        };
+
+        window.resizeCanvases = function() { for(let id=1; id<=window.NUM_CIRCUITS; id++) window.applyPanZoomTransform(id); };
+        window.initPanZoomEvents = function() {
+            for(let id=1; id<=window.NUM_CIRCUITS; id++) {
+                const container = document.getElementById(`neon-container-${id}`);
+                if(!container) continue;
+                let isDragging = false, startX, startY;
+                container.addEventListener('mousedown', (e) => { isDragging = true; startX = e.clientX - window.viewStates[id].x; startY = e.clientY - window.viewStates[id].y; });
+                window.addEventListener('mousemove', (e) => { if(!isDragging) return; window.viewStates[id].x = e.clientX - startX; window.viewStates[id].y = e.clientY - startY; window.applyPanZoomTransform(id); });
+                window.addEventListener('mouseup', () => { isDragging = false; }); container.addEventListener('mouseleave', () => { isDragging = false; });
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault(); const zoomFactor = 1.1;
+                    if(e.deltaY < 0) window.viewStates[id].zoom = Math.min(window.viewStates[id].zoom * zoomFactor, 3);
+                    else window.viewStates[id].zoom = Math.max(window.viewStates[id].zoom / zoomFactor, 0.4);
+                    window.applyPanZoomTransform(id);
+                }, {passive: false});
+            }
+        };
+        window.applyPanZoomTransform = function(id) {
+            const wrapper = document.getElementById(`wrapper-${id}`);
+            if(!wrapper) return;
+            const parentWidth = wrapper.parentElement.clientWidth;
+            wrapper.style.transform = `translate(${window.viewStates[id].x}px, ${window.viewStates[id].y}px) scale(${(parentWidth / 850) * window.viewStates[id].zoom})`;
+        };
+        window.zoomCanvas = function(id, factor) { window.viewStates[id].zoom = Math.max(0.4, Math.min(window.viewStates[id].zoom * factor, 3)); window.applyPanZoomTransform(id); };
+        window.resetZoom = function(id) { window.viewStates[id].zoom = 1; window.viewStates[id].x = 0; window.viewStates[id].y = 0; window.applyPanZoomTransform(id); };
+
+        window.toggleCanvasTheme = function() {
+            window.isDarkMode = !window.isDarkMode;
+            if(window.isDarkMode) { document.body.classList.remove('light-theme'); document.body.classList.add('dark-theme'); } 
+            else { document.body.classList.remove('dark-theme'); document.body.classList.add('light-theme'); }
+        };
+
+        window.verifyAnswers = function(id) {
+            let config = window.circuitDB.find(c => c.id === id);
+            if(!config) return;
+            let solved = config.solve(window.state[id]);
+            window.currentAnswers[id] = solved;
+            const keys = Object.keys(window.state[id]).filter(k => !k.startsWith('Vs'));
+            let allCorrect = true, totalFields = 0, filledFields = 0;
+            keys.forEach(comp => {
+                const correct = solved.ans[comp];
+                const checkField = (type, correctVal) => {
+                    totalFields++; const input = document.getElementById(`${type}_${id}_${comp}`);
+                    if(!input || !input.value) return; 
+                    filledFields++; const userVal = parseFloat(input.value); const roundedCorrect = Math.round(correctVal * 100) / 100;
+                    if (Math.abs(userVal - roundedCorrect) <= 0.011) { input.className = "verify-cell correct"; } 
+                    else { input.className = "verify-cell incorrect"; allCorrect = false; }
+                };
+                checkField('v', correct.v); checkField('i', correct.i); checkField('p', correct.v * correct.i);
+            });
+            const feedback = document.getElementById(`feedback-${id}`); feedback.style.display = 'block';
+            if (filledFields === 0) { feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200"; feedback.innerHTML = "⚠️ Ingresa al menos un valor."; } 
+            else if (allCorrect && filledFields === totalFields) { feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-200"; feedback.innerHTML = "🎉 ¡Perfecto! Cálculos exactos."; } 
+            else if (allCorrect) { feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-200"; feedback.innerHTML = "👍 Vas bien, continúa."; } 
+            else { feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200"; feedback.innerHTML = "❌ Hay errores. Revisa tu redondeo."; }
+        };
+
+        window.toggleFlowType = function() {
+            const btn = document.getElementById('btnFlowToggle'); const spanText = document.getElementById('flowText');
+            if(window.flowType === 'conventional') { window.flowType = 'electron'; btn.className = 'toolbar-btn bg-cyan-100 text-cyan-800 border border-cyan-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-cyan-200 transition-colors'; spanText.innerHTML = 'Electrones (- a +)'; } 
+            else { window.flowType = 'conventional'; btn.className = 'toolbar-btn bg-rose-100 text-rose-800 border border-rose-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-rose-200 transition-colors'; spanText.innerHTML = 'Convencional (+ a -)'; }
+        };
+
+        window.toggleHint = function(btn) { btn.nextElementSibling.classList.toggle('show'); };
+        window.toggleAllHints = function() { document.querySelectorAll('.hint-content').forEach(h => h.classList.toggle('show')); };
+
+        window.resizeGlobalCanvas = function() { if(!window.globalCanvas) return; window.globalCanvas.width = window.innerWidth; window.globalCanvas.height = window.innerHeight; };
+        window.toggleDrawing = function() {
+            if(!window.globalCanvas) return;
+            window.globalCanvas.classList.toggle('active'); const btn = document.getElementById('toggleDrawBtn');
+            if (window.globalCanvas.classList.contains('active')) { btn.innerText = "Dibujo ON"; btn.classList.add('text-blue-600', 'font-extrabold'); document.body.style.overflow = 'hidden'; } 
+            else { btn.innerText = "Dibujo OFF"; btn.classList.remove('text-blue-600', 'font-extrabold'); document.body.style.overflow = 'auto'; }
+            window.resizeGlobalCanvas();
+        };
+        window.setDrawingMode = function(mode) { window.drawMode = mode; document.getElementById('penBtn').classList.toggle('bg-white', mode === 'pen'); document.getElementById('eraserBtn').classList.toggle('bg-white', mode === 'eraser'); };
+        window.clearCanvas = function() { if(window.gCtx && window.globalCanvas) window.gCtx.clearRect(0, 0, window.globalCanvas.width, window.globalCanvas.height); };
+        
+        window.startDraw = function(e) { if(!window.globalCanvas || !window.globalCanvas.classList.contains('active')) return; window.isDrawing = true; window.gCtx.beginPath(); window.gCtx.moveTo(e.clientX, e.clientY); };
+        window.draw = function(e) { if (!window.isDrawing || !window.gCtx) return; window.gCtx.lineWidth = window.drawMode === 'pen' ? 3 : 40; window.gCtx.lineCap = 'round'; window.gCtx.strokeStyle = window.drawMode === 'pen' ? '#ef4444' : '#f8fafc'; window.gCtx.globalCompositeOperation = window.drawMode === 'pen' ? 'source-over' : 'destination-out'; window.gCtx.lineTo(e.clientX, e.clientY); window.gCtx.stroke(); };
+        window.endDraw = function() { window.isDrawing = false; };
+        
+        window.exportToPDF = function() { const opt = { margin: 0.2, filename: 'Taller_Circuitos.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }; html2pdf().set(opt).from(document.body).save(); };
+
+        // ==========================================
+        // 9. INICIALIZACIÓN
+        // ==========================================
+        window.initKaTeXUI = function() {
+            const lck = document.getElementById('tex_lck');
+            const lvk = document.getElementById('tex_lvk');
+            if(lck) katex.render("\\sum I_{entra} = \\sum I_{sale}", lck, {throwOnError: false});
+            if(lvk) katex.render("\\sum \\Delta V = 0", lvk, {throwOnError: false});
+        };
+
+        window.onload = () => {
+            window.globalCanvas = document.getElementById('globalDrawingCanvas');
+            if (window.globalCanvas) {
+                window.gCtx = window.globalCanvas.getContext('2d');
+                window.globalCanvas.addEventListener('mousedown', window.startDraw); 
+                window.globalCanvas.addEventListener('mousemove', window.draw); 
+                window.globalCanvas.addEventListener('mouseup', window.endDraw);
+                window.globalCanvas.addEventListener('touchstart', (e) => window.startDraw(e.touches[0])); 
+                window.globalCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); window.draw(e.touches[0]); }, {passive: false}); 
+                window.globalCanvas.addEventListener('touchend', window.endDraw);
+                window.resizeGlobalCanvas();
+            }
+
+            window.buildGridDOM();
+            window.initKaTeXUI();
+            
+            for(let i=1; i<=window.NUM_CIRCUITS; i++) {
+                const c = document.getElementById(`canvas-${i}`);
+                if(c) window.contexts[i] = c.getContext('2d');
+                let config = window.circuitDB.find(circ => circ.id === i);
+                if(config) {
+                    let solved = config.solve(window.state[i]);
+                    window.currentAnswers[i] = solved;
+                }
+                
+                window.buildEditorPanel(i);
+                window.buildEquationsPanel(i);
+                window.buildTable(i);
+                if(config && config.renderLabels) config.renderLabels(i, window.state[i]);
+            }
+            
+            window.resizeCanvases();
+            window.initPanZoomEvents();
+            requestAnimationFrame(window.animate);
+        };
+        
+        window.onresize = () => { window.resizeGlobalCanvas(); window.resizeCanvases(); };
+    </script>
+</body>
+</html>

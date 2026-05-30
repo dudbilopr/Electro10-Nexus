@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller 7: Fuerza Magnética (Ley de Lorentz)</title>
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls para interacción manual -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .math-tex { font-size: 1.1em; color: #2563eb; }
+        .canvas-container { position: relative; width: 100%; height: 280px; background: #000; border-radius: 0.75rem; overflow: hidden; cursor: grab; }
+        .canvas-container:active { cursor: grabbing; }
+        .drawing-layer { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 30; width: 100vw; height: 100vh; }
+        .drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+        
+        /* Cargas y SVG */
+        .charge-pos { fill: #ef4444; stroke: #b91c1c; stroke-width: 2; transition: transform 0.2s; cursor: pointer; }
+        .charge-neg { fill: #3b82f6; stroke: #1d4ed8; stroke-width: 2; transition: transform 0.2s; cursor: pointer; }
+        .charge-pos:hover, .charge-neg:hover { transform: scale(1.2); }
+        .svg-container { display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 0.5rem; overflow: hidden; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            body { background: white; padding: 0; }
+            .problem-card { border: 1px solid #e2e8f0; break-inside: avoid; box-shadow: none; margin-bottom: 1rem; }
+            main { display: block !important; }
+            .svg-container { border: 1px solid #ccc; }
+        }
+        .toolbar-btn { transition: all 0.2s; }
+        .toolbar-btn:hover { transform: translateY(-1px); }
+        input[type="number"], input[type="range"] { border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 5px; width: 100%; accent-color: #2563eb; }
+        .hint-content { display: none; margin-top: 0.5rem; }
+        .hint-content.show { display: block; }
+        .compact-text { font-size: 0.85rem; line-height: 1.5; color: #334155; }
+        .problem-text { margin-bottom: 0.75rem; padding-left: 0.5rem; border-left: 3px solid #cbd5e1; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Capa de Dibujo Global -->
+    <canvas id="globalDrawingCanvas" class="drawing-layer"></canvas>
+
+    <!-- Toolbar Superior Fija -->
+    <nav class="no-print sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 mb-6 px-4 py-3 flex flex-wrap gap-3 items-center justify-between rounded-xl shadow-sm">
+        <div class="flex items-center gap-3">
+            <h1 class="font-bold text-slate-800 text-sm md:text-base">Physics.10easy Workshop</h1>
+            <div class="h-6 w-px bg-slate-300 hidden md:block"></div>
+            <button onclick="exportToPDF()" class="toolbar-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-blue-700">Exportar PDF</button>
+            <button onclick="toggleAllHints()" class="toolbar-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-200">Tips Didácticos</button>
+            <button onclick="toggleAllRotations()" class="toolbar-btn bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-amber-600">Pausar Vista 3D</button>
+        </div>
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button id="penBtn" onclick="setDrawingMode('pen')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Lápiz">✏️</button>
+            <button id="eraserBtn" onclick="setDrawingMode('eraser')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Borrador">🧽</button>
+            <button onclick="clearCanvas()" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Limpiar todo">🗑️</button>
+            <button id="toggleDrawBtn" onclick="toggleDrawing()" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 border-l border-slate-300 ml-1">Dibujo OFF</button>
+        </div>
+    </nav>
+
+    <!-- Header Principal -->
+    <header class="text-center mb-8 border-b border-blue-100 pb-6">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Taller 7: Fuerza Magnética (Ley de Lorentz)</h2>
+        <!-- Reemplazado texto prohibido por uno general universitario -->
+        <p class="text-slate-500 mt-2 text-sm">Fuerzas Magnéticas sobre Cargas y Corrientes • Física II</p>
+        <div class="flex flex-wrap justify-center gap-4 md:gap-8 mt-4 text-[10px] md:text-xs font-mono text-slate-400 uppercase tracking-widest">
+            <span>Grupo: 10E-PHYS</span>
+            <span>Docente: Physics.10easy Builder</span>
+            <span>Unidad 1</span>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" id="taller-content">
+
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 01</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">TALLER</span>
+            </div>
+            <div class="problem-text compact-text text-sm">
+                <strong>Problema 1:</strong> Un electrón se mueve a 5.0 x 10^6 m/s perpendicular a un campo magnético uniforme de 0.2 T. Calcule la magnitud de la fuerza magnética.
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 flex items-center justify-center min-h-[100px] text-slate-400 text-xs italic">
+                Espacio de trabajo del estudiante (Añade SVGs aquí si lo requieres)
+            </div>
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print mt-auto">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Pista:</strong> Revisa la teoría de Fuerzas Magnéticas sobre Cargas y Corrientes y aplica las fórmulas correspondientes. ¡Recuerda las unidades del SI!
+            </div>
+        </section>
+        
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 02</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">TALLER</span>
+            </div>
+            <div class="problem-text compact-text text-sm">
+                <strong>Problema 2:</strong> Determine el radio de la órbita circular descrita por el electrón del problema anterior.
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 flex items-center justify-center min-h-[100px] text-slate-400 text-xs italic">
+                Espacio de trabajo del estudiante (Añade SVGs aquí si lo requieres)
+            </div>
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print mt-auto">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Pista:</strong> Revisa la teoría de Fuerzas Magnéticas sobre Cargas y Corrientes y aplica las fórmulas correspondientes. ¡Recuerda las unidades del SI!
+            </div>
+        </section>
+        
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 03</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">TALLER</span>
+            </div>
+            <div class="problem-text compact-text text-sm">
+                <strong>Problema 3:</strong> Un alambre recto de 2.5 m lleva una corriente de 4.0 A en un campo magnético de 0.5 T. Si el ángulo es de 30°, halle la fuerza sobre el alambre.
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 flex items-center justify-center min-h-[100px] text-slate-400 text-xs italic">
+                Espacio de trabajo del estudiante (Añade SVGs aquí si lo requieres)
+            </div>
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print mt-auto">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Pista:</strong> Revisa la teoría de Fuerzas Magnéticas sobre Cargas y Corrientes y aplica las fórmulas correspondientes. ¡Recuerda las unidades del SI!
+            </div>
+        </section>
+        
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 04</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">TALLER</span>
+            </div>
+            <div class="problem-text compact-text text-sm">
+                <strong>Problema 4:</strong> Un protón entra en una región con E = 3000 V/m y B = 0.5 T perpendiculares entre sí. ¿A qué velocidad no se desvía el protón?
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 flex items-center justify-center min-h-[100px] text-slate-400 text-xs italic">
+                Espacio de trabajo del estudiante (Añade SVGs aquí si lo requieres)
+            </div>
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print mt-auto">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Pista:</strong> Revisa la teoría de Fuerzas Magnéticas sobre Cargas y Corrientes y aplica las fórmulas correspondientes. ¡Recuerda las unidades del SI!
+            </div>
+        </section>
+        
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 05</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">TALLER</span>
+            </div>
+            <div class="problem-text compact-text text-sm">
+                <strong>Problema 5:</strong> Un espectrómetro de masas acelera iones a través de una diferencia de potencial antes de entrar a un campo magnético. Derive la ecuación para la masa.
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 mt-2 flex items-center justify-center min-h-[100px] text-slate-400 text-xs italic">
+                Espacio de trabajo del estudiante (Añade SVGs aquí si lo requieres)
+            </div>
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print mt-auto">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Pista:</strong> Revisa la teoría de Fuerzas Magnéticas sobre Cargas y Corrientes y aplica las fórmulas correspondientes. ¡Recuerda las unidades del SI!
+            </div>
+        </section>
+        </main>
+
+    <footer class="mt-8 mb-4 text-center text-slate-400 text-xs no-print">
+        <p>Generador de Talleres Universitarios • Mode: Builder</p>
+    </footer>
+
+    <!-- Scripts de Lógica y Visualización -->
+    <script>
+        const scenes = {};
+
+        // Iniciar Three.js al cargar
+        function init3D() { return; 
+            createScene('3dfield', 'container-3dfield', createDipoleGeometry, 'dipole_field', 3);
+            animate();
+        }
+
+        function createScene(id, containerId, geometryFunc, fieldType, defaultDensity) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(10, 8, 12);
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true; 
+            controls.autoRotateSpeed = 2.0;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambient);
+            const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+            directional.position.set(10, 20, 15);
+            scene.add(directional);
+
+            const axes = new THREE.AxesHelper(5);
+            scene.add(axes);
+
+            const meshes = geometryFunc();
+            const group = new THREE.Group();
+            if(Array.isArray(meshes)) { meshes.forEach(m => group.add(m)); } 
+            else { group.add(meshes); }
+            scene.add(group);
+
+            const field = createVolumeField(fieldType, defaultDensity, 5);
+            scene.add(field);
+
+            scenes[id] = { scene, camera, renderer, controls, meshGroup: group, field, fieldType, currentDensity: defaultDensity, fieldVisible: true };
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        // --- Geometrías 3D ---
+        function createDipoleGeometry() {
+            const group = new THREE.Group();
+            // Carga Positiva
+            const chargePos = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), new THREE.MeshPhongMaterial({color: 0xef4444}));
+            chargePos.position.set(-2, 0, 0);
+            
+            // Carga Negativa
+            const chargeNeg = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), new THREE.MeshPhongMaterial({color: 0x3b82f6}));
+            chargeNeg.position.set(2, 0, 0);
+            
+            group.add(chargePos);
+            group.add(chargeNeg);
+
+            // Equipotenciales representativos transparentes
+            const equip1 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshBasicMaterial({color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.15}));
+            equip1.position.set(-2, 0, 0);
+            const equip2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshBasicMaterial({color: 0x00aaff, wireframe: true, transparent: true, opacity: 0.15}));
+            equip2.position.set(2, 0, 0);
+            group.add(equip1);
+            group.add(equip2);
+
+            return group;
+        }
+
+        // --- Campo Vectorial 3D ---
+        function createVolumeField(type, densityParam, bounds) {
+            const group = new THREE.Group();
+            const density = parseInt(densityParam); 
+            const step = (bounds * 2) / density;
+            const size = step * 0.5;
+            
+            const addArrow = (dir, pos, color) => {
+                if(dir.lengthSq() < 0.001) return; // Evitar división por cero
+                const arrow = new THREE.ArrowHelper(dir.normalize(), pos, size, color, size*0.3, size*0.15);
+                if(arrow.line && arrow.line.material) { arrow.line.material.transparent = true; arrow.line.material.opacity = 0.6; }
+                if(arrow.cone && arrow.cone.material) { arrow.cone.material.transparent = true; arrow.cone.material.opacity = 0.6; }
+                group.add(arrow);
+            };
+
+            // Campo simulado de Dipolo E = k(q1/r1^2 * r1_hat - q2/r2^2 * r2_hat)
+            if (type === 'dipole_field') {
+                const q1Pos = new THREE.Vector3(-2, 0, 0);
+                const q2Pos = new THREE.Vector3(2, 0, 0);
+                
+                for(let x=-bounds; x<=bounds; x+=step) {
+                    for(let y=-bounds; y<=bounds; y+=step) {
+                        for(let z=-bounds; z<=bounds; z+=step) {
+                            let pos = new THREE.Vector3(x,y,z);
+                            let r1 = new THREE.Vector3().subVectors(pos, q1Pos);
+                            let r2 = new THREE.Vector3().subVectors(pos, q2Pos);
+                            
+                            let dist1 = r1.length();
+                            let dist2 = r2.length();
+                            
+                            // Evitar infinito cerca de cargas
+                            if(dist1 < 0.8 || dist2 < 0.8) continue;
+                            
+                            // Aproximación de fuerza E
+                            let e1 = r1.normalize().multiplyScalar(1 / (dist1 * dist1));
+                            let e2 = r2.normalize().multiplyScalar(-1 / (dist2 * dist2)); // Negativa atrae
+                            
+                            let totalE = new THREE.Vector3().addVectors(e1, e2);
+                            
+                            // Color basado en dirección predominante para visualización
+                            let color = 0xfacc15; // default yellow
+                            if (totalE.x > 0) color = 0x34d399; // green-ish
+                            else color = 0xf472b6; // pink-ish
+                            
+                            addArrow(totalE, pos, color);
+                        }
+                    }
+                }
+            }
+            return group;
+        }
+
+        function updateVolumeField(id, inputId) {
+            const config = scenes[id];
+            if (!config) return;
+            const densityInput = document.getElementById(inputId).value;
+            config.scene.remove(config.field);
+            config.field = createVolumeField(config.fieldType, densityInput, 5);
+            if(config.fieldVisible) config.scene.add(config.field);
+        }
+
+        function rotateObject(id, angleDeg) {
+            const config = scenes[id];
+            if (!config) return;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            config.meshGroup.rotation.y = angleRad;
+            if(config.field) config.field.rotation.y = angleRad;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            Object.keys(scenes).forEach(id => {
+                const s = scenes[id];
+                s.controls.update(); 
+                s.renderer.render(s.scene, s.camera);
+            });
+        }
+
+        function toggleRotation(id) {
+            scenes[id].controls.autoRotate = !scenes[id].controls.autoRotate;
+            updatePauseButtons();
+        }
+
+        function toggleAllRotations() {
+            let anyTrue = Object.values(scenes).some(s => s.controls.autoRotate);
+            Object.keys(scenes).forEach(k => scenes[k].controls.autoRotate = !anyTrue);
+            updatePauseButtons();
+        }
+
+        function updatePauseButtons() {
+            document.querySelectorAll('.btn-pause').forEach(btn => {
+                const match = btn.getAttribute('onclick').match(/'([^']+)'/);
+                if(match) {
+                    const id = match[1];
+                    const isRotating = scenes[id].controls.autoRotate;
+                    btn.innerText = isRotating ? "Pausar Vista" : "Reanudar Vista";
+                    btn.className = isRotating 
+                        ? "bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-blue-700" 
+                        : "bg-emerald-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-emerald-700";
+                }
+            });
+        }
+
+        // --- Lógica de Dibujo Global ---
+        const canvas = document.getElementById('globalDrawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let drawMode = 'pen';
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function toggleDrawing() {
+            canvas.classList.toggle('active');
+            const btn = document.getElementById('toggleDrawBtn');
+            if (canvas.classList.contains('active')) {
+                btn.innerText = "Dibujo ON";
+                btn.classList.add('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                btn.innerText = "Dibujo OFF";
+                btn.classList.remove('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'auto';
+            }
+            resizeCanvas();
+        }
+
+        function setDrawingMode(mode) {
+            drawMode = mode;
+            document.getElementById('penBtn').classList.toggle('bg-white', mode === 'pen');
+            document.getElementById('eraserBtn').classList.toggle('bg-white', mode === 'eraser');
+        }
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+        canvas.addEventListener('touchend', endDraw);
+
+        function startDraw(e) {
+            if(!canvas.classList.contains('active')) return;
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.clientX, e.clientY);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.lineWidth = drawMode === 'pen' ? 3 : 40;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = drawMode === 'pen' ? '#dc2626' : '#f8fafc';
+            ctx.globalCompositeOperation = drawMode === 'pen' ? 'source-over' : 'destination-out';
+            ctx.lineTo(e.clientX, e.clientY);
+            ctx.stroke();
+        }
+
+        function endDraw() { isDrawing = false; }
+
+        function toggleHint(btn) { 
+            const hintElement = btn.nextElementSibling;
+            if(hintElement.classList.contains('show')) {
+                hintElement.classList.remove('show');
+            } else {
+                hintElement.classList.add('show');
+            }
+        }
+        
+        function toggleAllHints() { 
+            document.querySelectorAll('.hint-content').forEach(h => h.classList.toggle('show')); 
+        }
+
+        function exportToPDF() {
+            const element = document.body;
+            const opt = {
+                margin: 0.2,
+                filename: 'Taller_Fuerza_Electrica_Coulomb.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        window.onload = () => { init3D(); resizeCanvas(); };
+        window.onresize = () => { resizeCanvas(); };
+    </script>
+</body>
+</html>

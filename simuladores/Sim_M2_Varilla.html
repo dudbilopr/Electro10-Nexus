@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Campo Eléctrico: Varilla Cargada</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+    </script>
+    <script type="text/javascript" async
+      src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-light: #f8fafc; /* slate-50 */
+            --bg-dark: #0f172a;  /* slate-900 */
+            --text-light: #1e293b; /* slate-800 */
+            --text-dark: #e2e8f0; /* slate-200 */
+            --border-light: #e2e8f0; /* slate-200 */
+            --border-dark: #334155; /* slate-700 */
+            --panel-light: #ffffff;
+            --panel-dark: #1e293b; /* slate-800 */
+            --accent-color: #3b82f6; /* blue-500 */
+            --tab-inactive-light: #f1f5f9; /* slate-100 */
+            --tab-inactive-dark: #334155; /* slate-700 */
+        }
+        html.dark {
+            --bg-light: #0f172a;
+            --text-light: #e2e8f0;
+            --border-light: #334155;
+            --panel-light: #1e293b;
+            --tab-inactive-light: #334155;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            transition: background-color 0.3s, color 0.3s;
+        }
+        .panel {
+            background-color: var(--panel-light);
+            border: 1px solid var(--border-light);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .tab-button {
+            background-color: var(--tab-inactive-light);
+            color: var(--text-light);
+        }
+        .tab-button.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        html.dark .tab-button {
+             color: var(--text-dark);
+        }
+        html.dark .tab-button.active {
+             color: white;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+            width: 100%;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 0.5rem;
+            border-radius: 0.25rem;
+            background: var(--border-light);
+        }
+        input[type="range"]::-moz-range-track {
+            height: 0.5rem;
+            border-radius: 0.25rem;
+            background: var(--border-light);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+           -webkit-appearance: none;
+            appearance: none;
+            margin-top: -0.25rem;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 9999px;
+            background-color: var(--accent-color);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 9999px;
+            background-color: var(--accent-color);
+            border: none;
+        }
+        .canvas-container {
+            aspect-ratio: 1 / 1;
+            max-width: 80vh;
+            max-height: 80vh;
+            margin: auto;
+        }
+        @media (min-width: 1024px) {
+            .canvas-container {
+                max-width: none;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+
+<div class="w-full max-w-screen-2xl mx-auto flex flex-col lg:flex-row gap-4">
+    <!-- Main Simulation Area -->
+    <main class="flex-grow flex flex-col items-center justify-center panel rounded-xl shadow-lg p-4">
+        <h1 class="text-2xl font-bold text-center mb-4 text-blue-600 dark:text-blue-400">Campo Eléctrico de una Varilla Cargada</h1>
+        <div id="canvas-parent" class="w-full h-full canvas-container">
+            <canvas id="simulationCanvas"></canvas>
+        </div>
+    </main>
+
+    <!-- Control and Information Panel -->
+    <aside class="w-full lg:w-[450px] flex-shrink-0">
+        <div class="panel rounded-xl shadow-lg p-4">
+            <!-- Introductory text -->
+            <div class="mb-4 text-center">
+                <p class="text-sm text-slate-600 dark:text-slate-400">
+                    Bienvenido. Usa los controles para explorar cómo una carga diferencial $dq$ contribuye al campo eléctrico total de una varilla cargada.
+                </p>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="flex space-x-1 rounded-lg bg-slate-100 dark:bg-slate-900 p-1 mb-4">
+                <button data-tab="controles" class="tab-button w-full text-sm font-semibold p-2 rounded-md transition-colors">Controles</button>
+                <button data-tab="datos" class="tab-button w-full text-sm font-semibold p-2 rounded-md transition-colors">Datos</button>
+                <button data-tab="teoria" class="tab-button w-full text-sm font-semibold p-2 rounded-md transition-colors">Teoría</button>
+                <button data-tab="analisis" class="tab-button w-full text-sm font-semibold p-2 rounded-md transition-colors">Análisis</button>
+            </nav>
+
+            <!-- Tab Content -->
+            <div>
+                <!-- Controles Tab -->
+                <div id="controles" class="tab-content">
+                    <div class="my-3">
+                        <label for="lengthSlider" class="block text-sm font-medium">Longitud de la varilla (L): <span id="lengthValue">4.0</span> m</label>
+                        <input id="lengthSlider" type="range" min="1" max="8" value="4" step="0.1" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="my-3">
+                        <label for="densitySlider" class="block text-sm font-medium">Densidad de carga (λ): <span id="densityValue">5.0</span> nC/m</label>
+                        <input id="densitySlider" type="range" min="1" max="10" value="5" step="0.1" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="my-3">
+                        <label for="vectorScaleSlider" class="block text-sm font-medium">Escala de Vectores: <span id="vectorScaleValue">1.0</span>x</label>
+                        <input id="vectorScaleSlider" type="range" min="0.1" max="3" value="1" step="0.1" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="my-3">
+                        <label for="zoomSlider" class="block text-sm font-medium">Zoom: <span id="zoomValue">50</span> px/m</label>
+                        <input id="zoomSlider" type="range" min="20" max="100" value="50" step="1" class="w-full h-2 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button id="chargeSignBtn" class="p-2 rounded-lg font-semibold bg-red-500 text-white transition-colors">Carga Positiva</button>
+                        <button id="resetBtn" class="p-2 rounded-lg font-semibold bg-gray-500 hover:bg-gray-600 text-white transition-colors">Reiniciar</button>
+                    </div>
+                    <div class="mt-4 flex items-center justify-center">
+                        <span class="mr-2 text-sm font-medium">Claro</span>
+                        <label for="theme-toggle" class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" value="" id="theme-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                        </label>
+                        <span class="ml-2 text-sm font-medium">Oscuro</span>
+                    </div>
+                </div>
+
+                <!-- Datos Tab -->
+                <div id="datos" class="tab-content p-2 text-sm">
+                    <p class="font-semibold text-base mb-2">Campo Diferencial (de $dq$)</p>
+                    <div class="space-y-2 pl-2">
+                        <p>Carga $dq$: <span id="dqValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> nC</p>
+                        <p>Distancia $r$: <span id="rValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> m</p>
+                        <p>Campo $|d\vec{E}|$: <span id="dEValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> N/C</p>
+                        <p>Componente $dE_x$: <span id="dExValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> N/C</p>
+                        <p>Componente $dE_y$: <span id="dEyValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> N/C</p>
+                    </div>
+                    <hr class="my-4 border-slate-200 dark:border-slate-700">
+                    <p class="font-semibold text-base mb-2">Campo Total (Integrado)</p>
+                     <div class="space-y-2 pl-2">
+                        <p>Campo $|\vec{E}_{total}|$: <span id="EtotalValue" class="font-mono font-semibold text-purple-600 dark:text-purple-400">...</span> N/C</p>
+                        <p>Componente $E_x$: <span id="ExTotalValue" class="font-mono font-semibold text-purple-600 dark:text-purple-400">...</span> N/C</p>
+                        <p>Componente $E_y$: <span id="EyTotalValue" class="font-mono font-semibold text-purple-600 dark:text-purple-400">...</span> N/C</p>
+                    </div>
+                </div>
+                
+                <!-- Teoría Tab -->
+                <div id="teoria" class="tab-content p-2 text-sm space-y-4">
+                     <p class="font-semibold text-base">Principio de Superposición</p>
+                    <p>Para calcular el campo de un objeto con carga distribuida, lo dividimos en infinitos elementos de carga $dq$. Cada $dq$ se trata como una carga puntual.</p>
+                    
+                    <p class="font-semibold text-base">Campo de un Elemento Diferencial</p>
+                    <p>Cada $dq$ produce un campo eléctrico diferencial $d\vec{E}$ en el punto P, dado por la Ley de Coulomb:</p>
+                    <p class="text-center my-2 p-2 border border-slate-200 dark:border-slate-700 rounded-md">$$d\vec{E} = k \frac{dq}{r^2} \hat{r}$$</p>
+                    
+                    <p class="font-semibold text-base">Integración para el Campo Total</p>
+                    <p>El campo total $\vec{E}$ es la suma vectorial (integral) de todos los campos diferenciales a lo largo de la varilla:</p>
+                    <p class="text-center my-2 p-2 border border-slate-200 dark:border-slate-700 rounded-md">$$\vec{E} = \int_{varilla} d\vec{E} = \int_{-L/2}^{+L/2} k \frac{\lambda \, dx}{r^2} \hat{r}$$</p>
+                     <p>Este simulador visualiza el $d\vec{E}$ de un solo $dq$ y calcula el $\vec{E}$ total para construir la intuición detrás de la integración.</p>
+                </div>
+                
+                <!-- Análisis Tab -->
+                <div id="analisis" class="tab-content p-2 text-sm space-y-4">
+                    <p class="font-semibold text-base">Tips Conceptuales</p>
+                    <ul class="list-disc list-inside space-y-2">
+                        <li>La dirección de $\vec{E}$ se aleja de cargas (+) y se acerca a cargas (-).</li>
+                        <li>La magnitud del campo $|d\vec{E}|$ disminuye con el cuadrado de la distancia ($1/r^2$).</li>
+                        <li>Mueve $P$ al eje Y ($x=0$) y observa la simetría. ¿Qué componente del campo total se anula?</li>
+                    </ul>
+
+                    <p class="font-semibold text-base mt-4">Preguntas de Análisis</p>
+                    <ol class="list-decimal list-inside space-y-2">
+                       <li>¿Qué ocurre con $|\vec{E}_{total}|$ si duplicas la densidad de carga $\lambda$?</li>
+                       <li>¿Cómo cambian $E_x$ y $E_y$ si mueves $P$ a lo largo de una línea vertical?</li>
+                       <li>¿En qué posición del punto $P$ la componente $E_x$ es máxima? ¿Y la $E_y$?</li>
+                    </ol>
+
+                    <div class="mt-6">
+                        <p class="font-semibold text-base">Desafío de Integración</p>
+                        <div class="mt-2 p-3 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <p>
+                                Imagina que quisiéramos calcular el campo eléctrico <strong>total</strong> $\vec{E}$ en el punto P. ¿Por qué la componente $E_x$ se cancelaría si P estuviera directamente sobre el centro de la varilla (en $x=0$, $y=2$)?
+                            </p>
+                            <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                <strong>Pista:</strong> Coloca $P$ en el eje Y. Mueve $dq$ de un extremo a otro y observa la simetría de la componente $dE_x$. Cada $dq$ a una distancia $+x$ tiene un par simétrico en $-x$ cuya componente horizontal anula a la primera.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- ELEMENTOS DEL DOM ---
+    const canvas = document.getElementById('simulationCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasParent = document.getElementById('canvas-parent');
+    
+    // Controles
+    const lengthSlider = document.getElementById('lengthSlider');
+    const lengthValue = document.getElementById('lengthValue');
+    const densitySlider = document.getElementById('densitySlider');
+    const densityValue = document.getElementById('densityValue');
+    const vectorScaleSlider = document.getElementById('vectorScaleSlider');
+    const vectorScaleValue = document.getElementById('vectorScaleValue');
+    const zoomSlider = document.getElementById('zoomSlider');
+    const zoomValue = document.getElementById('zoomValue');
+    const chargeSignBtn = document.getElementById('chargeSignBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    // Valores dinámicos diferenciales
+    const dqValueEl = document.getElementById('dqValue');
+    const rValueEl = document.getElementById('rValue');
+    const dEValueEl = document.getElementById('dEValue');
+    const dExValueEl = document.getElementById('dExValue');
+    const dEyValueEl = document.getElementById('dEyValue');
+    
+    // Valores dinámicos totales
+    const EtotalValueEl = document.getElementById('EtotalValue');
+    const ExTotalValueEl = document.getElementById('ExTotalValue');
+    const EyTotalValueEl = document.getElementById('EyTotalValue');
+
+
+    // --- CONSTANTES Y ESTADO DE LA SIMULACIÓN ---
+    const k = 8.9875517923e9; // Constante de Coulomb (N·m²/C²)
+    const initialState = {
+        rodLength: 4.0,       // m
+        chargeDensity: 5.0, // nC/m
+        chargeSign: 1,        // 1 para positivo, -1 para negativo
+        vectorScale: 1.0,
+        zoom: 50,             // pixels per meter
+        p: { x: 2.5, y: 2.0 },  // Posición del punto P (m)
+        dq: { x: 1.0, y: 0 },   // Posición del dq (m)
+    };
+    let state = { ...initialState };
+    let calculatedFields = {}; // To store calculated field values
+
+    // Estado del arrastre (drag)
+    let isDraggingP = false;
+    let isDraggingDQ = false;
+    let origin = { x: 0, y: 0 };
+    
+    // --- LÓGICA DE CÁLCULO ---
+    function calculateFields() {
+        const lambda = state.chargeDensity * 1e-9 * state.chargeSign;
+        const L = state.rodLength;
+        const p = state.p;
+
+        // Differential Field Calculation
+        const dx_diff = p.x - state.dq.x;
+        const dy_diff = p.y - state.dq.y;
+        const r_diff = Math.hypot(dx_diff, dy_diff);
+        let dE_mag = 0, dEx = 0, dEy = 0, dq_val = 0;
+        
+        if (r_diff > 0.01) {
+            dq_val = lambda * (L / 100); // Approximate dq for visualization
+            dE_mag = (k * Math.abs(dq_val)) / (r_diff * r_diff);
+            const angle_diff = Math.atan2(dy_diff, dx_diff);
+            dEx = dE_mag * Math.cos(angle_diff) * state.chargeSign;
+            dEy = dE_mag * Math.sin(angle_diff) * state.chargeSign;
+        }
+
+        // Total Field Calculation (Integration)
+        const x1 = -L / 2;
+        const x2 = L / 2;
+        
+        const term1_Ex = Math.hypot(p.x - x1, p.y);
+        const term2_Ex = Math.hypot(p.x - x2, p.y);
+        const Ex_total = k * lambda * (1/term2_Ex - 1/term1_Ex);
+
+        let Ey_total = 0;
+        if (Math.abs(p.y) > 1e-6) {
+             const term1_Ey = (x2 - p.x) / Math.hypot(x2 - p.x, p.y);
+             const term2_Ey = (x1 - p.x) / Math.hypot(x1 - p.x, p.y);
+             Ey_total = (k * lambda / p.y) * (term1_Ey - term2_Ey);
+        }
+        
+        const E_total_mag = Math.hypot(Ex_total, Ey_total);
+
+        calculatedFields = {
+            dq_val, r_diff, dE_mag, dEx, dEy,
+            E_total_mag, Ex_total, Ey_total
+        };
+    }
+    
+    function updateDataPanel() {
+        const { dq_val, r_diff, dE_mag, dEx, dEy, E_total_mag, Ex_total, Ey_total } = calculatedFields;
+        dqValueEl.textContent = (dq_val * 1e9 / state.chargeSign).toExponential(2);
+        rValueEl.textContent = r_diff.toFixed(2);
+        dEValueEl.textContent = dE_mag.toExponential(2);
+        dExValueEl.textContent = dEx.toExponential(2);
+        dEyValueEl.textContent = dEy.toExponential(2);
+        
+        EtotalValueEl.textContent = E_total_mag.toExponential(2);
+        ExTotalValueEl.textContent = Ex_total.toExponential(2);
+        EyTotalValueEl.textContent = Ey_total.toExponential(2);
+    }
+    
+    // --- LÓGICA DE DIBUJO EN EL CANVAS ---
+    function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvasParent.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+        origin.x = rect.width / 2;
+        origin.y = rect.height / 2;
+        updateSimulation();
+    }
+
+    function worldToCanvas(pos) {
+        return {
+            x: origin.x + pos.x * state.zoom,
+            y: origin.y - pos.y * state.zoom,
+        };
+    }
+
+    function canvasToWorld(pos) {
+        return {
+            x: (pos.x - origin.x) / state.zoom,
+            y: (origin.y - pos.y) / state.zoom,
+        };
+    }
+
+    function drawGrid() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const axisColor = isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+        const textColor = isDark ? '#e2e8f0' : '#1e293b';
+        
+        ctx.strokeStyle = gridColor;
+        ctx.font = '12px Inter';
+        ctx.fillStyle = textColor;
+        
+        const canvasWidth = canvas.width / (window.devicePixelRatio || 1);
+        const canvasHeight = canvas.height / (window.devicePixelRatio || 1);
+
+        for (let x = -20; x <= 20; x++) {
+            const canvasX = worldToCanvas({ x, y: 0 }).x;
+            ctx.beginPath();
+            ctx.moveTo(canvasX, 0);
+            ctx.lineTo(canvasX, canvasHeight);
+            ctx.stroke();
+            if (x !== 0 && x % 2 === 0) ctx.fillText(x, canvasX + 2, origin.y - 2);
+        }
+        for (let y = -20; y <= 20; y++) {
+            const canvasY = worldToCanvas({ x: 0, y }).y;
+            ctx.beginPath();
+            ctx.moveTo(0, canvasY);
+            ctx.lineTo(canvasWidth, canvasY);
+            ctx.stroke();
+            if (y !== 0 && y % 2 === 0) ctx.fillText(y, origin.x + 2, canvasY - 2);
+        }
+        
+        ctx.strokeStyle = axisColor;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(origin.x, 0);
+        ctx.lineTo(origin.x, canvasHeight);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, origin.y);
+        ctx.lineTo(canvasWidth, origin.y);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+    }
+
+    function drawRod() {
+        const halfL = state.rodLength / 2;
+        const start = worldToCanvas({ x: -halfL, y: 0 });
+        const end = worldToCanvas({ x: halfL, y: 0 });
+        
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = state.chargeSign > 0 ? '#ef4444' : '#3b82f6';
+        ctx.beginPath();
+        ctx.moveTo(start.x, start.y);
+        ctx.lineTo(end.x, end.y);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+    }
+
+    function drawPoints() {
+        const pCanvas = worldToCanvas(state.p);
+        const dqCanvas = worldToCanvas(state.dq);
+        const textColor = document.documentElement.classList.contains('dark') ? '#e2e8f0' : '#1e293b';
+
+        ctx.fillStyle = '#10b981'; // P point color
+        ctx.beginPath();
+        ctx.arc(pCanvas.x, pCanvas.y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = textColor;
+        ctx.fillText('P', pCanvas.x + 10, pCanvas.y + 5);
+
+        ctx.fillStyle = '#f97316'; // dq point color
+        ctx.beginPath();
+        ctx.arc(dqCanvas.x, dqCanvas.y, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.fillStyle = textColor;
+        ctx.fillText('dq', dqCanvas.x + 10, dqCanvas.y + 5);
+    }
+    
+    function drawVectors() {
+        const pCanvas = worldToCanvas(state.p);
+        const dqCanvas = worldToCanvas(state.dq);
+
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = '#64748b'; // Dashed line color
+        ctx.beginPath();
+        ctx.moveTo(dqCanvas.x, dqCanvas.y);
+        ctx.lineTo(pCanvas.x, pCanvas.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const { dEx, dEy, Ex_total, Ey_total } = calculatedFields;
+        
+        // Scale for drawing vectors
+        const vectorDrawScale = 50 * state.vectorScale;
+
+        // Differential Vectors
+        const colorMainDiff = state.chargeSign > 0 ? 'rgba(239, 68, 68, 0.7)' : 'rgba(59, 130, 246, 0.7)';
+        const colorXDiff = '#f59e0b';
+        const colorYDiff = '#84cc16';
+        drawArrow(pCanvas.x, pCanvas.y, dEx * vectorDrawScale, -dEy * vectorDrawScale, colorMainDiff, 2, 'dE');
+        drawArrow(pCanvas.x, pCanvas.y, dEx * vectorDrawScale, 0, colorXDiff, 1.5, 'dEx');
+        drawArrow(pCanvas.x, pCanvas.y, 0, -dEy * vectorDrawScale, colorYDiff, 1.5, 'dEy');
+
+        // Total Field Vector
+        const colorTotal = '#a855f7'; // Purple
+        drawArrow(pCanvas.x, pCanvas.y, Ex_total * vectorDrawScale, -Ey_total * vectorDrawScale, colorTotal, 4, 'E');
+    }
+
+    function drawArrow(fromx, fromy, dx, dy, color, lineWidth, label) {
+        if (Math.hypot(dx, dy) < 1) return;
+
+        const tox = fromx + dx;
+        const toy = fromy + dy;
+        const headlen = 8;
+        const angle = Math.atan2(toy - fromy, tox - fromx);
+
+        ctx.strokeStyle = color;
+        ctx.lineWidth = lineWidth;
+        ctx.fillStyle = color;
+
+        ctx.beginPath();
+        ctx.moveTo(fromx, fromy);
+        ctx.lineTo(tox, toy);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(tox, toy);
+        ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+        ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.fillStyle = color;
+        ctx.font = '14px Inter';
+        ctx.fillText(label, tox + 5, toy + 5);
+    }
+    
+    function draw() {
+        const isDark = document.documentElement.classList.contains('dark');
+        const bgColor = isDark ? '#0f172a' : '#f8fafc';
+        const rect = canvasParent.getBoundingClientRect();
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, rect.width, rect.height);
+        
+        drawGrid();
+        drawRod();
+        drawPoints();
+        drawVectors();
+    }
+    
+    // --- CONTROLADORES DE EVENTOS Y ACTUALIZACIÓN ---
+    function updateSimulation() {
+        calculateFields();
+        updateDataPanel();
+        draw();
+    }
+
+    function handleInputChange() {
+        state.rodLength = parseFloat(lengthSlider.value);
+        state.chargeDensity = parseFloat(densitySlider.value);
+        state.vectorScale = parseFloat(vectorScaleSlider.value);
+        state.zoom = parseFloat(zoomSlider.value);
+        
+        lengthValue.textContent = state.rodLength.toFixed(1);
+        densityValue.textContent = state.chargeDensity.toFixed(1);
+        vectorScaleValue.textContent = state.vectorScale.toFixed(1);
+        zoomValue.textContent = state.zoom.toFixed(0);
+
+        const halfL = state.rodLength / 2;
+        state.dq.x = Math.max(-halfL, Math.min(halfL, state.dq.x));
+        
+        updateSimulation();
+        
+        if (window.MathJax) {
+            MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+        }
+    }
+
+    function resetSimulation() {
+        state = { ...initialState };
+        lengthSlider.value = state.rodLength;
+        densitySlider.value = state.chargeDensity;
+        vectorScaleSlider.value = state.vectorScale;
+        zoomSlider.value = state.zoom;
+        
+        chargeSignBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+        chargeSignBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+        chargeSignBtn.textContent = 'Carga Positiva';
+
+        handleInputChange();
+    }
+    
+    function getMousePos(evt) {
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top,
+        };
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const mousePos = getMousePos(e);
+        const pCanvas = worldToCanvas(state.p);
+        const dqCanvas = worldToCanvas(state.dq);
+
+        if (Math.hypot(mousePos.x - pCanvas.x, mousePos.y - pCanvas.y) < 10) {
+            isDraggingP = true;
+        } else if (Math.hypot(mousePos.x - dqCanvas.x, mousePos.y - dqCanvas.y) < 10) {
+            isDraggingDQ = true;
+        }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDraggingP && !isDraggingDQ) return;
+        const worldPos = canvasToWorld(getMousePos(e));
+
+        if (isDraggingP) {
+            state.p = worldPos;
+        } else if (isDraggingDQ) {
+            const halfL = state.rodLength / 2;
+            state.dq.x = Math.max(-halfL, Math.min(halfL, worldPos.x));
+            state.dq.y = 0;
+        }
+        updateSimulation();
+    });
+
+    ['mouseup', 'mouseleave'].forEach(evt => canvas.addEventListener(evt, () => {
+        isDraggingP = false;
+        isDraggingDQ = false;
+    }));
+    
+    // --- LÓGICA DE LA INTERFAZ DE PESTAÑAS (TABS) ---
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const tabId = button.dataset.tab;
+
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            tabContents.forEach(content => {
+                content.id === tabId ? content.classList.add('active') : content.classList.remove('active');
+            });
+            
+            if (window.MathJax) {
+                MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+            }
+        });
+    });
+
+    // --- MANEJADORES DE EVENTOS DE UI ---
+    document.getElementById('theme-toggle').addEventListener('change', () => {
+        document.documentElement.classList.toggle('dark');
+        updateSimulation();
+    });
+
+    [lengthSlider, densitySlider, vectorScaleSlider, zoomSlider].forEach(slider => slider.addEventListener('input', handleInputChange));
+    resetBtn.addEventListener('click', resetSimulation);
+
+    chargeSignBtn.addEventListener('click', () => {
+        state.chargeSign *= -1;
+        const isPositive = state.chargeSign > 0;
+        chargeSignBtn.textContent = isPositive ? 'Carga Positiva' : 'Carga Negativa';
+        chargeSignBtn.classList.toggle('bg-red-500', isPositive);
+        chargeSignBtn.classList.toggle('hover:bg-red-600', isPositive);
+        chargeSignBtn.classList.toggle('bg-blue-500', !isPositive);
+        chargeSignBtn.classList.toggle('hover:bg-blue-600', !isPositive);
+        updateSimulation();
+    });
+
+    // --- INICIALIZACIÓN ---
+    window.addEventListener('resize', resizeCanvas);
+    resetSimulation();
+    resizeCanvas();
+    
+    // Activar la primera pestaña por defecto
+    document.querySelector('.tab-button[data-tab="controles"]').click();
+});
+</script>
+</body>
+</html>
+

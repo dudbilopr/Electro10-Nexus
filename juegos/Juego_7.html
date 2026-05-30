@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physics Quest — Ley de Lorentz</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root{--accent:#ea580c;--bg:#070b1a;--surface:#0f172a;--card:#1e293b;--border:rgba(255,255,255,0.07);--text:#f1f5f9;--mid:#94a3b8;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--glow:#ea580c66}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+/* Stars */
+.stars{position:fixed;width:100%;height:100%;top:0;left:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at center,#0a1628 0%,var(--bg) 100%)}
+.star{position:absolute;background:#fff;border-radius:50%;animation:twinkle var(--t,3s) ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.2;transform:scale(1)}50%{opacity:.8;transform:scale(1.3)}}
+/* Layout */
+.game-wrapper{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:20px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+/* Header */
+.game-header{width:100%;text-align:center;margin-bottom:24px}
+.game-logo{font-family:'Orbitron',monospace;font-size:1.1rem;font-weight:700;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:6px;text-shadow:0 0 20px var(--glow)}
+.game-title{font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:900;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1.2}
+/* HUD */
+.hud{display:flex;gap:12px;width:100%;margin-bottom:20px;flex-wrap:wrap}
+.hud-card{flex:1;min-width:90px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 16px;text-align:center}
+.hud-val{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;color:var(--accent)}
+.hud-lbl{font-size:0.7rem;color:var(--mid);margin-top:4px;letter-spacing:.5px;text-transform:uppercase}
+.lives-display{display:flex;gap:4px;justify-content:center;margin-top:4px}
+.heart{font-size:1.1rem;transition:all .3s}
+.heart.lost{opacity:.2;filter:grayscale(1);transform:scale(.8)}
+/* Timer ring */
+.timer-ring{position:relative;width:56px;height:56px;margin:0 auto}
+.timer-ring svg{transform:rotate(-90deg)}
+.timer-ring circle{fill:none;stroke:var(--surface);stroke-width:4}
+.timer-ring .prog{stroke:var(--accent);stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .5s}
+.timer-val{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Orbitron',monospace;font-size:.85rem;font-weight:900}
+/* Progress bar */
+.round-bar{width:100%;background:var(--surface);border-radius:999px;height:6px;margin-bottom:20px;overflow:hidden}
+.round-fill{height:100%;background:linear-gradient(90deg,var(--accent),#7c3aed);border-radius:999px;transition:width .6s ease}
+/* Card */
+.question-card{width:100%;background:linear-gradient(135deg,var(--card),#0f1929);border:1px solid var(--border);border-radius:24px;padding:32px;position:relative;overflow:hidden;box-shadow:0 0 40px rgba(37,99,235,0.08)}
+.question-card::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle at 70% 30%,rgba(37,99,235,0.05),transparent 50%);pointer-events:none}
+.round-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.3);border-radius:20px;padding:4px 14px;font-size:0.75rem;font-weight:700;color:var(--accent);letter-spacing:.5px;text-transform:uppercase;margin-bottom:16px}
+.q-category{font-size:0.72rem;color:var(--mid);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+.q-text{font-size:1.1rem;font-weight:600;line-height:1.65;margin-bottom:8px}
+.q-formula{background:rgba(255,255,255,0.04);border:1px solid rgba(37,99,235,0.25);border-radius:10px;padding:12px 16px;font-family:'Courier New',monospace;font-size:0.95rem;color:#93c5fd;margin-bottom:20px;text-align:center}
+/* Options */
+.options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+@media(max-width:600px){.options{grid-template-columns:1fr}}
+.opt{background:rgba(255,255,255,0.03);border:1.5px solid var(--border);border-radius:14px;padding:14px 18px;color:var(--text);font-size:0.9rem;cursor:pointer;text-align:left;transition:all .2s;display:flex;align-items:center;gap:10px;font-family:'Inter',sans-serif}
+.opt:hover{border-color:var(--accent);background:rgba(37,99,235,0.08);transform:translateY(-2px);box-shadow:0 4px 20px rgba(37,99,235,0.15)}
+.opt.sel{border-color:var(--accent);background:rgba(37,99,235,0.12)}
+.opt.correct{border-color:var(--success)!important;background:rgba(16,185,129,0.12)!important;animation:pulse-green .5s ease}
+.opt.wrong{border-color:var(--danger)!important;background:rgba(239,68,68,0.08)!important;animation:shake .4s ease}
+@keyframes pulse-green{0%,100%{box-shadow:none}50%{box-shadow:0 0 20px rgba(16,185,129,0.4)}}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.opt-key{width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;flex-shrink:0}
+/* Feedback */
+.feedback{border-radius:12px;padding:14px 18px;margin-top:8px;font-size:0.88rem;line-height:1.5;display:none;animation:fadeIn .3s ease}
+.feedback.show{display:block}
+.feedback.ok{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.25);color:#6ee7b7}
+.feedback.bad{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#fca5a5}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+/* XP popup */
+.xp-pop{position:fixed;top:30%;left:50%;transform:translateX(-50%);font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:900;color:#f59e0b;pointer-events:none;text-shadow:0 0 20px rgba(245,158,11,0.6);opacity:0;z-index:999;transition:all .8s}
+.xp-pop.show{opacity:1;transform:translateX(-50%) translateY(-40px)}
+/* Next btn */
+.next-btn{width:100%;padding:14px;background:linear-gradient(135deg,var(--accent),#7c3aed);border:none;border-radius:12px;color:#fff;font-family:'Orbitron',monospace;font-size:0.9rem;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .2s;margin-top:12px;display:none}
+.next-btn.show{display:block}
+.next-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(37,99,235,0.3)}
+/* Results */
+.results{width:100%;background:linear-gradient(135deg,var(--card),#0f1929);border:1px solid var(--border);border-radius:24px;padding:36px;text-align:center;display:none;animation:fadeIn .5s ease}
+.results.show{display:block}
+.result-trophy{font-size:64px;margin-bottom:12px;display:block;animation:bounce 1s ease infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.result-title{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;margin-bottom:6px}
+.result-xp{font-family:'Orbitron',monospace;font-size:2.2rem;font-weight:900;color:#f59e0b;margin:16px 0;text-shadow:0 0 20px rgba(245,158,11,0.4)}
+.stat-row{display:flex;justify-content:center;gap:16px;margin:16px 0;flex-wrap:wrap}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 20px;min-width:90px}
+.stat-n{font-family:'Orbitron',monospace;font-size:1.3rem;font-weight:900;color:var(--accent)}
+.stat-l{font-size:0.7rem;color:var(--mid);margin-top:4px}
+.achievement{background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05));border:1px solid rgba(245,158,11,0.3);border-radius:14px;padding:16px 20px;margin:16px 0;display:flex;align-items:center;gap:14px;text-align:left}
+.achievement-icon{font-size:2rem;flex-shrink:0}
+.achievement-name{font-weight:700;font-size:0.95rem;color:#fcd34d}
+.achievement-desc{font-size:0.78rem;color:var(--mid);margin-top:2px}
+.btn-restart{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--text);padding:12px 24px;border-radius:10px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.9rem;font-weight:600;transition:all .2s;margin-right:10px}
+.btn-restart:hover{background:rgba(255,255,255,0.1)}
+.btn-save{background:linear-gradient(135deg,var(--accent),#7c3aed);border:none;color:#fff;padding:12px 24px;border-radius:10px;cursor:pointer;font-family:'Inter',sans-serif;font-size:0.9rem;font-weight:600;transition:all .2s}
+.btn-save:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(37,99,235,0.3)}
+/* Start screen */
+.start-screen{width:100%;text-align:center;padding:20px}
+.start-desc{font-size:1rem;color:var(--mid);line-height:1.6;max-width:500px;margin:0 auto 24px;margin-top:12px}
+.rules{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;text-align:left;max-width:500px;margin:0 auto 24px}
+.rules li{padding:6px 0;font-size:0.88rem;color:var(--mid);display:flex;align-items:center;gap:8px}
+.rules li span{color:var(--text)}
+.start-btn{background:linear-gradient(135deg,var(--accent),#7c3aed);border:none;color:#fff;padding:16px 48px;border-radius:14px;cursor:pointer;font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;letter-spacing:2px;transition:all .3s;box-shadow:0 8px 30px rgba(37,99,235,0.3)}
+.start-btn:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(37,99,235,0.4)}
+</style>
+</head>
+<body>
+<!-- Stars -->
+<div class="stars" id="stars"></div>
+
+<!-- XP Popup -->
+<div class="xp-pop" id="xp-pop"></div>
+
+<div class="game-wrapper">
+  <!-- START SCREEN -->
+  <div id="start-screen" class="start-screen">
+    <div class="game-header">
+      <div class="game-logo">⚡ Physics Quest</div>
+      <div class="game-title" id="main-title">Ley de Coulomb</div>
+    </div>
+    <div class="start-desc" id="main-desc">Pon a prueba tu conocimiento sobre la fuerza entre cargas eléctricas. 5 rondas · 3 vidas · XP y logros.</div>
+    <div class="rules">
+      <ul style="list-style:none">
+        <li>⚡ <span>5 rondas de dificultad creciente</span></li>
+        <li>❤️ <span>3 vidas — cada error cuesta una</span></li>
+        <li>⏱️ <span>20 segundos por pregunta</span></li>
+        <li>🎯 <span>Responder rápido da más XP</span></li>
+        <li>🏆 <span>Desbloquea logros con 100% de aciertos</span></li>
+      </ul>
+    </div>
+    <button class="start-btn" onclick="startGame()">⚡ INICIAR JUEGO</button>
+  </div>
+
+  <!-- GAME SCREEN (hidden) -->
+  <div id="game-screen" style="width:100%;display:none">
+    <!-- HUD -->
+    <div class="hud">
+      <div class="hud-card">
+        <div class="hud-val" id="hud-score">0</div>
+        <div class="hud-lbl">Puntos</div>
+      </div>
+      <div class="hud-card">
+        <div class="timer-ring">
+          <svg width="56" height="56" viewBox="0 0 56 56">
+            <circle cx="28" cy="28" r="22" stroke-width="4"/>
+            <circle id="timer-prog" class="prog" cx="28" cy="28" r="22" stroke-width="4" stroke-dasharray="138.2" stroke-dashoffset="0"/>
+          </svg>
+          <div class="timer-val" id="timer-val">20</div>
+        </div>
+        <div class="hud-lbl" style="margin-top:0">Tiempo</div>
+      </div>
+      <div class="hud-card">
+        <div class="hud-val" id="hud-round">1/5</div>
+        <div class="hud-lbl">Ronda</div>
+      </div>
+      <div class="hud-card">
+        <div class="lives-display" id="lives-display">❤️❤️❤️</div>
+        <div class="hud-lbl">Vidas</div>
+      </div>
+    </div>
+
+    <!-- Round bar -->
+    <div class="round-bar"><div class="round-fill" id="round-fill" style="width:0%"></div></div>
+
+    <!-- Question card -->
+    <div class="question-card" id="question-card">
+      <div class="round-badge">⚡ <span id="round-label">Ronda 1 — Calentamiento</span></div>
+      <div class="q-category" id="q-cat">FÍSICA ELECTROSTÁTICA</div>
+      <div class="q-text" id="q-text">Cargando...</div>
+      <div class="q-formula" id="q-formula" style="display:none"></div>
+      <div class="options" id="options-grid"></div>
+      <div class="feedback" id="feedback-box"></div>
+      <button class="next-btn" id="next-btn" onclick="nextRound()">SIGUIENTE RONDA →</button>
+    </div>
+  </div>
+
+  <!-- RESULTS (hidden) -->
+  <div class="results" id="results-screen">
+    <span class="result-trophy" id="result-trophy">🏆</span>
+    <div class="result-title" id="result-title">¡Misión Completada!</div>
+    <div style="color:var(--mid);font-size:0.9rem;margin-top:4px" id="result-sub">Has completado el Physics Quest</div>
+    <div class="result-xp" id="result-xp">+0 XP</div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n" id="stat-score">0</div><div class="stat-l">Puntos</div></div>
+      <div class="stat"><div class="stat-n" id="stat-correct">0/5</div><div class="stat-l">Correctas</div></div>
+      <div class="stat"><div class="stat-n" id="stat-best">0s</div><div class="stat-l">Mejor tiempo</div></div>
+    </div>
+    <div class="achievement" id="achievement-box" style="display:none">
+      <div class="achievement-icon" id="ach-icon">⭐</div>
+      <div>
+        <div class="achievement-name" id="ach-name">Logro desbloqueado</div>
+        <div class="achievement-desc" id="ach-desc">Descripción del logro</div>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn-restart" onclick="restartGame()">🔄 Reintentar</button>
+      <button class="btn-save" onclick="saveResult()">✅ Guardar progreso</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const GAME_CONFIG = {
+  titulo: "Ley de Lorentz",
+  descripcion: "Controla partículas cargadas en campos magnéticos. 5 misiones de física de partículas.",
+  color: "#ea580c",
+  moduloId: "m7-j1",
+  xpGanado: 25,
+  logro: {icono:"🚀",nombre:"Piloto Cuántico",desc:"Completaste el Physics Quest de Lorentz sin errores"},
+  rondas: [
+    {
+      titulo:"Ronda 1",categoria:"DIRECCIÓN",
+      pregunta:"Carga positiva moviéndose en +x, B en +z. ¿Dirección de F_magnética?",
+      formula:"F = qv × B",
+      opciones:["+y","-y","+z","-x"],correcta:1,
+      feedback_ok:"F = q(î × k̂) = q(-ĵ) = -ĵ. La fuerza es en -y.",
+      feedback_bad:"v = v₀î, B = B₀k̂. v×B = î×k̂ = -ĵ. Para q>0: F en -y."
+    },
+    {
+      titulo:"Ronda 2",categoria:"TRAYECTORIA",
+      pregunta:"Una partícula cargada con v ⊥ B en campo B uniforme describe:",
+      formula:null,
+      opciones:["Una parábola","Una elipse","Un círculo","Una recta"],correcta:2,
+      feedback_ok:"v ⊥ B constantemente → F centrípeta constante → CÍRCULO. Radio: r = mv/(qB).",
+      feedback_bad:"F = qv×B ⊥ v siempre. Fuerza centrípeta constante → círculo."
+    },
+    {
+      titulo:"Ronda 3",categoria:"RADIO",
+      pregunta:"Protón (m=1.67×10⁻²⁷kg) con v=10⁶m/s en B=1T. Radio de órbita:",
+      formula:"r = mv/(qB)",
+      opciones:["10.4 mm","1.04 mm","104 mm","1.04 m"],correcta:0,
+      feedback_ok:"r = 1.67×10⁻²⁷ × 10⁶ / (1.6×10⁻¹⁹ × 1) = 1.67×10⁻²¹/1.6×10⁻¹⁹ ≈ 10.4×10⁻³ m = 10.4 mm.",
+      feedback_bad:"r = mv/(qB) = 1.67×10⁻²⁷ × 10⁶ / (1.6×10⁻¹⁹) ≈ 0.0104 m = 10.4 mm."
+    },
+    {
+      titulo:"Ronda 4",categoria:"TRABAJO",
+      pregunta:"¿Cuánto trabajo realiza la fuerza magnética de Lorentz sobre una carga en movimiento?",
+      formula:"W = ∫F·v dt",
+      opciones:["W = qvB","W = 0 siempre","W = ½mv²","Depende de B"],correcta:1,
+      feedback_ok:"La fuerza de Lorentz es siempre ⊥ a v → W = F·v = 0. ¡La fuerza magnética no hace trabajo!",
+      feedback_bad:"F_mag ⊥ v → W = ∫F·v dt = 0. La velocidad cambia de dirección, pero no de magnitud."
+    },
+    {
+      titulo:"Ronda 5",categoria:"CICLOTRÓN",
+      pregunta:"El período de revolución de una carga en campo B uniforme. ¿Depende de la velocidad?",
+      formula:"T = 2πm/(qB)",
+      opciones:["Sí, T ∝ v","Sí, T ∝ 1/v","No, T = 2πm/(qB) es constante","Depende del radio"],correcta:2,
+      feedback_ok:"T = 2πm/(qB). Aunque cambie v, el radio r = mv/(qB) también cambia, y T se mantiene constante. ¡Base del ciclotrón!",
+      feedback_bad:"T = 2πr/v = 2π(mv/qB)/v = 2πm/(qB). La v se cancela → T es independiente de v."
+    }
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+// MOTOR DEL JUEGO — No modificar
+// ═══════════════════════════════════════════════════════════
+let currentRound = 0, score = 0, lives = 3, timer = null;
+let timeLeft = 20, answered = false, bestTime = 20, totalCorrect = 0;
+const TIMER_MAX = 138.2; // circunferencia SVG
+
+function makeStars() {
+  const s = document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const d=document.createElement('div');
+    d.className='star';
+    const sz=Math.random()*2+1;
+    d.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;--t:${2+Math.random()*4}s;animation-delay:${Math.random()*4}s`;
+    s.appendChild(d);
+  }
+}
+
+function startGame() {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'block';
+  currentRound = 0; score = 0; lives = 3; totalCorrect = 0; bestTime = 20;
+  updateHUD();
+  showRound();
+}
+
+function showRound() {
+  if(currentRound >= GAME_CONFIG.rondas.length) { showResults(); return; }
+  answered = false;
+  const r = GAME_CONFIG.rondas[currentRound];
+
+  document.getElementById('round-label').textContent = r.titulo;
+  document.getElementById('q-cat').textContent = r.categoria;
+  document.getElementById('q-text').textContent = r.pregunta;
+
+  const fEl = document.getElementById('q-formula');
+  if(r.formula){ fEl.style.display='block'; fEl.textContent=r.formula; }
+  else { fEl.style.display='none'; }
+
+  const letters=['A','B','C','D'];
+  // Shuffle options with tracking
+  const opts = r.opciones.map((t,i)=>({t,orig:i}));
+  // keep order for simplicity (already varied in content)
+  document.getElementById('options-grid').innerHTML = opts.map((o,i)=>`
+    <button class="opt" id="opt-${i}" onclick="selectAnswer(${i},${o.orig===r.correcta})">
+      <span class="opt-key">${letters[i]}</span>${o.t}
+    </button>`).join('');
+
+  document.getElementById('feedback-box').className='feedback';
+  document.getElementById('next-btn').className='next-btn';
+
+  const pct = (currentRound/GAME_CONFIG.rondas.length)*100;
+  document.getElementById('round-fill').style.width=pct+'%';
+  document.getElementById('hud-round').textContent=`${currentRound+1}/5`;
+
+  startTimer();
+}
+
+function startTimer(){
+  clearInterval(timer);
+  timeLeft = 20;
+  updateTimer();
+  timer = setInterval(()=>{
+    timeLeft--;
+    updateTimer();
+    if(timeLeft<=0){ clearInterval(timer); timeExpired(); }
+  },1000);
+}
+
+function updateTimer(){
+  const pct = timeLeft/20;
+  const offset = TIMER_MAX*(1-pct);
+  const prog = document.getElementById('timer-prog');
+  prog.style.strokeDashoffset = offset;
+  prog.style.stroke = timeLeft>10 ? '#2563eb' : timeLeft>5 ? '#f59e0b' : '#ef4444';
+  document.getElementById('timer-val').textContent = timeLeft;
+}
+
+function timeExpired(){
+  if(answered) return;
+  answered = true;
+  loseLife();
+  // Show correct answer
+  const r = GAME_CONFIG.rondas[currentRound];
+  document.getElementById(`opt-${r.correcta}`).classList.add('correct');
+  showFeedback(false, `⏱️ ¡Tiempo! La respuesta correcta era la opción ${['A','B','C','D'][r.correcta]}. ${r.feedback_bad}`);
+  document.getElementById('next-btn').className='next-btn show';
+}
+
+function selectAnswer(idx, isCorrect) {
+  if(answered) return;
+  answered = true;
+  clearInterval(timer);
+
+  const btn = document.getElementById(`opt-${idx}`);
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+
+  if(isCorrect){
+    const timeBonus = Math.ceil(timeLeft * 5);
+    const roundScore = 100 + timeBonus;
+    score += roundScore;
+    totalCorrect++;
+    if(timeLeft > bestTime) bestTime = 20 - timeLeft;
+    showXP(`+${roundScore}`);
+    showFeedback(true, GAME_CONFIG.rondas[currentRound].feedback_ok);
+  } else {
+    const r = GAME_CONFIG.rondas[currentRound];
+    document.getElementById(`opt-${r.correcta}`).classList.add('correct');
+    loseLife();
+    showFeedback(false, GAME_CONFIG.rondas[currentRound].feedback_bad);
+  }
+
+  document.getElementById('hud-score').textContent = score;
+  document.getElementById('next-btn').className='next-btn show';
+
+  if(lives <= 0) {
+    setTimeout(()=>{ clearInterval(timer); showResults(); }, 1500);
+    document.getElementById('next-btn').className='next-btn';
+    return;
+  }
+}
+
+function loseLife(){
+  if(lives > 0) lives--;
+  updateLives();
+}
+
+function updateLives(){
+  let html='';
+  for(let i=0;i<3;i++) html+=`<span class="heart${i>=lives?' lost':''}">❤️</span>`;
+  document.getElementById('lives-display').innerHTML=html;
+}
+
+function showFeedback(ok, msg){
+  const fb=document.getElementById('feedback-box');
+  fb.className='feedback show '+(ok?'ok':'bad');
+  fb.innerHTML=`<strong>${ok?'✅':'❌'}</strong> ${msg}`;
+}
+
+function showXP(text){
+  const el=document.getElementById('xp-pop');
+  el.textContent=text;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),900);
+}
+
+function nextRound(){
+  currentRound++;
+  if(currentRound>=GAME_CONFIG.rondas.length||lives<=0){ showResults(); return; }
+  document.getElementById('question-card').style.animation='none';
+  void document.getElementById('question-card').offsetWidth;
+  document.getElementById('question-card').style.animation='';
+  showRound();
+}
+
+function updateHUD(){
+  document.getElementById('hud-score').textContent=score;
+  document.getElementById('hud-round').textContent=`${currentRound+1}/5`;
+  updateLives();
+}
+
+function showResults(){
+  clearInterval(timer);
+  document.getElementById('game-screen').style.display='none';
+  const rs=document.getElementById('results-screen');
+  rs.className='results show';
+
+  const pct=Math.round((totalCorrect/GAME_CONFIG.rondas.length)*100);
+  const xp=Math.round(GAME_CONFIG.xpGanado*(pct/100));
+  const trophies=['💀','😰','😐','👍','⭐','🏆'];
+  const ti=Math.floor(pct/20);
+
+  document.getElementById('result-trophy').textContent=trophies[Math.min(ti,5)];
+  document.getElementById('result-title').textContent=pct>=80?'¡Misión Completada!':pct>=50?'¡Buen intento!':'Sigue practicando';
+  document.getElementById('result-sub').textContent=`${pct}% de acierto · Nivel ${totalCorrect>=GAME_CONFIG.rondas.length?'Máximo':totalCorrect+'/'+GAME_CONFIG.rondas.length}`;
+  document.getElementById('result-xp').textContent=`+${xp} XP`;
+  document.getElementById('stat-score').textContent=score;
+  document.getElementById('stat-correct').textContent=`${totalCorrect}/5`;
+  document.getElementById('stat-best').textContent=`${20-bestTime}s`;
+
+  if(totalCorrect===GAME_CONFIG.rondas.length && lives>0){
+    const ab=document.getElementById('achievement-box');
+    ab.style.display='flex';
+    document.getElementById('ach-icon').textContent=GAME_CONFIG.logro.icono;
+    document.getElementById('ach-name').textContent=GAME_CONFIG.logro.nombre;
+    document.getElementById('ach-desc').textContent=GAME_CONFIG.logro.desc;
+  }
+}
+
+function saveResult(){
+  const pct=Math.round((totalCorrect/GAME_CONFIG.rondas.length)*100);
+  const xp=Math.round(GAME_CONFIG.xpGanado*(pct/100));
+  window.parent?.postMessage({
+    action:'marcarCompletado',
+    lessonId:GAME_CONFIG.moduloId,
+    xp:xp,
+    gameData:{score,totalCorrect,pct},
+    logro:totalCorrect===5&&lives>0?GAME_CONFIG.logro:null,
+    mensaje:`Physics Quest completado — ${pct}% — ${score} pts`
+  },'*');
+}
+
+function restartGame(){
+  document.getElementById('results-screen').className='results';
+  document.getElementById('start-screen').style.display='block';
+}
+
+// Init
+makeStars();
+document.getElementById('main-title').textContent=GAME_CONFIG.titulo;
+document.getElementById('main-desc').textContent=GAME_CONFIG.descripcion;
+</script>
+</body>
+</html>
+
+</script>
+</body>
+</html>

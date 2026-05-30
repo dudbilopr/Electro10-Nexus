@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Circuitos DC Básicos</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; padding: 6px; border-radius: 6px; width: 100%; font-size: 0.85rem; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        input[type="range"] { accent-color: #3b82f6; }
+        
+        /* Circuit SVG Styles */
+        .wire { stroke: #64748b; stroke-width: 4; fill: none; }
+        .electron { fill: #3b82f6; }
+        .bulb-glass { fill: rgba(255, 255, 255, 0.1); stroke: #94a3b8; stroke-width: 2; transition: fill 0.3s, filter 0.3s; }
+        .battery-body { fill: #1e293b; stroke: #94a3b8; stroke-width: 2; }
+        .battery-plus { fill: #ef4444; }
+        .battery-minus { fill: #3b82f6; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center px-4 z-20 shrink-0 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">DC</div>
+            <h1 class="text-lg font-bold text-white">Simulador <span class="text-blue-400">Ley de Ohm y Potencia</span></h1>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Controls Sidebar -->
+        <aside class="w-80 glass-panel border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto z-10 p-4 space-y-6">
+            
+            <div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Parámetros del Circuito</h2>
+                
+                <div class="space-y-6">
+                    <!-- Voltaje -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-red-400 font-medium">Voltaje ($V$)</span>
+                            <span id="V-val" class="font-mono text-slate-300">12.0 V</span>
+                        </div>
+                        <input type="range" id="V-slider" min="1" max="24" step="0.5" value="12" class="w-full accent-red-500">
+                    </div>
+
+                    <!-- Resistencia -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-emerald-400 font-medium">Resistencia ($R$)</span>
+                            <span id="R-val" class="font-mono text-slate-300">10.0 $\Omega$</span>
+                        </div>
+                        <input type="range" id="R-slider" min="1" max="100" step="1" value="10" class="w-full accent-emerald-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto">
+                 <button onclick="resetSim()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-700">
+                    Reiniciar
+                </button>
+            </div>
+        </aside>
+
+        <!-- Center Area -->
+        <div class="flex-1 flex flex-col relative bg-slate-950">
+            <!-- SVG Circuit Canvas -->
+            <div id="circuit-container" class="w-full h-[55%] border-b border-slate-800 relative flex items-center justify-center p-4">
+                
+                <!-- Circuit SVG -->
+                <svg viewBox="0 0 400 300" class="w-full h-full max-w-2xl drop-shadow-xl">
+                    <!-- Wires -->
+                    <path class="wire" d="M 100 200 L 100 100 L 300 100 L 300 200" />
+                    <path class="wire" d="M 100 200 L 150 200" />
+                    <path class="wire" d="M 250 200 L 300 200" />
+                    
+                    <!-- Resistor / Bulb (Top Center) -->
+                    <g transform="translate(200, 100)">
+                        <circle id="bulb-glow" class="bulb-glass" cx="0" cy="-20" r="25" />
+                        <!-- Filament -->
+                        <path d="M -10 0 L -5 -15 L 0 -20 L 5 -15 L 10 0" stroke="#fbbf24" stroke-width="2" fill="none" id="filament"/>
+                        <rect x="-10" y="0" width="20" height="15" fill="#64748b" />
+                    </g>
+                    
+                    <!-- Battery (Bottom Center) -->
+                    <g transform="translate(150, 185)">
+                        <rect class="battery-body" x="0" y="0" width="100" height="30" rx="5" />
+                        <rect class="battery-plus" x="0" y="0" width="20" height="30" rx="5" />
+                        <rect class="battery-minus" x="80" y="0" width="20" height="30" rx="5" />
+                        <text x="10" y="20" fill="white" font-size="14" font-weight="bold" font-family="sans-serif">+</text>
+                        <text x="85" y="19" fill="white" font-size="16" font-weight="bold" font-family="sans-serif">-</text>
+                        <text id="svg-v-label" x="50" y="20" fill="white" font-size="14" text-anchor="middle" font-family="sans-serif">12V</text>
+                    </g>
+
+                    <text id="svg-r-label" x="200" y="50" fill="#cbd5e1" font-size="14" text-anchor="middle" font-family="sans-serif">R = 10 Ω</text>
+                    <text id="svg-i-label" x="320" y="150" fill="#3b82f6" font-size="14" font-weight="bold" font-family="sans-serif">I = 1.2 A</text>
+                    
+                    <!-- Path for electrons -->
+                    <path id="electron-path" d="M 150 200 L 100 200 L 100 100 L 300 100 L 300 200 L 250 200" fill="none" stroke="none" />
+                </svg>
+
+                <div class="absolute top-4 left-4 z-10 glass-panel px-3 py-2 rounded-lg pointer-events-none">
+                    <div class="text-xs font-bold text-slate-400">Esquema Físico</div>
+                </div>
+            </div>
+
+            <!-- Theory and Math (Bottom) -->
+            <div class="w-full h-[45%] p-6 overflow-y-auto bg-slate-900 scrollbar-thin flex gap-6">
+                
+                <!-- Math Panel -->
+                <div class="flex-1 min-w-[300px]">
+                    <h3 class="text-xs font-bold text-blue-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        Análisis Matemático
+                    </h3>
+                    <div class="glass-panel p-4 rounded-xl border-blue-500/30 border">
+                        <div id="math-steps" class="space-y-4 text-sm text-slate-300 font-light">
+                            <!-- Injected Math -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphic Panel -->
+                <div class="flex-1 min-w-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-amber-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                        Potencia vs Voltaje (Para R actual)
+                    </h3>
+                    <div class="flex-1 glass-panel rounded-xl p-3 relative">
+                        <canvas id="chartCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // State
+        let state = { V: 12, R: 10 };
+        
+        // Electrons Animation Array
+        let electrons = [];
+        const svgCanvas = document.querySelector('svg');
+        const path = document.getElementById('electron-path');
+        const pathLength = path.getTotalLength();
+        const numElectrons = 15;
+
+        for (let i = 0; i < numElectrons; i++) {
+            let el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            el.setAttribute('r', '4');
+            el.setAttribute('class', 'electron');
+            svgCanvas.appendChild(el);
+            electrons.push({ element: el, progress: (i / numElectrons) * pathLength });
+        }
+
+        let animationFrameId;
+
+        // Elements
+        const vSlider = document.getElementById('V-slider');
+        const rSlider = document.getElementById('R-slider');
+        const vVal = document.getElementById('V-val');
+        const rVal = document.getElementById('R-val');
+        const mathSteps = document.getElementById('math-steps');
+        const bulb = document.getElementById('bulb-glow');
+        const filament = document.getElementById('filament');
+
+        // Chart
+        let pChart;
+        function initChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            pChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Potencia (W)',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        fill: true,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Operación Actual',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: '#ef4444',
+                        pointRadius: 6,
+                        showLine: false
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'Voltaje (V)', color: '#64748b' }, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+                        y: { title: { display: true, text: 'Potencia (W)', color: '#64748b' }, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            const voltages = Array.from({length: 24}, (_, i) => i+1);
+            const powers = voltages.map(v => (v * v) / state.R);
+            
+            pChart.data.labels = voltages;
+            pChart.data.datasets[0].data = powers;
+            
+            const currentP = (state.V * state.V) / state.R;
+            pChart.data.datasets[1].data = [{x: state.V, y: currentP}];
+            
+            pChart.update();
+        }
+
+        function animateElectrons() {
+            const I = state.V / state.R;
+            const speed = I * 0.5; // Relacionamos velocidad con corriente
+            
+            electrons.forEach(e => {
+                e.progress += speed;
+                if (e.progress > pathLength) e.progress = 0;
+                
+                const pt = path.getPointAtLength(e.progress);
+                e.element.setAttribute('cx', pt.x);
+                e.element.setAttribute('cy', pt.y);
+            });
+            
+            animationFrameId = requestAnimationFrame(animateElectrons);
+        }
+
+        function updateVisuals(I, P) {
+            // Update SVG Texts
+            document.getElementById('svg-v-label').textContent = `${state.V.toFixed(1)}V`;
+            document.getElementById('svg-r-label').textContent = `R = ${state.R.toFixed(1)} Ω`;
+            document.getElementById('svg-i-label').textContent = `I = ${I.toFixed(2)} A`;
+            
+            // Update Bulb brightness based on Power
+            // Let's say max expected power is 24^2 / 1 = 576W. Normal is 12^2 / 10 = 14.4W
+            const maxP = 150; 
+            let intensity = Math.min(1, P / maxP);
+            
+            // Adjust glow
+            const r = 255;
+            const g = Math.floor(180 + 75 * intensity);
+            const b = Math.floor(50 * (1-intensity));
+            const alpha = 0.1 + (0.8 * intensity);
+            
+            bulb.style.fill = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            bulb.style.filter = `drop-shadow(0 0 ${20 * intensity}px rgba(${r}, ${g}, ${b}, ${alpha}))`;
+            filament.style.stroke = `rgb(${r}, ${g}, ${b})`;
+            filament.style.strokeWidth = 2 + (2 * intensity);
+        }
+
+        function updateUI() {
+            vVal.innerText = `${state.V.toFixed(1)} V`;
+            rVal.innerText = `${state.R.toFixed(1)} Ω`;
+
+            const I = state.V / state.R;
+            const P = state.V * I;
+
+            let mathHtml = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-800/50 p-3 rounded border border-slate-700">
+                        <div class="text-xs text-blue-400 font-bold mb-1 uppercase">Corriente (Ley de Ohm)</div>
+                        $$ I = \\frac{V}{R} $$
+                        $$ I = \\frac{${state.V.toFixed(1)}}{${state.R.toFixed(1)}} = \\mathbf{${I.toFixed(2)}\\ A} $$
+                    </div>
+                    <div class="bg-slate-800/50 p-3 rounded border border-slate-700">
+                        <div class="text-xs text-amber-400 font-bold mb-1 uppercase">Potencia Disipada</div>
+                        $$ P = V \\cdot I $$
+                        $$ P = ${state.V.toFixed(1)} \\cdot ${I.toFixed(2)} = \\mathbf{${P.toFixed(1)}\\ W} $$
+                    </div>
+                </div>
+            `;
+            
+            mathSteps.innerHTML = mathHtml;
+            if (window.MathJax) MathJax.typesetPromise([mathSteps]);
+
+            updateChart();
+            updateVisuals(I, P);
+        }
+
+        function handleInput() {
+            state.V = parseFloat(vSlider.value);
+            state.R = parseFloat(rSlider.value);
+            updateUI();
+        }
+
+        function resetSim() {
+            vSlider.value = 12;
+            rSlider.value = 10;
+            handleInput();
+        }
+
+        // Listeners
+        vSlider.addEventListener('input', handleInput);
+        rSlider.addEventListener('input', handleInput);
+
+        // Init
+        initChart();
+        handleInput();
+        animateElectrons();
+
+    </script>
+</body>
+</html>

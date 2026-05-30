@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>physics10.easy - Motor Evaluativo Cognitivo</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fuentes de Google y Estilos Personalizados -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        
+        /* Barra de scroll elegante */
+        .custom-scrollbar::-webkit-scrollbar { height: 10px; width: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; border: 2px solid #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Efecto cuaderno */
+        .cuaderno-shadow { box-shadow: 20px 20px 60px rgba(0,0,0,0.05), -5px 0px 15px rgba(0,0,0,0.02); }
+        .lomo-cuaderno { border-left: 12px solid #ea580c; border-radius: 4px 24px 24px 4px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Barras de progreso animadas */
+        .progress-bar-fill { transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        /* Efecto Timeline Procedimental */
+        .step-container { border-left: 4px solid #e2e8f0; padding-left: 24px; position: relative; margin-bottom: 32px; z-index: 10; }
+        .step-container::before { content: ''; position: absolute; left: -14px; top: 0; width: 24px; height: 24px; background: #fff; border: 4px solid #cbd5e1; border-radius: 50%; transition: all 0.3s; }
+        .step-active { border-left-color: #ea580c; background: #fff7ed; transition: all 0.3s ease; z-index: 20; }
+        .step-pending { border-left: 4px solid #cbd5e1; background: #f8fafc; opacity: 0.9; }
+
+        /* Selectores integrados al texto */
+        .inline-blank { display: inline-block; vertical-align: middle; margin: 0 6px; }
+    </style>
+
+    <!-- KaTeX cargado estáticamente -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef, useMemo } from 'https://esm.sh/react@18.2.0';
+        import { createRoot } from 'https://esm.sh/react-dom@18.2.0/client';
+        import { 
+          BookOpen, ShieldAlert, GraduationCap, Play, 
+          Activity, Save, Eraser, Lightbulb, Target, LayoutDashboard, RefreshCw,
+          Eye, Clock, BarChart2, BrainCircuit, Timer, TrendingUp, AlertTriangle, Award,
+          ArrowUp, ArrowDown, ArrowLeft, ArrowRight as ArrowRightIcon,
+          ArrowUpRight, ArrowUpLeft, ArrowDownRight, ArrowDownLeft, MousePointer2,
+          CheckCircle as CheckCircle2, XCircle, Info, Hand, PenTool, User, ChevronDown, LogIn, Mail, ChevronRight, ChevronLeft,
+          Brain, BarChart3, Settings, Star, Scissors, MessageSquare, BookOpenCheck,
+          UserCircle, Building, Camera, Globe, FileText, ShieldCheck, ListChecks, Crosshair, Map, GitMerge, Move, Compass, Focus, TrendingDown,
+          PieChart, Zap, Layers, Network
+        } from 'https://esm.sh/lucide-react@0.292.0';
+        
+        // Firebase (Gstatic)
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, setDoc, doc, getDocs, getDoc, serverTimestamp, query, orderBy, onSnapshot, increment } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js';
+
+        // --- 1. FIREBASE INITIALIZATION ---
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+          firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+          firebaseConfig = {
+            apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+            authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+            databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",
+            projectId: "laboratorio-de-coulomb",
+            storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+            messagingSenderId: "525944850850",
+            appId: "1:525944850850:web:eca9c0b79809358e8d8afb",
+            measurementId: "G-SZECJNG25E"
+          };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        let analytics = null;
+        if (firebaseConfig.measurementId) {
+            try { analytics = getAnalytics(app); } catch(e) {}
+        }
+        
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = "quiz-coulomb-v9-cognitivedcl"; 
+
+        // --- 2. KATEX HOOK ---
+        const useKaTeX = () => {
+          useEffect(() => {
+            if (!document.getElementById('katex-css')) {
+              const link = document.createElement('link');
+              link.id = 'katex-css'; link.rel = 'stylesheet';
+              link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css';
+              document.head.appendChild(link);
+            }
+          }, []);
+        };
+
+        const useThreeJS = () => {
+          const [loaded, setLoaded] = useState(false);
+          useEffect(() => {
+            if (window.THREE && window.THREE.OrbitControls) { setLoaded(true); return; }
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+            script.onload = () => {
+              const controls = document.createElement('script');
+              controls.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+              controls.onload = () => setLoaded(true);
+              document.head.appendChild(controls);
+            };
+            document.head.appendChild(script);
+          }, []);
+          return loaded;
+        };
+
+        // --- 3. COMPONENTS ---
+        const Latex = ({ text, className = "", displayMode = false }) => {
+          const containerRef = useRef(null);
+          useEffect(() => {
+            if (window.katex && containerRef.current && text) {
+              try {
+                if (displayMode) {
+                   window.katex.render(text.toString(), containerRef.current, { displayMode: true, throwOnError: false });
+                } else {
+                  const html = text.toString()
+                    .replace(/\$\$(.*?)\$\$/g, (m, eq) => window.katex.renderToString(eq, { displayMode: true, throwOnError: false }))
+                    .replace(/\$(.*?)\$/g, (m, eq) => window.katex.renderToString(eq, { displayMode: false, throwOnError: false }));
+                  containerRef.current.innerHTML = html;
+                }
+              } catch (e) { containerRef.current.innerText = text; }
+            } else if (containerRef.current) {
+                containerRef.current.innerText = text;
+            }
+          }, [text, displayMode]);
+          
+          if (displayMode) return <div ref={containerRef} className={`my-3 text-center overflow-x-auto custom-scrollbar ${className}`} />;
+          return <span ref={containerRef} className={className} dangerouslySetInnerHTML={{__html: text}} />;
+        };
+
+        // 3D Ring Simulator for Q3
+        const ThreeRingCanvas = () => {
+          const mountRef = useRef(null);
+          const isLoaded = useThreeJS();
+
+          useEffect(() => {
+            if (!isLoaded || !mountRef.current) return;
+            const THREE = window.THREE;
+            const width = mountRef.current.clientWidth;
+            const height = mountRef.current.clientHeight;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color('#f8fafc'); 
+
+            const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(5, 5, 8);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            mountRef.current.innerHTML = '';
+            mountRef.current.appendChild(renderer.domElement);
+
+            const controls = new window.THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            dirLight.position.set(5, 10, 7);
+            scene.add(dirLight);
+
+            // Ring Geometry
+            const ringGeo = new THREE.TorusGeometry(3, 0.15, 16, 100);
+            const ringMat = new THREE.MeshPhysicalMaterial({ color: 0xd97706, roughness: 0.1, metalness: 0.5 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.y = Math.PI / 2;
+            scene.add(ring);
+
+            // Point P
+            const pointGeo = new THREE.SphereGeometry(0.2, 16, 16);
+            const pointMat = new THREE.MeshBasicMaterial({ color: 0x0f172a });
+            const point = new THREE.Mesh(pointGeo, pointMat);
+            point.position.set(4, 0, 0); 
+            scene.add(point);
+
+            // Axis line
+            const points = [];
+            points.push(new THREE.Vector3(-2, 0, 0));
+            points.push(new THREE.Vector3(6, 0, 0));
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const lineMat = new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.2, gapSize: 0.1 });
+            const line = new THREE.Line(lineGeo, lineMat);
+            line.computeLineDistances();
+            scene.add(line);
+
+            let animationId;
+            const animate = () => {
+              animationId = requestAnimationFrame(animate);
+              controls.update();
+              ring.rotation.z += 0.01;
+              renderer.render(scene, camera);
+            };
+            animate();
+
+            const handleResize = () => {
+              if(!mountRef.current) return;
+              camera.aspect = mountRef.current.clientWidth / mountRef.current.clientHeight;
+              camera.updateProjectionMatrix();
+              renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+            };
+            window.addEventListener('resize', handleResize);
+
+            return () => {
+              cancelAnimationFrame(animationId);
+              window.removeEventListener('resize', handleResize);
+              renderer.dispose();
+            };
+          }, [isLoaded]);
+
+          return (
+            <div className="relative w-full aspect-square rounded-2xl overflow-hidden shadow-inner border-2 border-slate-200 cursor-move touch-none">
+              <div ref={mountRef} className="w-full h-full" />
+              <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-4 py-2 rounded-xl text-xs font-black text-slate-700 flex items-center gap-2 border border-slate-200 shadow-sm pointer-events-none uppercase tracking-widest">
+                <Activity size={16} className="text-orange-500" />
+                Simulador de Campo Vectorial 3D
+              </div>
+            </div>
+          );
+        };
+
+        const InlineSelect = ({ id, value, onChange, options, width="w-auto", isSubmitted, expected }) => {
+          const [isOpen, setIsOpen] = useState(false);
+          const dropdownRef = useRef(null);
+
+          useEffect(() => {
+            const handleClickOutside = (event) => {
+              if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsOpen(false);
+            };
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => document.removeEventListener("mousedown", handleClickOutside);
+          }, []);
+
+          const isCorrect = isSubmitted && value === expected;
+          const isWrong = isSubmitted && value !== expected;
+          
+          let bgClass = "bg-white hover:bg-orange-50 border-slate-300";
+          let textClass = "text-slate-800";
+          
+          if (isCorrect) { bgClass = "bg-emerald-50 border-emerald-500"; textClass = "text-emerald-800"; }
+          if (isWrong) { bgClass = "bg-red-50 border-red-500"; textClass = "text-red-800"; }
+
+          const selectedOption = options.find(o => o.val === value);
+
+          return (
+            <span ref={dropdownRef} className={`inline-flex items-center gap-1 relative group ${width} inline-blank`}>
+              <div className="relative w-full">
+                <button 
+                  type="button" disabled={isSubmitted} onClick={() => setIsOpen(!isOpen)}
+                  className={`w-full px-3 py-2 min-h-[40px] text-sm md:text-base font-bold border-2 ${bgClass} ${textClass} rounded-xl outline-none transition-all shadow-sm flex items-center justify-between cursor-pointer disabled:cursor-default`}
+                >
+                  <span className="flex-grow text-center flex items-center justify-center overflow-hidden">
+                    {selectedOption ? <Latex text={selectedOption.label} /> : <span className="text-slate-400 font-normal text-xs whitespace-nowrap">Seleccionar...</span>}
+                  </span>
+                  {!isSubmitted && <ChevronDown size={14} className={`text-slate-400 flex-shrink-0 transition-transform ml-2 ${isOpen ? 'rotate-180' : ''}`} />}
+                </button>
+
+                {isOpen && !isSubmitted && (
+                  <div className="absolute z-[100] w-max min-w-full top-full mt-2 left-1/2 -translate-x-1/2 bg-white border-2 border-slate-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto custom-scrollbar">
+                    {options.map((o) => (
+                      <div
+                        key={o.val} onClick={() => { onChange(id, o.val); setIsOpen(false); }}
+                        className="px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors text-center text-slate-800 font-bold flex items-center justify-center text-sm md:text-base"
+                      >
+                        <Latex text={o.label} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {isWrong && expected && (
+                   <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-white border border-slate-200 px-2 py-1 rounded shadow-md text-[10px] text-red-600 font-bold z-10 whitespace-nowrap">
+                      Era: <Latex text={options.find(o=>o.val===expected)?.label || ''}/>
+                   </div>
+                )}
+              </div>
+            </span>
+          );
+        };
+
+        const StyledInput = ({ id, placeholder, width="w-full", answers, handleInputChange, isSubmitted, expected }) => {
+            const isCorrect = isSubmitted && answers[id] === expected;
+            const isWrong = isSubmitted && answers[id] !== expected;
+            
+            let bgClass = "bg-white border-slate-300 focus:border-orange-500 focus:bg-orange-50";
+            if (isCorrect) bgClass = "bg-emerald-50 border-emerald-500 text-emerald-800";
+            if (isWrong) bgClass = "bg-red-50 border-red-500 text-red-800";
+
+            return (
+              <div className="relative w-full">
+                <input 
+                  type="text" value={answers[id] || ''} onChange={(e) => handleInputChange(id, e.target.value)} 
+                  placeholder={placeholder} disabled={isSubmitted}
+                  className={`${width} px-4 py-3 text-base border-2 rounded-xl outline-none transition-colors font-medium shadow-sm ${bgClass}`}
+                />
+                {isWrong && expected && (
+                   <div className="absolute -top-6 right-0 bg-white border border-slate-200 px-2 py-1 rounded shadow-md text-xs text-red-600 font-bold z-10">
+                      Era: {expected}
+                   </div>
+                )}
+              </div>
+            )
+        };
+
+        // --- NEW COMPONENT: CognitiveDCL (Cognitivo Interactivo) ---
+        // El alumno da clic en un cuadrante vacío, se dibuja un vector y debe asignarle una etiqueta matemática
+        const CognitiveDCL = ({ idPrefix, options, answers, onChange, isSubmitted, expectedMap }) => {
+            const nodes = [
+                { dir: 'N', cx: 0, cy: -80 },
+                { dir: 'NE', cx: 56, cy: -56 },
+                { dir: 'E', cx: 80, cy: 0 },
+                { dir: 'SE', cx: 56, cy: 56 },
+                { dir: 'S', cx: 0, cy: 80 },
+                { dir: 'SW', cx: -56, cy: 56 },
+                { dir: 'W', cx: -80, cy: 0 },
+                { dir: 'NW', cx: -56, cy: -56 }
+            ];
+
+            // Blindaje de seguridad para evitar caídas de React
+            const safeExpectedMap = expectedMap || {};
+
+            const toggleNode = (dir) => {
+                if (isSubmitted) return;
+                const currentVal = answers[`${idPrefix}_${dir}`];
+                if (currentVal !== undefined) {
+                    onChange(`${idPrefix}_${dir}`, undefined); // Remove
+                } else {
+                    onChange(`${idPrefix}_${dir}`, ''); // Add empty
+                }
+            };
+
+            return (
+                <div className="bg-slate-50 border-2 border-slate-200 p-6 rounded-2xl shadow-inner flex flex-col items-center w-full">
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <Compass size={16}/> Constructor de Diagrama de Cuerpo Libre
+                    </p>
+                    <p className="text-[11px] text-slate-500 mb-6 text-center max-w-sm font-bold">Haz clic en el cuadrante o eje donde interactúa una fuerza/campo, y luego selecciona su etiqueta matemática.</p>
+
+                    <div className="relative w-full max-w-[320px] aspect-square bg-white rounded-full shadow-lg border-4 border-slate-100 p-4 mx-auto mb-4">
+                        <svg viewBox="-100 -100 200 200" className="w-full h-full overflow-visible absolute inset-0">
+                            <defs>
+                                <marker id={`arr_${idPrefix}`} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#ea580c"/></marker>
+                            </defs>
+                            {/* Ejes Cartesianos Ténues */}
+                            <line x1="-100" y1="0" x2="100" y2="0" stroke="#f1f5f9" strokeWidth="2" />
+                            <line x1="0" y1="-100" x2="0" y2="100" stroke="#f1f5f9" strokeWidth="2" />
+                            <circle cx="0" cy="0" r="4" fill="#94a3b8" />
+                            
+                            {/* Dibuja las líneas activas primero para que queden bajo los HTML overlays */}
+                            {nodes.map(n => {
+                                const isActive = answers[`${idPrefix}_${n.dir}`] !== undefined;
+                                if(isActive) return <line key={`l_${n.dir}`} x1="0" y1="0" x2={n.cx} y2={n.cy} stroke="#ea580c" strokeWidth="3" markerEnd={`url(#arr_${idPrefix})`} />;
+                                return null;
+                            })}
+                        </svg>
+
+                        {/* HTML Overlays para interacciones puras */}
+                        <div className="absolute inset-0">
+                            {nodes.map(n => {
+                                const val = answers[`${idPrefix}_${n.dir}`];
+                                const isActive = val !== undefined;
+                                const isCorrect = isSubmitted && val === safeExpectedMap[n.dir];
+                                const isWrong = isSubmitted && val !== safeExpectedMap[n.dir] && safeExpectedMap[n.dir] !== undefined;
+                                const missed = isSubmitted && !isActive && safeExpectedMap[n.dir] !== undefined;
+
+                                const left = `${(n.cx + 100) / 2}%`;
+                                const top = `${(n.cy + 100) / 2}%`;
+
+                                return (
+                                    <div key={`n_${n.dir}`} className="absolute transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1" style={{ left, top }}>
+                                        {!isActive ? (
+                                            <button 
+                                                type="button" disabled={isSubmitted} onClick={() => toggleNode(n.dir)} 
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm z-10 ${missed ? 'bg-red-100 border-2 border-red-400 animate-pulse' : 'bg-slate-100 hover:bg-orange-200 border-2 border-white'}`}
+                                            >
+                                                {missed ? <XCircle size={16} className="text-red-500"/> : <div className="w-2 h-2 bg-slate-300 rounded-full"></div>}
+                                            </button>
+                                        ) : (
+                                            <div className="flex flex-col items-center z-30">
+                                                {!isSubmitted && (
+                                                    <button type="button" onClick={() => toggleNode(n.dir)} className="w-5 h-5 bg-red-500 hover:bg-red-600 rounded-full text-white flex items-center justify-center text-xs shadow-md mb-1 cursor-pointer transition-transform hover:scale-110">×</button>
+                                                )}
+                                                <div className={`p-1 rounded-xl bg-white shadow-lg border-2 ${isCorrect ? 'border-emerald-500' : isWrong ? 'border-red-500' : 'border-orange-200'}`}>
+                                                    <InlineSelect id={`${idPrefix}_${n.dir}`} value={val} onChange={onChange} options={options} isSubmitted={isSubmitted} expected={safeExpectedMap[n.dir]} width="w-24 md:w-32" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                    {isSubmitted && <div className="text-xs text-slate-400 font-bold mt-4">Los nodos parpadeantes rojos indican vectores que omitiste dibujar.</div>}
+                </div>
+            )
+        }
+
+        const PenaltyTipButton = ({ text, id, usedTips, setUsedTips, penalty = 0.05 }) => {
+          const [isOpen, setIsOpen] = useState(false);
+          const isUsed = usedTips.includes(id);
+
+          const toggleTip = () => {
+            if (!isUsed) {
+                const confirm = window.confirm(`ATENCIÓN ACADÉMICA:\n\nRevelar esta pista estructural deducirá ${penalty} pts de tu calificación final por asistencia cognitiva.\n\n¿Estás seguro que deseas usarla?`);
+                if (!confirm) return;
+                setUsedTips(prev => [...prev, id]);
+            }
+            setIsOpen(!isOpen);
+          };
+
+          return (
+            <div className="mt-6">
+              <button onClick={toggleTip} className={`flex items-center gap-2 text-sm font-bold px-5 py-3 rounded-xl transition-colors shadow-sm ${isOpen ? 'bg-amber-100 text-amber-800 border-2 border-amber-300' : 'bg-white border-2 border-amber-200 text-amber-600 hover:bg-amber-50 hover:border-amber-400'}`}>
+                <Lightbulb size={18} className={isOpen ? 'text-amber-500' : 'text-amber-400'}/> 
+                {isOpen ? 'Ocultar Asistencia Cognitiva' : `💡 Asistencia Cognitiva (-${penalty} pts)`}
+              </button>
+              {isOpen && (
+                <div className="mt-3 p-5 bg-amber-50 border-2 border-amber-200 rounded-xl text-amber-900 text-sm leading-relaxed animate-in slide-in-from-top-2 shadow-inner">
+                  <Latex text={text} />
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const CurveSelector = ({ id, answers, handleInputChange, isSubmitted, expected }) => {
+          const options = [
+            { val: 'inv_sq', svg: <SvgGraphInverseSquare/> },
+            { val: 'linear', svg: <SvgGraphLinear/> },
+            { val: 'constant', svg: <SvgGraphConstant/> }
+          ];
+          const isCorrect = answers[id] === expected;
+          return (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2">
+              {options.map(opt => {
+                const isSelected = answers[id] === opt.val;
+                let ringClass = "border-slate-200 hover:border-orange-400 bg-white";
+                if (isSelected) ringClass = "border-orange-500 bg-orange-50 ring-2 ring-orange-500/20 shadow-md scale-105 z-10";
+                if (isSubmitted) {
+                  if (opt.val === expected) ringClass = "border-emerald-500 bg-emerald-50 ring-2 ring-emerald-500/20";
+                  else if (isSelected && !isCorrect) ringClass = "border-red-500 bg-red-50";
+                  else ringClass = "border-slate-200 opacity-40 bg-white";
+                }
+                return (
+                  <button type="button" key={opt.val} disabled={isSubmitted} onClick={() => handleInputChange(id, opt.val)}
+                    className={`p-3 rounded-xl border-2 transition-all flex justify-center items-center ${ringClass} text-slate-600`}
+                  >
+                    {opt.svg}
+                  </button>
+                )
+              })}
+            </div>
+          );
+        }
+
+        const MisionBox = ({ title, points, children }) => (
+          <div className="mb-12 rounded-[2rem] border border-slate-300 bg-white shadow-lg relative overflow-visible">
+            <div className="bg-slate-900 text-white px-8 py-5 flex flex-wrap justify-between items-center border-b-4 border-orange-600 gap-4 rounded-t-[calc(2rem-1px)]">
+              <h3 className="font-black text-2xl tracking-tight">{title}</h3>
+              <span className="text-sm font-black bg-white/10 px-4 py-1.5 rounded-lg text-amber-400 border border-amber-400/30 shadow-inner">Valor: {points} pts</span>
+            </div>
+            <div className="p-6 md:p-10">
+              {children}
+            </div>
+          </div>
+        );
+
+        // --- 5. SVG STATIC DIAGRAMS ---
+        const SvgForceProblem = () => (
+          <svg viewBox="-1.5 -1.5 4 3" className="w-full h-full max-h-[300px] drop-shadow-md overflow-visible bg-white rounded-xl border border-slate-200 p-4">
+            <line x1="-1.5" y1="0" x2="2.5" y2="0" stroke="#cbd5e1" strokeWidth="0.02" markerEnd="url(#arrow-force)"/>
+            <line x1="0" y1="-1.5" x2="0" y2="1.5" stroke="#cbd5e1" strokeWidth="0.02" markerEnd="url(#arrow-force)"/>
+            <text x="2.3" y="-0.1" fontSize="0.15" fill="#64748b" fontWeight="bold">x (m)</text>
+            <text x="0.1" y="1.4" fontSize="0.15" fill="#64748b" fontWeight="bold">y (m)</text>
+            
+            <line x1="-0.5" y1="0" x2="0" y2="1" stroke="#94a3b8" strokeWidth="0.03" strokeDasharray="0.1"/>
+            <line x1="1.5" y1="0" x2="0" y2="1" stroke="#94a3b8" strokeWidth="0.03" strokeDasharray="0.1"/>
+
+            <circle cx="-0.5" cy="0" r="0.12" fill="#3b82f6" />
+            <text x="-0.5" y="-0.2" fontSize="0.15" textAnchor="middle" fill="#1e3a8a" fontWeight="bold">q1 = +1.3 µC</text>
+            <text x="-0.5" y="0.25" fontSize="0.15" textAnchor="middle" fill="#64748b">(-0.5, 0)</text>
+
+            <circle cx="1.5" cy="0" r="0.12" fill="#3b82f6" />
+            <text x="1.5" y="-0.2" fontSize="0.15" textAnchor="middle" fill="#1e3a8a" fontWeight="bold">q2 = +3.2 µC</text>
+            <text x="1.5" y="0.25" fontSize="0.15" textAnchor="middle" fill="#64748b">(1.5, 0)</text>
+
+            <circle cx="0" cy="1" r="0.15" fill="#ef4444" stroke="#b91c1c" strokeWidth="0.03"/>
+            <text x="0.5" y="1.0" fontSize="0.15" fill="#7f1d1d" fontWeight="bold">q3 = +2.5 µC</text>
+            <text x="-0.4" y="1.0" fontSize="0.15" fill="#64748b">(0, 1.0)</text>
+            
+            <defs><marker id="arrow-force" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="3" markerHeight="3" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#cbd5e1"/></marker></defs>
+          </svg>
+        );
+
+        const SvgCircleProblem = () => (
+          <svg viewBox="-2.5 -2.5 5 5" className="w-full h-full max-h-[350px] drop-shadow-md overflow-visible bg-white rounded-xl border border-slate-200 p-4">
+            <line x1="-2.5" y1="0" x2="2.5" y2="0" stroke="#94a3b8" strokeWidth="0.02" strokeDasharray="0.1"/>
+            <line x1="0" y1="-2.5" x2="0" y2="2.5" stroke="#94a3b8" strokeWidth="0.02" strokeDasharray="0.1"/>
+            
+            <circle cx="0" cy="0" r="2" fill="none" stroke="#64748b" strokeWidth="0.03" strokeDasharray="0.1"/>
+            <line x1="0" y1="0" x2="2" y2="0" stroke="#334155" strokeWidth="0.02"/>
+            <text x="1" y="-0.1" fontSize="0.2" fill="#334155" fontWeight="bold">R</text>
+
+            <circle cx="-2" cy="0" r="0.12" fill="#0f172a" />
+            <text x="-2.3" y="0.05" fontSize="0.25" fill="#0f172a" fontWeight="bold">P</text>
+
+            <circle cx="2" cy="0" r="0.15" fill="white" stroke="#1e293b" strokeWidth="0.04"/>
+            <text x="2.4" y="0.05" fontSize="0.2" fill="#1e293b" fontWeight="bold">-2q</text>
+
+            <g transform="rotate(30)">
+                <line x1="0" y1="0" x2="0" y2="2" stroke="#64748b" strokeWidth="0.02"/>
+                <circle cx="0" cy="2" r="0.15" fill="white" stroke="#1e293b" strokeWidth="0.04"/>
+                <text x="-0.4" y="2.1" fontSize="0.2" fill="#1e293b" fontWeight="bold" transform="rotate(-30 0 2)">+q</text>
+            </g>
+            <path d="M 0 1 A 1 1 0 0 1 -0.5 0.866" fill="none" stroke="#64748b" strokeWidth="0.02"/>
+            <text x="-0.2" y="1.2" fontSize="0.15" fill="#64748b">30°</text>
+
+            <g transform="rotate(-30)">
+                <line x1="0" y1="0" x2="0" y2="-2" stroke="#64748b" strokeWidth="0.02"/>
+                <circle cx="0" cy="-2" r="0.15" fill="white" stroke="#1e293b" strokeWidth="0.04"/>
+                <text x="-0.5" y="-2.1" fontSize="0.2" fill="#1e293b" fontWeight="bold" transform="rotate(30 0 -2)">+2q</text>
+            </g>
+            <path d="M 0 -1 A 1 1 0 0 0 -0.5 -0.866" fill="none" stroke="#64748b" strokeWidth="0.02"/>
+            <text x="-0.2" y="-1.1" fontSize="0.15" fill="#64748b">30°</text>
+
+          </svg>
+        );
+
+        const SvgEquilibrium = () => (
+          <svg viewBox="-3 -1 6 2" className="w-full h-full max-h-[150px] drop-shadow-md">
+            <line x1="-2.5" y1="0" x2="2.5" y2="0" stroke="#cbd5e1" strokeWidth="0.05" markerEnd="url(#arrow-force)"/>
+            <circle cx="-1.5" cy="0" r="0.2" fill="#ef4444" />
+            <text x="-1.5" y="-0.4" fontSize="0.25" textAnchor="middle" fill="#7f1d1d" fontWeight="bold">+q</text>
+            <circle cx="1.5" cy="0" r="0.2" fill="#ef4444" />
+            <text x="1.5" y="-0.4" fontSize="0.25" textAnchor="middle" fill="#7f1d1d" fontWeight="bold">+q</text>
+            <line x1="-1.5" y1="0.5" x2="1.5" y2="0.5" stroke="#94a3b8" strokeWidth="0.03" strokeDasharray="0.1"/>
+            <text x="0" y="0.8" fontSize="0.2" textAnchor="middle" fill="#64748b" fontWeight="bold">d</text>
+          </svg>
+        );
+
+        const SvgGraphInverseSquare = () => (
+          <svg viewBox="0 0 100 60" className="w-full h-16">
+            <polyline points="10,55 10,5 10,55 95,55" fill="none" stroke="#94a3b8" strokeWidth="2"/>
+            <path d="M 12 5 Q 15 50 90 53" fill="none" stroke="currentColor" strokeWidth="3"/>
+          </svg>
+        );
+        const SvgGraphLinear = () => (
+          <svg viewBox="0 0 100 60" className="w-full h-16">
+            <polyline points="10,55 10,5 10,55 95,55" fill="none" stroke="#94a3b8" strokeWidth="2"/>
+            <path d="M 10 55 L 90 10" fill="none" stroke="currentColor" strokeWidth="3"/>
+          </svg>
+        );
+        const SvgGraphConstant = () => (
+          <svg viewBox="0 0 100 60" className="w-full h-16">
+            <polyline points="10,55 10,5 10,55 95,55" fill="none" stroke="#94a3b8" strokeWidth="2"/>
+            <path d="M 10 25 L 90 25" fill="none" stroke="currentColor" strokeWidth="3"/>
+          </svg>
+        );
+
+        // Histograma de Frecuencias (Data Science)
+        const ScoreHistogram = ({ attempts }) => {
+            const bins = [0, 0, 0, 0]; 
+            attempts.forEach(a => {
+                if (a.score <= 1.5) bins[0]++;
+                else if (a.score <= 3.0) bins[1]++;
+                else if (a.score <= 4.0) bins[2]++;
+                else bins[3]++;
+            });
+            const maxBin = Math.max(...bins, 1);
+
+            return (
+                <div className="flex items-end h-40 gap-4 mt-4">
+                    {bins.map((val, idx) => {
+                        const height = (val / maxBin) * 100;
+                        const labels = ["0.0 - 1.5", "1.6 - 3.0", "3.1 - 4.0", "4.1 - 5.0"];
+                        return (
+                            <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                                <div className="absolute -top-8 bg-slate-800 text-white px-2 py-1 rounded text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity">{val} entregas</div>
+                                <div className="w-full bg-orange-500 rounded-t-lg transition-all duration-1000 ease-out" style={{ height: `${height}%` }}></div>
+                                <div className="mt-2 text-xs font-bold text-slate-500 text-center leading-tight">{labels[idx]}</div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )
+        };
+
+        // --- 6. MAIN APP COMPONENT ---
+        export default function App() {
+          useKaTeX();
+          const [user, setUser] = useState(null);
+          const [role, setRole] = useState(null); 
+          const [view, setView] = useState('login'); 
+          const [loading, setLoading] = useState(true);
+          const [authError, setAuthError] = useState("");
+          
+          // Identity Profile State
+          const [profile, setProfile] = useState({
+              displayName: '', engineering: '', otherEngineering: '', institution: '',
+              bio: '', photoUrl: '', academicLink1: ''
+          });
+          const [savingProfile, setSavingProfile] = useState(false);
+
+          // Pagination State
+          const [currentPage, setCurrentPage] = useState(1);
+          const totalPages = 3;
+
+          const [answers, setAnswers] = useState({});
+          const [isSubmitted, setIsSubmitted] = useState(false);
+          const [scoreData, setScoreData] = useState({ total: 0, details: {} });
+          const [score, setScore] = useState(0);
+          const [startTime, setStartTime] = useState(null);
+          const [timeElapsed, setTimeElapsed] = useState(0);
+          const [finalTime, setFinalTime] = useState(0);
+          const [usedTips, setUsedTips] = useState([]);
+          const [hesitationCount, setHesitationCount] = useState(0); 
+          
+          const [examConfig, setExamConfig] = useState(JSON.stringify({ 
+              titulo: "Evaluación: Ley de Coulomb", 
+              descripcion: "Bases teóricas, análisis de fuerzas netas en 2D y campos de distribuciones.",
+              puntajeMaximo: 5.0,
+              tiempoEsperado: 2400 
+          }, null, 2));
+
+          // Dashboard Real State & Real-time Views
+          const [metrics, setMetrics] = useState({ 
+              views: 0, avgScore: 0, avgTime: 0, attempts: [], 
+              questionMetrics: [], frustrationIndex: 0, 
+              irt: { p1: 0, d1: 0, p2: 0, d2: 0, p3: 0, d3: 0 },
+              clusters: { engaged: 0, struggling: 0, guessing: 0 },
+              scatterData: []
+          });
+          const [realViews, setRealViews] = useState(0);
+          
+          // Reviews
+          const [ratingStats, setRatingStats] = useState({ average: 0, count: 0 });
+          const [survey, setSurvey] = useState({ platform: 0, graphics: 0, challenge: 0, comment: '' });
+          const [hasRated, setHasRated] = useState(false);
+
+          // Listeners
+          useEffect(() => {
+              if(!user) return; 
+              const setupListeners = async () => {
+                  try {
+                      const dirRef = collection(db, 'artifacts', appId, 'public', 'data', 'directory');
+                      onSnapshot(dirRef, (snap) => { setRealViews(snap.size || 0); }, (e) => console.log(e));
+        
+                      const reviewsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reviews'); 
+                      onSnapshot(reviewsRef, (snap) => {
+                          let sum = 0; let count = 0;
+                          snap.forEach(doc => { 
+                             const data = doc.data();
+                             const avgReview = (data.platform + data.graphics + data.challenge) / 3;
+                             if(!isNaN(avgReview)) { sum += avgReview; count++; }
+                          });
+                          if (count > 0) setRatingStats({ average: (sum/count).toFixed(1), count });
+                      }, (e) => console.log(e));
+                  } catch(e) { console.log(e); }
+              };
+              setupListeners();
+          }, [user]);
+
+          // Auth Handlers
+          const handleGoogleLogin = async () => {
+            setAuthError("");
+            const provider = new GoogleAuthProvider();
+            try { await signInWithPopup(auth, provider); } 
+            catch (error) { setAuthError("Error de autenticación con Google."); }
+          };
+
+          const handleEmailLogin = async (e) => {
+            e.preventDefault();
+            setAuthError("");
+            const email = e.target.email.value;
+            const pass = e.target.password.value;
+            try {
+              await signInWithEmailAndPassword(auth, email, pass);
+            } catch (error) {
+              if(error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                  try { await createUserWithEmailAndPassword(auth, email, pass); } 
+                  catch (err2) { setAuthError("Error al crear cuenta: " + err2.message); }
+              } else { setAuthError("Credenciales incorrectas."); }
+            }
+          };
+
+          // Role and Auth Observer
+          useEffect(() => {
+            const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+              setUser(currentUser);
+              if (currentUser) {
+                  if (!currentUser.isAnonymous) {
+                      try {
+                          await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'directory', currentUser.uid), {
+                              email: currentUser.email || 'Google Auth',
+                              lastLogin: serverTimestamp()
+                          }, { merge: true });
+                          
+                          const pDoc = await getDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'profile', 'data'));
+                          if(pDoc.exists()) setProfile({ ...profile, ...pDoc.data() });
+                      } catch (e) { console.log(e); }
+                  }
+
+                  if (currentUser.email === 'dudbilopr@gmail.com') {
+                      setRole('admin'); setView('admin_role_select');
+                  } else {
+                      setRole('student'); setView('exam_intro');
+                  }
+                  
+                  try {
+                      const confDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main'));
+                      if(confDoc.exists()) setExamConfig(JSON.stringify(confDoc.data(), null, 2));
+                  } catch(e){}
+
+              } else {
+                  setRole(null); setView('login');
+              }
+              setLoading(false);
+            });
+            return () => unsubscribe();
+          }, []);
+          
+          const saveProfile = async (e) => {
+              e.preventDefault();
+              setSavingProfile(true);
+              try {
+                  await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'data'), profile, { merge: true });
+                  alert("Perfil actualizado correctamente. Puedes iniciar tu misión.");
+                  setView('exam_intro');
+              } catch (err) { alert("Error guardando perfil"); }
+              setSavingProfile(false);
+          };
+
+          const fetchDashboardData = async () => {
+              try {
+                  const dirSnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'directory'));
+                  let allAttempts = [];
+                  let totalScore = 0; let totalTime = 0; let totalHints = 0; let totalHesitation = 0;
+                  let s1 = 0, s2 = 0, s3 = 0;
+                  
+                  let engaged = 0, struggling = 0, guessing = 0;
+
+                  for (const userDoc of dirSnap.docs) {
+                      const uid = userDoc.id;
+                      const email = userDoc.data().email;
+                      const attSnap = await getDocs(collection(db, 'artifacts', appId, 'users', uid, 'eval_attempts'));
+                      
+                      attSnap.forEach(doc => {
+                          const data = doc.data();
+                          allAttempts.push({
+                              id: doc.id, agent: email, score: data.score, time: data.time, hints: data.hints || 0, hesitation: data.hesitation || 0,
+                              details: data.details || {s1: data.score*0.4, s2: data.score*0.3, s3: data.score*0.3},
+                              date: data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString() : 'Reciente',
+                              timestamp: data.timestamp ? data.timestamp.toMillis() : 0
+                          });
+                          totalScore += parseFloat(data.score); totalTime += data.time; 
+                          totalHints += (data.hints || 0); totalHesitation += (data.hesitation || 0);
+                          
+                          s1 += data.details?.s1 || (data.score * 0.4); s2 += data.details?.s2 || (data.score * 0.3); s3 += data.details?.s3 || (data.score * 0.3);
+                      
+                          if(data.score >= 3.0) engaged++;
+                          else if (data.time < 300) guessing++;
+                          else struggling++;
+                      });
+                  }
+
+                  allAttempts.sort((a,b) => b.score - a.score); 
+                  const count = allAttempts.length || 1;
+                  const aScore = totalScore / count; const aTime = totalTime / count;
+                  const frustration = count > 0 ? Math.min((aTime / 600) * (1 + totalHints/count) / Math.max(aScore, 0.1), 10).toFixed(1) : 0;
+                  
+                  const top27Idx = Math.max(1, Math.floor(count * 0.27));
+                  const topGroup = allAttempts.slice(0, top27Idx);
+                  const botGroup = allAttempts.slice(count - top27Idx);
+                  
+                  const calcP = (sum, max) => (sum / count / max).toFixed(2);
+                  const calcD = (top, bot, max) => {
+                      const avgT = top.reduce((acc, curr) => acc + (curr.details?.s1 || 0), 0) / top27Idx;
+                      const avgB = bot.reduce((acc, curr) => acc + (curr.details?.s1 || 0), 0) / top27Idx;
+                      return ((avgT - avgB)/max).toFixed(2);
+                  };
+
+                  setMetrics({
+                      views: dirSnap.size, avgScore: aScore.toFixed(2), avgTime: Math.floor(aTime),
+                      frustrationIndex: frustration, attempts: allAttempts.slice(0, 50), 
+                      questionMetrics: [
+                          { id: 'Q1', title: 'Hoja 1: Teoría', avgScore: (s1/count).toFixed(2), avgTime: Math.floor(aTime * 0.3), status: (s1/count)>0.8 ? 'optimal' : 'review' },
+                          { id: 'Q2', title: 'Hoja 2: Fuerza Neta', avgScore: (s2/count).toFixed(2), avgTime: Math.floor(aTime * 0.4), status: (s2/count)>1.0 ? 'optimal' : 'critical' },
+                          { id: 'Q3', title: 'Hoja 3: Campo P', avgScore: (s3/count).toFixed(2), avgTime: Math.floor(aTime * 0.3), status: (s3/count)>1.0 ? 'optimal' : 'critical' }
+                      ],
+                      irt: {
+                          p1: calcP(s1, 1.3), d1: calcD(topGroup, botGroup, 1.3),
+                          p2: calcP(s2, 1.85), d2: calcD(topGroup, botGroup, 1.85),
+                          p3: calcP(s3, 1.85), d3: calcD(topGroup, botGroup, 1.85),
+                      },
+                      clusters: { engaged, struggling, guessing }
+                  });
+              } catch(e) { console.error("Error al cargar dashboard:", e); }
+          };
+
+          const saveConfig = async () => {
+              try {
+                  const parsed = JSON.parse(examConfig);
+                  await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'config', 'main'), parsed);
+                  alert("Configuración Guardada");
+              } catch (e) { alert("Error en formato JSON"); }
+          };
+
+          const submitRating = async () => {
+              if (hasRated || !user || survey.platform===0 || survey.graphics===0 || survey.challenge===0) {
+                  alert("Por favor califica todas las áreas con estrellas."); return;
+              }
+              setHasRated(true);
+              try {
+                  const reviewsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reviews');
+                  await addDoc(reviewsRef, { ...survey, userId: user.uid, timestamp: serverTimestamp() });
+              } catch (e) { console.error("Error submitting review", e); }
+          }
+
+          useEffect(() => {
+            let timer;
+            if (view === 'exam' && !isSubmitted) {
+              if (!startTime) setStartTime(Date.now());
+              timer = setInterval(() => setTimeElapsed(Math.floor((Date.now() - (startTime || Date.now())) / 1000)), 1000);
+            }
+            return () => clearInterval(timer);
+          }, [view, isSubmitted, startTime]);
+
+          const startExam = () => {
+            setStartTime(Date.now());
+            setTimeElapsed(0);
+            setCurrentPage(1);
+            setIsSubmitted(false);
+            setAnswers({});
+            setUsedTips([]);
+            setHesitationCount(0);
+            setHasRated(false);
+            setSurvey({ platform: 0, graphics: 0, challenge: 0, comment: '' });
+            setView('exam');
+          };
+
+          const handleInputChange = (id, val) => {
+              if (answers[id] !== undefined && answers[id] !== val) {
+                  setHesitationCount(prev => prev + 1);
+              }
+              setAnswers(prev => ({ ...prev, [id]: val }));
+          };
+
+          // OPCIONES TEORÍA Y SUPERPOSICIÓN
+          const optsTeoria = useMemo(() => [
+              {val: 'f_coulomb', label: '$\\vec{F} = k \\frac{q_1 q_2}{r^2} \\hat{r}$'},
+              {val: 'cargas_tipos', label: '$\\text{Positiva y Negativa}$'},
+              {val: 'carga_def', label: '$\\text{Propiedad intrínseca de la materia (interacción EM)}$'},
+              {val: 'elec_tipos', label: '$\\text{Frotamiento, Contacto, Inducción}$'},
+              {val: 'dipolo_def', label: '$\\text{Dos cargas de igual magnitud y signo opuesto separadas } d$'}
+          ].sort(() => Math.random() - 0.5), []);
+          
+          const optsProporcionF = [
+              {val: 'f_4', label: '$\\vec{F}/4$'}, {val: 'f_2', label: '$\\vec{F}/2$'}, {val: '2f', label: '$2\\vec{F}$'}, {val: '4f', label: '$4\\vec{F}$'}
+          ];
+          const optsSuperposicion = [
+              {val: 'sup_correcta', label: '$\\text{La fuerza neta es la suma vectorial de las fuerzas individuales}$'},
+              {val: 'sup_incorrecta', label: '$\\text{Las cargas grandes anulan las fuerzas de las pequeñas}$'}
+          ];
+          const optsEquilibrio = [
+              {val: 'medio', label: '$\\text{En el punto medio exacto entre las cargas}$'},
+              {val: 'infinito', label: '$\\text{Solamente en el infinito}$'},
+              {val: 'cerca_q1', label: '$\\text{Más cerca de la carga de la izquierda}$'}
+          ];
+          const optsConclusionFuerza = [
+              {val: 'ok', label: '$\\text{La repulsión de } q_2 \\text{ domina en x, empujando a } q_3 \\text{ al cuadrante II}$'},
+              {val: 'bad1', label: '$\\text{Todas las fuerzas se anulan y el sistema está en equilibrio}$'},
+              {val: 'bad2', label: '$\\text{La carga } q_3 \\text{ es atraída hacia el origen}$'}
+          ];
+          const optsConclusionAnillo = [
+              {val: 'ok', label: '$\\text{Las componentes } x,y \\text{ se anulan por simetría, quedando solo campo en } z$'},
+              {val: 'bad', label: '$\\text{El campo total es nulo porque las cargas están opuestas diametralmente}$'}
+          ];
+
+          // OPCIONES PROCEDIMENTALES MATEMÁTICAS 
+          // Hoja 2
+          const optsDist2 = [ {val: '0.75', label: '$0.75$'}, {val: '1.25', label: '$1.25$'}, {val: '2.25', label: '$2.25$'}, {val: '3.25', label: '$3.25$'} ];
+          const optsUnitarios13 = [ 
+            {val: 'u1', label: '$\\cos(63.4^\\circ)\\hat{i} + \\sin(63.4^\\circ)\\hat{j} = \\frac{0.5 \\hat{i} + 1.0 \\hat{j}}{\\sqrt{1.25}}$'}, 
+            {val: 'u2', label: '$\\cos(146.3^\\circ)\\hat{i} + \\sin(146.3^\\circ)\\hat{j} = \\frac{-1.5 \\hat{i} + 1.0 \\hat{j}}{\\sqrt{3.25}}$'}, 
+            {val: 'u3', label: '$\\cos(26.5^\\circ)\\hat{i} + \\sin(26.5^\\circ)\\hat{j} = \\frac{1.0 \\hat{i} + 0.5 \\hat{j}}{\\sqrt{1.25}}$'} 
+          ];
+          const optsUnitarios23 = [ 
+            {val: 'u1', label: '$\\cos(63.4^\\circ)\\hat{i} + \\sin(63.4^\\circ)\\hat{j} = \\frac{0.5 \\hat{i} + 1.0 \\hat{j}}{\\sqrt{1.25}}$'}, 
+            {val: 'u2', label: '$\\cos(146.3^\\circ)\\hat{i} + \\sin(146.3^\\circ)\\hat{j} = \\frac{-1.5 \\hat{i} + 1.0 \\hat{j}}{\\sqrt{3.25}}$'}, 
+            {val: 'u3', label: '$\\cos(225^\\circ)\\hat{i} + \\sin(225^\\circ)\\hat{j} = \\frac{-1.0 \\hat{i} - 1.0 \\hat{j}}{\\sqrt{2.00}}$'} 
+          ];
+          
+          const optsK = [ {val: 'k', label: '$9 \\times 10^9$'}, {val: 'e0', label: '$8.85 \\times 10^{-12}$'} ];
+          const optsQ1Q3 = [ {val: 'q13', label: '$|1.3\\mu\\text{C} \\cdot 2.5\\mu\\text{C}|$'}, {val: 'q23', label: '$|3.2\\mu\\text{C} \\cdot 2.5\\mu\\text{C}|$'} ];
+          const optsQ2Q3 = [ {val: 'q13', label: '$|1.3\\mu\\text{C} \\cdot 2.5\\mu\\text{C}|$'}, {val: 'q23', label: '$|3.2\\mu\\text{C} \\cdot 2.5\\mu\\text{C}|$'} ];
+
+          const optsMag = [ {val: '0.0150', label: '$0.0150$'}, {val: '0.0221', label: '$0.0221$'}, {val: '0.0234', label: '$0.0234$'}, {val: '0.0410', label: '$0.0410$'} ];
+          const optsSumX = [ {val: '-0.0080', label: '$-0.0080$'}, {val: '0.0080', label: '$0.0080$'}, {val: '0.0331', label: '$0.0331$'}, {val: '-0.0331', label: '$-0.0331$'} ];
+          const optsSumY = [ {val: '-0.0080', label: '$-0.0080$'}, {val: '0.0080', label: '$0.0080$'}, {val: '0.0331', label: '$0.0331$'}, {val: '-0.0331', label: '$-0.0331$'} ];
+          const optsTot = [ {val: '0.0250', label: '$0.0250$'}, {val: '0.0340', label: '$0.0340$'}, {val: '0.0410', label: '$0.0410$'} ];
+          
+          // Hoja 3
+          const optsDist3 = [ {val: 'R', label: '$R$'}, {val: '2R', label: '$2R$'}, {val: 'R/2', label: '$R/2$'} ];
+          const optsBaseE0 = [ {val: '2160', label: '$2160$'}, {val: '4320', label: '$4320$'}, {val: '8640', label: '$8640$'}, {val: '11250', label: '$11250$'} ];
+          const optsMagRel = [ {val: 'E_0/2', label: '$E_0/2$'}, {val: 'E_0', label: '$E_0$'}, {val: '2E_0', label: '$2E_0$'} ];
+          const optsSumX3 = [ {val: '-11250', label: '$-11250$'}, {val: '0', label: '$0$'}, {val: '9742', label: '$9742$'}, {val: '14881', label: '$14881$'} ];
+          const optsSumY3 = [ {val: '-11250', label: '$-11250$'}, {val: '0', label: '$0$'}, {val: '9742', label: '$9742$'}, {val: '14881', label: '$14881$'} ];
+          const optsTot3 = [ {val: '9742', label: '$9742$'}, {val: '11250', label: '$11250$'}, {val: '14881', label: '$14881$'} ];
+
+          // DCL Options
+          const optsDclF = [ {val: 'f13', label: '$\\vec{F}_{13}$'}, {val: 'f23', label: '$\\vec{F}_{23}$'}, {val: 'fnet', label: '$\\vec{F}_{\\text{neta}}$'}, {val: 'f_err', label: '$\\vec{F}_{g}$'} ];
+          const expectedDCLP2 = { 'NE': 'f13', 'NW': 'f23', 'N': 'fnet' }; 
+
+          const optsDclE = [ {val: 'eq', label: '$\\vec{E}_{+q}$'}, {val: 'e2q', label: '$\\vec{E}_{+2q}$'}, {val: 'em2q', label: '$\\vec{E}_{-2q}$'}, {val: 'enet', label: '$\\vec{E}_{\\text{neto}}$'} ];
+          const expectedDCLP3 = { 'SW': 'eq', 'NW': 'e2q', 'E': 'em2q', 'W': 'enet' }; 
+
+          const calculateScore = () => {
+            let total = 0;
+            let s1=0, s2=0, s3=0;
+
+            const check1 = (id, exp, pts) => { if(answers[id] === exp) { s1+=pts; return pts;} return 0; }
+            
+            // Hoja 1: Teoría Ampliada (Max 1.30)
+            check1('t_a', 'f_coulomb', 0.1); check1('t_b', 'cargas_tipos', 0.1); check1('t_c', 'carga_def', 0.1); 
+            check1('t_d', 'elec_tipos', 0.1); check1('t_e', 'dipolo_def', 0.1);
+            check1('t_prop1', '2f', 0.1); check1('t_prop2', 'f_4', 0.1);
+            check1('t_graphF', 'inv_sq', 0.1); check1('t_graphE', 'inv_sq', 0.1);
+            check1('t_sup', 'sup_correcta', 0.2); check1('t_eq', 'medio', 0.2);
+
+            // Hoja 2: Fuerza Neta (Max 1.85 -> steps)
+            const check2 = (id, exp, pts=0.1) => { if(answers[id] === exp) { s2+=pts; return pts;} return 0; }
+            check2('f_dcl_NE', 'f13', 0.1); check2('f_dcl_NW', 'f23', 0.1); check2('f_dcl_N', 'fnet', 0.1); // DCL
+            check2('f_r1', '1.25'); check2('f_r2', '3.25'); 
+            check2('f_u1', 'u1'); check2('f_u2', 'u2'); 
+            check2('f_sub_k', 'k', 0.05); check2('f_sub_q', 'q13', 0.05); check2('f_sub_r', '1.25', 0.05); 
+            check2('f_f1', '0.0234'); check2('f_f2', '0.0221'); 
+            check2('f_sumx', '-0.0080', 0.15); check2('f_sumy', '0.0331', 0.15); 
+            check2('f_mag', '0.0340', 0.2); 
+            check2('f_concl', 'ok', 0.3); // Conclusion
+
+            // Hoja 3: Campo Circunferencia (Max 1.85 -> steps)
+            const check3 = (id, exp, pts=0.1) => { if(answers[id] === exp) { s3+=pts; return pts;} return 0; }
+            check3('c_dcl_SW', 'eq'); check3('c_dcl_NW', 'e2q'); check3('c_dcl_E', 'em2q'); check3('c_dcl_W', 'enet'); // DCL
+            check3('c_r1', 'R'); check3('c_r2', 'R'); check3('c_r3', '2R'); 
+            check3('c_e0', '11250', 0.1); 
+            check3('c_e1_mag', 'E_0', 0.05); check3('c_e2_mag', '2E_0', 0.05); check3('c_e3_mag', 'E_0/2', 0.05); 
+            check3('c_sumx', '-11250', 0.15); check3('c_sumy', '9742', 0.15); 
+            check3('c_mag_tot', '14881', 0.1); 
+            check3('c_concl', 'ok', 0.35); // Conclusion
+
+            total = s1 + s2 + s3 - (usedTips.length * 0.05); 
+            return { total: Math.max(Math.min(total, 5.0), 0).toFixed(2), details: { s1, s2, s3 } };
+          };
+
+          const handleSubmit = async () => {
+            if(!window.confirm("¿Seguro que deseas procesar la evaluación definitiva?")) return;
+            const result = calculateScore();
+            setScoreData(result);
+            setScore(result.total);
+            setFinalTime(timeElapsed);
+            setIsSubmitted(true);
+            setView('results');
+            window.scrollTo(0,0);
+
+            if (user && !user.isAnonymous) {
+              try {
+                const userRef = collection(db, 'artifacts', appId, 'users', user.uid, 'eval_attempts');
+                await addDoc(userRef, { score: result.total, maxScore: 5.0, time: timeElapsed, hints: usedTips.length, hesitation: hesitationCount, details: result.details, timestamp: serverTimestamp() });
+                
+                const globalRef = collection(db, 'artifacts', appId, 'public', 'data', 'global_attempts');
+                await addDoc(globalRef, { email: user.email, score: result.total, time: timeElapsed, hints: usedTips.length, hesitation: hesitationCount, details: result.details, timestamp: serverTimestamp() });
+              } catch (e) { console.error("Error guardando intento:", e); }
+            }
+          };
+
+          const formatTime = (sec) => sec != null ? `${Math.floor(sec / 60)}m ${(sec % 60).toString().padStart(2, '0')}s` : '0m 00s';
+
+          // Mensaje Psicológico de Tiempo e Índice de Duda
+          let timeMsg = "";
+          if (finalTime > 0) {
+              if (finalTime < 180) timeMsg = "Has respondido en tiempo récord (< 3 min). Tu impulsividad es alta. La ingeniería exige pausa y análisis metódico.";
+              else if (finalTime > 2400) timeMsg = "Tomaste más de 40 min. Refleja esfuerzo, pero alerta de bloqueos cognitivos. ¡Escribe los DCL a mano para ganar agilidad!";
+              else timeMsg = "Tu ritmo de procesamiento es óptimo. Has interiorizado el esquema procedimental de 10 pasos.";
+          }
+          
+          let doubtMsg = "";
+          if (hesitationCount > 15) doubtMsg = `Telemetría registra ${hesitationCount} cambios de decisión. Hay inseguridad en tus certezas cognitivas.`;
+          else if (hesitationCount > 4) doubtMsg = `Duda normal (${hesitationCount} rectificaciones). Demuestras capacidad reflexiva en vivo.`;
+          else doubtMsg = `Índice de duda mínimo (${hesitationCount}). Confías plenamente en tus cálculos.`;
+
+          let insignia = { title: "", icon: Brain, color: "" };
+          const s = parseFloat(score);
+          if (s >= 4.5) insignia = { title: "Maestro Analítico", icon: Award, color: "text-amber-400" };
+          else if (s >= 3.5) insignia = { title: "Estratega Vectorial", icon: Activity, color: "text-blue-400" };
+          else if (s >= 2.5) insignia = { title: "Aprendiz de Faraday", icon: Lightbulb, color: "text-emerald-400" };
+          else insignia = { title: "Iniciado Teórico", icon: Target, color: "text-slate-400" };
+
+          if (loading) return <div className="flex h-screen items-center justify-center bg-slate-50"><Activity className="animate-pulse text-orange-600" size={48} /></div>;
+
+          return (
+            <div className="min-h-screen bg-slate-100 text-slate-800 font-sans selection:bg-orange-200 pb-24 relative overflow-x-hidden flex flex-col">
+              <div className="fixed inset-0 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#94a3b8 1px, transparent 1px)', backgroundSize: '30px 30px', opacity: 0.3, zIndex: -1 }}></div>
+
+              {/* HEADER */}
+              <header className="bg-white border-b border-slate-300 px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm relative">
+                <div className="flex items-center gap-3">
+                  <div className="bg-slate-900 w-11 h-11 rounded-xl shadow-inner border border-slate-700 cursor-pointer transition-transform hover:scale-105 flex items-center justify-center overflow-hidden" onClick={() => user && user.email === 'dudbilopr@gmail.com' ? setView('admin_role_select') : null} title="Panel de Control">
+                    <iframe src="https://dudbilopr.github.io/Electromagnetismo/recursos/Logo/Logo.html" className="w-[140%] h-[140%] pointer-events-none" frameBorder="0" scrolling="no" title="Logo physics10"></iframe>
+                  </div>
+                  <h1 className="font-black text-2xl tracking-tight text-slate-900 hidden sm:block">
+                    physics10<span className="text-orange-600">.easy</span>
+                  </h1>
+                </div>
+                <div className="flex items-center gap-4">
+                  {user && (
+                     <div className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-inner">
+                       <User size={16}/> {profile.displayName || user.email || 'Agente Registrado'}
+                     </div>
+                  )}
+                  {role && (
+                    <div className="flex items-center gap-3 bg-slate-100 px-5 py-2 rounded-full border border-slate-200 shadow-inner">
+                      <span className={`flex items-center gap-2 text-sm font-black uppercase tracking-wider ${role==='student'?'text-emerald-700': role==='teacher'?'text-orange-700':'text-violet-700'}`}>
+                        {role === 'student' ? <GraduationCap size={18}/> : role === 'teacher' ? <BookOpen size={18}/> : <Settings size={18}/>}
+                        <span className="hidden sm:inline">{role === 'student' ? 'Estudiante' : role === 'teacher' ? 'Docente' : 'Admin'}</span>
+                      </span>
+                      <div className="w-px h-5 bg-slate-300"></div>
+                      {role === 'student' && <button onClick={() => setView('profile')} className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors mr-2">MI PERFIL</button>}
+                      <button onClick={() => signOut(auth)} className="text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors">SALIR</button>
+                    </div>
+                  )}
+                </div>
+              </header>
+
+              {/* VIEW: LOGIN */}
+              {view === 'login' && (
+                <div className="flex flex-col items-center justify-center mt-20 px-4 animate-in fade-in duration-700 flex-grow">
+                  <div className="text-center max-w-3xl mb-12">
+                    <div className="flex justify-center items-center gap-4 mb-6">
+                        <div className="bg-slate-900 w-16 h-16 rounded-2xl shadow-inner border-2 border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                            <iframe src="https://dudbilopr.github.io/Electromagnetismo/recursos/Logo/Logo.html" className="w-[140%] h-[140%] pointer-events-none" frameBorder="0" scrolling="no" title="Logo physics10"></iframe>
+                        </div>
+                        <h2 className="text-6xl font-black text-slate-900 tracking-tight leading-tight">physics10<span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-amber-500">.easy</span></h2>
+                    </div>
+                    <p className="text-xl text-slate-600 font-medium">Inicia sesión para acceder a tu evaluación procedimental de electromagnetismo.</p>
+                  </div>
+                  
+                  <div className="bg-white p-10 rounded-[2.5rem] border-2 border-slate-200 shadow-xl w-full max-w-md relative z-10">
+                    {authError && <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm font-bold text-center">{authError}</div>}
+                    
+                    <button onClick={handleGoogleLogin} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-3 mb-6 transition-colors shadow-md">
+                        <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        Ingresar con Google
+                    </button>
+                    
+                    <div className="relative flex items-center py-5">
+                        <div className="flex-grow border-t border-slate-200"></div>
+                        <span className="flex-shrink-0 mx-4 text-slate-400 text-sm font-bold uppercase tracking-widest">O con correo</span>
+                        <div className="flex-grow border-t border-slate-200"></div>
+                    </div>
+
+                    <form onSubmit={handleEmailLogin} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-black text-slate-700 mb-2 uppercase tracking-wide">Correo Electrónico</label>
+                            <input type="email" name="email" required className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors" placeholder="tu@correo.com" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-black text-slate-700 mb-2 uppercase tracking-wide">Contraseña</label>
+                            <input type="password" name="password" required className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors" placeholder="••••••••" />
+                        </div>
+                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors shadow-md mt-4">
+                            <Mail size={18} /> Iniciar Sesión / Registrarse
+                        </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW: ADMIN ROLE SELECT */}
+              {view === 'admin_role_select' && (
+                <div className="flex flex-col items-center justify-center mt-24 px-4 animate-in fade-in duration-700 flex-grow">
+                  <div className="text-center max-w-3xl mb-12">
+                    <h2 className="text-4xl font-black text-slate-900 mb-4 tracking-tight leading-tight">Control Maestro</h2>
+                    <p className="text-xl text-slate-600 font-medium">Bienvenido Administrador. ¿Bajo qué rol deseas operar el sistema?</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
+                    <button onClick={() => { setRole('student'); setView('exam_intro'); }} className="flex flex-col items-center p-10 bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-2xl hover:border-emerald-500 hover:-translate-y-2 transition-all group">
+                      <div className="p-5 bg-emerald-50 text-emerald-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform shadow-inner"><GraduationCap size={40}/></div>
+                      <h3 className="text-xl font-black text-slate-800 uppercase tracking-wide mb-2">Simular Agente</h3>
+                      <p className="text-sm text-slate-500 text-center font-medium">Realiza la prueba como un estudiante normal.</p>
+                    </button>
+                    
+                    <button onClick={() => { setRole('teacher'); fetchDashboardData(); setView('dashboard'); }} className="flex flex-col items-center p-10 bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-2xl hover:border-blue-500 hover:-translate-y-2 transition-all group">
+                      <div className="p-5 bg-blue-50 text-blue-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform shadow-inner"><BarChart3 size={40}/></div>
+                      <h3 className="text-xl font-black text-slate-800 uppercase tracking-wide mb-2">Data Science</h3>
+                      <p className="text-sm text-slate-500 text-center font-medium">Ver métricas pedagógicas y EWS en tiempo real.</p>
+                    </button>
+
+                    <button onClick={() => { setRole('admin'); setView('admin_panel'); }} className="flex flex-col items-center p-10 bg-white rounded-3xl border-2 border-slate-200 shadow-lg hover:shadow-2xl hover:border-violet-500 hover:-translate-y-2 transition-all group">
+                      <div className="p-5 bg-violet-50 text-violet-600 rounded-2xl mb-4 group-hover:scale-110 transition-transform shadow-inner"><Settings size={40}/></div>
+                      <h3 className="text-xl font-black text-slate-800 uppercase tracking-wide mb-2">Motor JSON</h3>
+                      <p className="text-sm text-slate-500 text-center font-medium">Modificar los parámetros y títulos de la plataforma.</p>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* VIEW: ADMIN PANEL (JSON) */}
+              {view === 'admin_panel' && role === 'admin' && (
+                <div className="max-w-4xl mx-auto mt-16 p-8 bg-white rounded-3xl shadow-2xl border border-slate-200 animate-in fade-in flex-grow w-full pb-20">
+                    <h2 className="text-4xl font-black text-slate-900 mb-2">Configuración del Motor (JSON)</h2>
+                    <p className="text-slate-500 font-bold mb-6 text-lg">Edita la metadata del examen y empuja los cambios a Firestore para actualizar la plataforma en tiempo real.</p>
+                    
+                    <textarea 
+                        value={examConfig} 
+                        onChange={(e) => setExamConfig(e.target.value)}
+                        className="w-full h-96 p-6 font-mono text-base bg-slate-900 text-orange-400 rounded-2xl shadow-inner outline-none focus:ring-4 focus:ring-violet-500/30"
+                    />
+                    
+                    <div className="mt-8 flex justify-end items-center gap-6">
+                        {configSaved && <span className="text-emerald-600 font-black flex items-center gap-2 text-lg"><CheckCircle2/> ¡Actualizado en Producción!</span>}
+                        <button onClick={saveConfig} className="bg-violet-600 hover:bg-violet-700 text-white font-black uppercase tracking-widest px-10 py-5 rounded-xl shadow-lg transition-all flex items-center gap-3 hover:-translate-y-1">
+                            <Save size={24}/> EMPUJAR A B.D.
+                        </button>
+                    </div>
+                </div>
+              )}
+
+              {/* VIEW: PROFILE */}
+              {view === 'profile' && (
+                <div className="max-w-[1200px] w-full mx-auto mt-10 relative pb-32 px-2 md:px-4 z-10 flex-grow">
+                    <div className="bg-white cuaderno-shadow lomo-cuaderno text-base leading-relaxed p-6 md:p-12 lg:p-16 min-h-[80vh]">
+                        <div className="text-center mb-12 border-b-4 border-slate-900 pb-8 flex justify-between items-end">
+                            <div className="text-left">
+                                <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter uppercase mb-3">Identidad de Agente</h1>
+                                <p className="text-slate-500 font-bold text-lg md:text-xl tracking-wide uppercase">Perfil Universitario</p>
+                            </div>
+                            <button onClick={() => setView('exam_intro')} className="px-6 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl border-2 border-slate-300 hover:bg-slate-200">Volver a Misiones</button>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                            <div className="lg:col-span-2">
+                                <form onSubmit={saveProfile} className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2"><UserCircle size={14} className="inline mr-1"/> Nombre Completo</label>
+                                            <input type="text" required value={profile.displayName} onChange={e => setProfile({...profile, displayName: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors" placeholder="Tus nombres y apellidos" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2"><Building size={14} className="inline mr-1"/> Institución</label>
+                                            <input type="text" required value={profile.institution} onChange={e => setProfile({...profile, institution: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors" placeholder="Universidad o Instituto" />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2"><GraduationCap size={14} className="inline mr-1"/> Ingeniería</label>
+                                            <select value={profile.engineering} onChange={e => setProfile({...profile, engineering: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors bg-white">
+                                                <option value="">Seleccione...</option>
+                                                <option value="Sistemas">Ingeniería de Sistemas</option>
+                                                <option value="Electrónica">Ingeniería Electrónica</option>
+                                                <option value="Mecánica">Ingeniería Mecánica</option>
+                                                <option value="Civil">Ingeniería Civil</option>
+                                                <option value="Industrial">Ingeniería Industrial</option>
+                                                <option value="Química">Ingeniería Química</option>
+                                                <option value="Mecatrónica">Ingeniería Mecatrónica</option>
+                                                <option value="Otra">Otra...</option>
+                                            </select>
+                                        </div>
+                                        {profile.engineering === 'Otra' && (
+                                            <div>
+                                                <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Especifique su Ingeniería</label>
+                                                <input type="text" required value={profile.otherEngineering} onChange={e => setProfile({...profile, otherEngineering: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors" placeholder="Ej. Ingeniería Aeroespacial" />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2"><FileText size={14} className="inline mr-1"/> Biografía Corta</label>
+                                        <textarea value={profile.bio} onChange={e => setProfile({...profile, bio: e.target.value})} rows="3" className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors resize-none" placeholder="Cuenta un poco sobre tus intereses académicos..."></textarea>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2"><Camera size={14} className="inline mr-1"/> URL Foto de Perfil</label>
+                                            <input type="url" value={profile.photoUrl} onChange={e => setProfile({...profile, photoUrl: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors" placeholder="https://..." />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2"><Globe size={14} className="inline mr-1"/> Red Académica (LinkedIn/GitHub)</label>
+                                            <input type="url" value={profile.academicLink1} onChange={e => setProfile({...profile, academicLink1: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-slate-300 focus:border-orange-500 outline-none transition-colors" placeholder="https://..." />
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" disabled={savingProfile} className="bg-orange-600 hover:bg-orange-700 text-white font-black px-8 py-4 rounded-xl shadow-lg w-full flex justify-center items-center gap-3 transition-transform hover:-translate-y-1">
+                                        <Save size={20} /> {savingProfile ? 'Guardando...' : 'Actualizar Perfil'}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Preview & Privacy Column */}
+                            <div className="space-y-8">
+                                {/* Carnet Preview */}
+                                <div className="bg-slate-900 rounded-3xl p-6 text-white shadow-2xl relative overflow-hidden border-4 border-slate-800">
+                                    <div className="absolute -right-6 -top-6 text-slate-800 opacity-50"><UserCircle size={120}/></div>
+                                    <div className="relative z-10 flex flex-col items-center">
+                                        <div className="w-24 h-24 bg-slate-700 rounded-full border-4 border-orange-500 mb-4 overflow-hidden flex items-center justify-center">
+                                            {profile.photoUrl ? <img src={profile.photoUrl} alt="Perfil" className="w-full h-full object-cover"/> : <UserCircle size={48} className="text-slate-400"/>}
+                                        </div>
+                                        <h4 className="font-black text-xl text-center mb-1">{profile.displayName || 'Agente Sin Nombre'}</h4>
+                                        <p className="text-orange-400 font-bold text-sm text-center mb-4">{profile.engineering === 'Otra' ? profile.otherEngineering : (profile.engineering ? `Ingeniería ${profile.engineering}` : 'Especialidad no definida')}</p>
+                                        
+                                        <div className="w-full bg-slate-800 rounded-xl p-4 text-sm font-medium text-slate-300 mb-4 text-center">
+                                            <Building size={16} className="inline mr-2 text-slate-500"/>{profile.institution || 'Institución Pendiente'}
+                                        </div>
+                                        
+                                        <p className="text-xs text-slate-400 text-center italic line-clamp-3">"{profile.bio || 'Añade una biografía para personalizar tu perfil estudiantil.'}"</p>
+                                    </div>
+                                </div>
+
+                                {/* Privacy Policy */}
+                                <div className="bg-emerald-50 border-l-4 border-emerald-500 p-6 rounded-r-2xl">
+                                    <h4 className="font-black text-emerald-900 flex items-center gap-2 mb-2"><ShieldCheck size={20}/> Políticas de Privacidad</h4>
+                                    <p className="text-xs text-emerald-800 leading-relaxed font-medium">
+                                        Tus datos personales (nombre, biografía, enlaces e institución) son utilizados exclusivamente para <strong>fines académicos</strong> y de personalización de la experiencia de aprendizaje dentro de <em>physics10.easy</em>. 
+                                        <br/><br/>
+                                        La información no será compartida con terceros ni utilizada para fines comerciales. Al actualizar tu perfil, consientes el uso de estos datos para generar tus reportes analíticos para el docente.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+              )}
+
+              {/* VIEW: STUDENT EXAM INTRO */}
+              {view === 'exam_intro' && (
+                <div className="max-w-3xl mx-auto mt-24 p-12 bg-white rounded-[2.5rem] shadow-2xl border border-slate-200 text-center animate-in slide-in-from-bottom-8 relative z-10 flex-grow">
+                  <div className="w-28 h-28 bg-orange-50 text-orange-600 border-4 border-orange-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                    <BrainCircuit size={56} />
+                  </div>
+                  <h2 className="text-4xl font-black text-slate-900 mb-6 tracking-tight">{JSON.parse(examConfig).titulo || "Misión: Fundamentos"}</h2>
+                  
+                  {(!profile.displayName || !profile.institution) ? (
+                      <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl mb-8">
+                          <p className="text-amber-800 font-bold mb-4">Para una mejor experiencia, te sugerimos completar tu perfil antes de iniciar la misión.</p>
+                          <button onClick={() => setView('profile')} className="bg-amber-500 hover:bg-amber-600 text-white font-bold py-2 px-6 rounded-xl transition-colors">Completar mi Perfil Universitario</button>
+                      </div>
+                  ) : (
+                      <p className="text-slate-600 text-lg mb-10 leading-relaxed font-medium">¡Hola {profile.displayName.split(' ')[0]}! Bienvenido a tu prueba procedimental de Electromagnetismo. Esta evaluación exige desarrollo analítico paso a paso. La calificación es sobre 5.0. <strong>Nota vital:</strong> Tu tiempo y uso de asistencias cognitivas serán medidos para determinar tu perfil de aprendizaje mediante telemetría. Ten a mano lápiz, papel y calculadora.</p>
+                  )}
+                  
+                  <div className="flex flex-wrap items-center justify-center gap-6 mb-12 text-base font-bold text-slate-600">
+                    <span className="flex items-center gap-2 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200"><Target size={20} className="text-emerald-500"/> {JSON.parse(examConfig).puntajeMaximo || 5.0} Pts Totales</span>
+                    <span className="flex items-center gap-2 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200"><Clock size={20} className="text-blue-500"/> Tiempo Medido</span>
+                    <span className="flex items-center gap-2 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-200"><ListChecks size={20} className="text-violet-500"/> 3 Hojas / 1 Intento</span>
+                  </div>
+                  <button onClick={startExam} className="bg-orange-600 hover:bg-orange-700 text-white px-12 py-5 rounded-2xl font-black text-xl tracking-widest shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-4 w-full border-b-8 border-orange-900 active:border-b-0 active:translate-y-2">
+                    <Play size={24} className="fill-current"/> INICIAR SIMULACIÓN PROCEDIMENTAL
+                  </button>
+                </div>
+              )}
+
+              {/* VIEW: STUDENT EXAM (THE EVALUATION PAPER) */}
+              {view === 'exam' && (
+                <div className="max-w-[1200px] w-full mx-auto mt-10 relative pb-32 px-2 md:px-4 z-10 flex-grow">
+                  
+                  {/* Floating Timer */}
+                  <div className="fixed bottom-8 right-8 bg-slate-900 text-white px-6 py-4 rounded-3xl shadow-2xl border-2 border-slate-700 flex items-center gap-4 font-mono font-black z-50 transition-all hover:scale-105">
+                    <Timer size={24} className="text-orange-400" />
+                    <span className="text-2xl tracking-wider">{formatTime(timeElapsed)}</span>
+                  </div>
+
+                  {/* Efecto Cuaderno */}
+                  <div className="bg-white cuaderno-shadow lomo-cuaderno text-base leading-relaxed p-6 md:p-12 lg:p-16 min-h-[80vh]">
+                    
+                    <div className="text-center mb-12 border-b-4 border-slate-900 pb-8 flex flex-col md:flex-row justify-between items-center md:items-end gap-6">
+                      <div className="text-center md:text-left">
+                          <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tighter uppercase mb-3">{JSON.parse(examConfig).titulo || "Evaluación"}</h1>
+                          <p className="text-slate-500 font-bold text-lg md:text-xl tracking-wide uppercase">{JSON.parse(examConfig).descripcion}</p>
+                      </div>
+                      <div className="bg-slate-100 px-4 py-2 rounded-xl border border-slate-300 shadow-inner">
+                          <span className="text-sm font-black text-slate-600 uppercase tracking-widest">Hoja {currentPage} de {totalPages}</span>
+                      </div>
+                    </div>
+
+                    {/* Student Info */}
+                    <div className="flex flex-col md:flex-row gap-8 bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 mb-12 font-bold text-slate-700 shadow-inner">
+                      <div className="flex-grow flex items-center gap-4">
+                        <div className="bg-white p-2 rounded-lg border border-slate-200">
+                          {profile.photoUrl ? <img src={profile.photoUrl} className="w-6 h-6 rounded-full object-cover"/> : <User size={20} className="text-orange-500"/>}
+                        </div>
+                        <span className="uppercase tracking-widest text-sm text-slate-500">Agente Auth:</span>
+                        <span className="flex-grow text-lg text-orange-700">{profile.displayName || user?.email || 'Desconocido'} {profile.institution && `(${profile.institution})`}</span>
+                      </div>
+                      <div className="w-full md:w-80 flex items-center gap-4 border-l-0 md:border-l-2 border-slate-200 md:pl-6">
+                        <span className="uppercase tracking-widest text-sm text-slate-500">Status:</span>
+                        <span className="flex items-center gap-2 text-emerald-600"><CheckCircle2 size={18}/> Verificado</span>
+                      </div>
+                    </div>
+
+                    {/* === HOJA 1: TEORÍA AMPLIADA === */}
+                    {currentPage === 1 && (
+                        <div key="page1" className="animate-in slide-in-from-right-8 fade-in duration-500">
+                            <MisionBox title="I. Conceptos Fundamentales" points="1.30">
+                              <div className="bg-orange-50 border-l-4 border-orange-500 p-6 rounded-r-2xl mb-10 flex items-center justify-between">
+                                <div>
+                                    <p className="font-black text-orange-900 text-xl mb-2 flex items-center gap-2"><BookOpenCheck size={24}/> 1.1 Teoría Electrostática Base</p>
+                                    <p className="text-orange-800 font-medium text-base">Construye el párrafo analítico con las representaciones matemáticas o enunciados correctos.</p>
+                                </div>
+                                <span className="text-sm text-red-600 bg-red-100 px-3 py-1 rounded-lg font-bold">[0.10 pts c/u]</span>
+                              </div>
+
+                              <div className="bg-white p-8 rounded-3xl border-2 border-slate-200 shadow-sm mb-12 text-lg leading-loose text-slate-700 text-justify">
+                                  La <strong>Ley de Coulomb</strong> puede ser expresada como <InlineSelect id="t_a" value={answers.t_a} onChange={handleInputChange} isSubmitted={isSubmitted} expected="f_coulomb" options={optsTeoria} /> y modela la magnitud de la fuerza eléctrica. 
+                                  Existen dos tipos de carga en la naturaleza: <InlineSelect id="t_b" value={answers.t_b} onChange={handleInputChange} isSubmitted={isSubmitted} expected="cargas_tipos" options={optsTeoria} />. 
+                                  Físicamente, la carga se define como <InlineSelect id="t_c" value={answers.t_c} onChange={handleInputChange} isSubmitted={isSubmitted} expected="carga_def" options={optsTeoria} />.
+                                  Los mecanismos principales por los que los cuerpos ganan o pierden esta propiedad son <InlineSelect id="t_d" value={answers.t_d} onChange={handleInputChange} isSubmitted={isSubmitted} expected="elec_tipos" options={optsTeoria} />.
+                                  Cuando analizamos <InlineSelect id="t_e" value={answers.t_e} onChange={handleInputChange} isSubmitted={isSubmitted} expected="dipolo_def" options={optsTeoria} />, nos referimos a un dipolo eléctrico.
+                              </div>
+
+                              {/* NEW THEORY: Proportions and Graphs */}
+                              <div className="bg-orange-50 border-l-4 border-orange-500 p-6 rounded-r-2xl mb-10 flex items-center justify-between">
+                                <div>
+                                    <p className="font-black text-orange-900 text-xl mb-2 flex items-center gap-2"><TrendingDown size={24}/> 1.2 Comportamiento Matemático y Superposición</p>
+                                    <p className="text-orange-800 font-medium text-base">Analice el comportamiento de las ecuaciones electrostáticas ante la variación de sus parámetros.</p>
+                                </div>
+                              </div>
+                              <div className="bg-white p-8 rounded-3xl border-2 border-slate-200 shadow-sm mb-12">
+                                  <div className="text-lg leading-loose text-slate-700 text-justify mb-8">
+                                     Si la distancia $r$ entre dos cargas interactuantes se duplica ($2r$), la magnitud de la fuerza se convierte en <InlineSelect id="t_prop2" value={answers.t_prop2} onChange={handleInputChange} isSubmitted={isSubmitted} expected="f_4" options={optsProporcionF} />. 
+                                     Si, en cambio, la magnitud de solo una de las cargas se duplica, la fuerza resultará en <InlineSelect id="t_prop1" value={answers.t_prop1} onChange={handleInputChange} isSubmitted={isSubmitted} expected="2f" options={optsProporcionF} />.
+                                     Para sistemas múltiples, el Principio de Superposición nos dicta que <InlineSelect id="t_sup" value={answers.t_sup} onChange={handleInputChange} isSubmitted={isSubmitted} expected="sup_correcta" options={optsSuperposicion} />.
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                      <div>
+                                         <label className="block text-sm font-bold text-slate-700 mb-2"><Latex text={"Comportamiento Gráfico Fuerza vs Distancia ($F$ vs $r$)"} /> <span className="text-red-500">[0.10]</span></label>
+                                         <CurveSelector id="t_graphF" answers={answers} handleInputChange={handleInputChange} isSubmitted={isSubmitted} expected="inv_sq" />
+                                      </div>
+                                      <div>
+                                         <label className="block text-sm font-bold text-slate-700 mb-2"><Latex text={"Comportamiento Gráfico Campo vs Distancia ($E$ vs $r$)"} /> <span className="text-red-500">[0.10]</span></label>
+                                         <CurveSelector id="t_graphE" answers={answers} handleInputChange={handleInputChange} isSubmitted={isSubmitted} expected="inv_sq" />
+                                      </div>
+                                  </div>
+                              </div>
+
+                              {/* NEW THEORY: Equilibrium */}
+                              <div className="bg-orange-50 border-l-4 border-orange-500 p-6 rounded-r-2xl mb-10 flex items-center justify-between">
+                                <div>
+                                    <p className="font-black text-orange-900 text-xl mb-2 flex items-center gap-2"><Move size={24}/> 1.3 Análisis de Equilibrio (Campo Nulo)</p>
+                                    <p className="text-orange-800 font-medium text-base">Interactúe con el diagrama e identifique el comportamiento vectorial.</p>
+                                </div>
+                                <span className="text-sm text-red-600 bg-red-100 px-3 py-1 rounded-lg font-bold">[0.20 pts]</span>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 bg-white p-8 rounded-3xl border-2 border-slate-200 shadow-sm">
+                                   <div className="flex items-center justify-center p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                       <SvgEquilibrium />
+                                   </div>
+                                   <div className="flex flex-col justify-center text-lg leading-loose text-slate-700 text-justify">
+                                       Si tenemos dos cargas puntuales positivas ($+q$) idénticas separadas por una distancia $d$, la fuerza neta sobre una tercera carga de prueba sería exactamente cero en <InlineSelect id="t_eq" value={answers.t_eq} onChange={handleInputChange} isSubmitted={isSubmitted} expected="medio" options={optsEquilibrio} />.
+                                   </div>
+                              </div>
+
+                            </MisionBox>
+                        </div>
+                    )}
+
+                    {/* === HOJA 2: FUERZA PROCEDIMENTAL === */}
+                    {currentPage === 2 && (
+                        <div key="page2" className="animate-in slide-in-from-right-8 fade-in duration-500">
+                            <MisionBox title="II. Fuerza Neta en el Espacio 2D" points="1.85">
+                              <div className="bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-2xl mb-8">
+                                <p className="font-black text-blue-900 text-xl mb-2 flex items-center gap-2"><Target size={24}/> 2.1 Desarrollo Analítico</p>
+                                <p className="text-blue-800 font-medium text-base"><Latex text={"Una carga de $+1.3 \\ \\mu\\text{C}$ se coloca sobre el eje $x$ en $x = -0.5 \\ \\text{m}$, otra carga de $+3.2 \\ \\mu\\text{C}$ se coloca en el eje $x$ en $x = 1.5 \\ \\text{m}$ y una carga de $+2.5 \\ \\mu\\text{C}$ se coloca en el eje $y$ en $y=1 \\ \\text{m}$. Determine la fuerza neta sobre la carga de $+2.5 \\ \\mu\\text{C}$ paso a paso."} /></p>
+                              </div>
+
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                  {/* Columna 1: Diagrama y Tips */}
+                                  <div className="flex flex-col gap-6">
+                                      <div className="h-[300px] flex items-center justify-center p-4 bg-white border-2 border-slate-200 rounded-3xl shadow-sm">
+                                          <SvgForceProblem />
+                                      </div>
+                                      
+                                      <CognitiveDCL 
+                                        idPrefix="f_dcl" 
+                                        options={optsDclF}
+                                        answers={answers} 
+                                        onChange={handleInputChange} 
+                                        isSubmitted={isSubmitted} 
+                                        expectedMap={expectedDCLP2} 
+                                      />
+                                      
+                                      <PenaltyTipButton id="ptip_2" usedTips={usedTips} setUsedTips={setUsedTips} penalty={0.05} text={"Recuerda:\\n $r = \\sqrt{x^2 + y^2}$.\\n $\\vec{u} = \\frac{\\Delta x \\hat{i} + \\Delta y \\hat{j}}{r}$.\\n La fuerza entre cargas del mismo signo es de repulsión."} />
+                                  </div>
+
+                                  {/* Columna 2: Los 11 Pasos */}
+                                  <div className="bg-white p-8 rounded-3xl border-2 border-slate-200 shadow-sm flex flex-col space-y-6 relative overflow-visible">
+                                      <h4 className="font-black text-slate-800 text-lg border-b-2 border-slate-100 pb-2">Metodología Procedimental</h4>
+                                      
+                                      <div className="space-y-4">
+                                          <div className={`p-4 rounded-xl border step-container ${answers.f_r1 ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 2: Geometría</p>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"Distancia $(r_{13})^2$ [m²]"} /></label>
+                                                     <InlineSelect id="f_r1" value={answers.f_r1} onChange={handleInputChange} isSubmitted={isSubmitted} expected="1.25" width="w-full" options={optsDist2} />
+                                                  </div>
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"Distancia $(r_{23})^2$ [m²]"} /></label>
+                                                     <InlineSelect id="f_r2" value={answers.f_r2} onChange={handleInputChange} isSubmitted={isSubmitted} expected="3.25" width="w-full" options={optsDist2} />
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.f_u1 ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2"><Latex text={"Paso 3: Vectores Unitarios hacia $q_3$"} /></p>
+                                              <div className="grid grid-cols-1 gap-4">
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-slate-500 w-8"><Latex text={"$\\hat{u}_{13}=$"}/></span>
+                                                    <InlineSelect id="f_u1" value={answers.f_u1} onChange={handleInputChange} isSubmitted={isSubmitted} expected="u1" width="flex-grow" options={optsUnitarios13} />
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-slate-500 w-8"><Latex text={"$\\hat{u}_{23}=$"}/></span>
+                                                    <InlineSelect id="f_u2" value={answers.f_u2} onChange={handleInputChange} isSubmitted={isSubmitted} expected="u2" width="flex-grow" options={optsUnitarios23} />
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.f_sub_k ? 'step-active' : 'step-pending'} overflow-visible`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2"><Latex text={"Paso 4: Formulación Vectorial ($\\vec{F}_{13}$)"}/></p>
+                                              
+                                              <div className="overflow-x-auto custom-scrollbar w-full py-4">
+                                                <div className="flex flex-nowrap items-center justify-center gap-4 bg-white p-6 rounded-xl border-2 border-slate-200 shadow-sm text-lg min-w-max">
+                                                    <div className="font-black text-2xl text-slate-800"><Latex text={"$\\vec{F}_{13} = $"} /></div>
+                                                    
+                                                    <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-inner">
+                                                        <InlineSelect id="f_sub_k" value={answers.f_sub_k} onChange={handleInputChange} isSubmitted={isSubmitted} expected="k" options={optsK} />
+                                                        <div className="font-black text-2xl text-slate-800"><Latex text={"$ \\cdot $"} /></div>
+                                                        <div className="flex flex-col items-center gap-1.5">
+                                                            <InlineSelect id="f_sub_q" value={answers.f_sub_q} onChange={handleInputChange} isSubmitted={isSubmitted} expected="q13" options={optsQ1Q3} />
+                                                            <div className="w-full border-b-[3px] border-slate-800 rounded-full"></div>
+                                                            <InlineSelect id="f_sub_r" value={answers.f_sub_r} onChange={handleInputChange} isSubmitted={isSubmitted} expected="1.25" options={optsDist2} />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="font-black text-2xl text-slate-800"><Latex text={"$ \\cdot $"} /></div>
+
+                                                    <div className="flex flex-col items-center">
+                                                         <div className="bg-blue-50 px-5 py-3 rounded-2xl border-2 border-blue-200 font-bold text-blue-800 shadow-sm">
+                                                            <Latex text={"$\\hat{u}_{13}$"} />
+                                                         </div>
+                                                    </div>
+                                                </div>
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.f_f1 ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 5: Magnitudes Individuales</p>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"Mag. $|F_{13}|$ (N)"} /></label>
+                                                     <InlineSelect id="f_f1" value={answers.f_f1} onChange={handleInputChange} isSubmitted={isSubmitted} expected="0.0234" width="w-full" options={optsMag} />
+                                                  </div>
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"Mag. $|F_{23}|$ (N)"} /></label>
+                                                     <InlineSelect id="f_f2" value={answers.f_f2} onChange={handleInputChange} isSubmitted={isSubmitted} expected="0.0221" width="w-full" options={optsMag} />
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.f_sumx ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 6-7: Superposición Vectorial</p>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"$\\sum F_x$ (N)"} /></label>
+                                                      <InlineSelect id="f_sumx" value={answers.f_sumx} onChange={handleInputChange} isSubmitted={isSubmitted} expected="-0.0080" width="w-full" options={optsSumX} />
+                                                  </div>
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"$\\sum F_y$ (N)"} /></label>
+                                                      <InlineSelect id="f_sumy" value={answers.f_sumy} onChange={handleInputChange} isSubmitted={isSubmitted} expected="0.0331" width="w-full" options={optsSumY} />
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.f_mag ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 8-10: Resultante Final</p>
+                                              <div className="grid grid-cols-1 gap-4 mb-4">
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"Magnitud Total $|F_{\\text{neta}}|$ (N)"} /></label>
+                                                     <InlineSelect id="f_mag" value={answers.f_mag} onChange={handleInputChange} isSubmitted={isSubmitted} expected="0.0340" width="w-full" options={optsTot} />
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                          {/* CONCLUSION STEP TEXT */}
+                                          <div className={`p-4 rounded-xl border step-container ${answers.f_concl ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 11: Conclusión Física</p>
+                                              <div className="text-lg leading-loose text-slate-700 text-justify">
+                                                  En resumen, observamos que <InlineSelect id="f_concl" value={answers.f_concl} onChange={handleInputChange} isSubmitted={isSubmitted} expected="ok" options={optsConclusionFuerza} />.
+                                              </div>
+                                          </div>
+                                          
+                                          <div className="h-48 w-full pointer-events-none"></div> {/* Spacer to allow scrolling when dropdown is open */}
+                                      </div>
+                                  </div>
+                              </div>
+                            </MisionBox>
+                        </div>
+                    )}
+
+                    {/* === HOJA 3: CAMPO ANILLO PROCEDIMENTAL === */}
+                    {currentPage === 3 && (
+                        <div key="page3" className="animate-in slide-in-from-right-8 fade-in duration-500">
+                            <MisionBox title="III. Campo de Distribuciones en el Espacio" points="1.85">
+                              <div className="bg-violet-50 border-l-4 border-violet-500 p-6 rounded-r-2xl mb-10 flex flex-col md:flex-row gap-6 items-start justify-between">
+                                <div>
+                                  <p className="font-black text-violet-900 text-xl mb-2 flex items-center gap-2"><Target size={24}/> 3.1 El Campo en Circunferencia</p>
+                                  <p className="text-violet-800 font-medium text-base"><Latex text={"Determine la magnitud y dirección del campo eléctrico en el punto $P$, generado por tres cargas puntuales distribuidas sobre una circunferencia de radio $R$. Considere: $q = 2 \\ \\text{nC}$, $R = 4 \\ \\text{cm}$."} /></p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                  <div className="flex flex-col gap-6">
+                                      <div className="h-[350px] flex items-center justify-center bg-white border-2 border-slate-200 rounded-3xl shadow-sm overflow-hidden p-2">
+                                          <SvgCircleProblem />
+                                      </div>
+                                      
+                                      <CognitiveDCL 
+                                        idPrefix="c_dcl" 
+                                        options={optsDclE}
+                                        answers={answers} 
+                                        onChange={handleInputChange} 
+                                        isSubmitted={isSubmitted} 
+                                        expectedMap={expectedDCLP3} 
+                                      />
+
+                                      <PenaltyTipButton id="ptip_3" usedTips={usedTips} setUsedTips={setUsedTips} penalty={0.05} text={"Geometría Oculta:<br/> La distancia desde cualquier carga en la circunferencia hasta el centro es $R$. El punto $P$ está a $R$ del centro. Calcula los vectores posición de cada carga para hallar la distancia real a $P$.<br/> Usa $k \\cdot q / R^2 = E_0 = 11250$ N/C como base."} />
+                                  </div>
+
+                                  <div className="bg-white p-8 rounded-3xl border-2 border-slate-200 shadow-sm flex flex-col justify-center space-y-6 h-max">
+                                      <h4 className="font-black text-slate-800 text-lg border-b-2 border-slate-100 pb-2">Metodología Analítica</h4>
+                                      
+                                      <div className="space-y-4 relative">
+                                          <div className={`p-4 rounded-xl border step-container ${answers.c_r1 ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 2: Distancias Reales a P</p>
+                                              <div className="grid grid-cols-3 gap-4">
+                                                  <InlineSelect id="c_r1" value={answers.c_r1} onChange={handleInputChange} isSubmitted={isSubmitted} expected="R" width="w-full" options={optsDist3} />
+                                                  <InlineSelect id="c_r2" value={answers.c_r2} onChange={handleInputChange} isSubmitted={isSubmitted} expected="R" width="w-full" options={optsDist3} />
+                                                  <InlineSelect id="c_r3" value={answers.c_r3} onChange={handleInputChange} isSubmitted={isSubmitted} expected="2R" width="w-full" options={optsDist3} />
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.c_e0 ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2"><Latex text={"Paso 4: Factor Base $E_0 = k q / R^2$"} /></p>
+                                              <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"Valor de $E_0$ (N/C)"} /></label>
+                                                 <InlineSelect id="c_e0" value={answers.c_e0} onChange={handleInputChange} isSubmitted={isSubmitted} expected="11250" width="w-full" options={optsBaseE0} />
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.c_e1_mag ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2"><Latex text={"Paso 5: Magnitudes (En función de $E_0$)"} /></p>
+                                              <div className="grid grid-cols-3 gap-4">
+                                                  <InlineSelect id="c_e1_mag" value={answers.c_e1_mag} onChange={handleInputChange} isSubmitted={isSubmitted} expected="E_0" width="w-full" options={optsMagRel} />
+                                                  <InlineSelect id="c_e2_mag" value={answers.c_e2_mag} onChange={handleInputChange} isSubmitted={isSubmitted} expected="2E_0" width="w-full" options={optsMagRel} />
+                                                  <InlineSelect id="c_e3_mag" value={answers.c_e3_mag} onChange={handleInputChange} isSubmitted={isSubmitted} expected="E_0/2" width="w-full" options={optsMagRel} />
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.c_sumx ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 6-7: Superposición Numérica (N/C)</p>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"$\\sum E_x$"} /></label>
+                                                    <InlineSelect id="c_sumx" value={answers.c_sumx} onChange={handleInputChange} isSubmitted={isSubmitted} expected="-11250" width="w-full" options={optsSumX3} />
+                                                  </div>
+                                                  <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"$\\sum E_y$"} /></label>
+                                                    <InlineSelect id="c_sumy" value={answers.c_sumy} onChange={handleInputChange} isSubmitted={isSubmitted} expected="9742" width="w-full" options={optsSumY3} />
+                                                  </div>
+                                              </div>
+                                          </div>
+
+                                          <div className={`p-4 rounded-xl border step-container ${answers.c_mag_tot ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 8: Magnitud Final</p>
+                                              <div><label className="text-sm font-bold text-slate-700 block mb-1"><Latex text={"$|\\vec{E}_{\\text{neto}}|$ en P (N/C)"} /></label>
+                                                <InlineSelect id="c_mag_tot" value={answers.c_mag_tot} onChange={handleInputChange} isSubmitted={isSubmitted} expected="14881" width="w-full" options={optsTot3} />
+                                              </div>
+                                          </div>
+
+                                          {/* CONCLUSION STEP TEXT */}
+                                          <div className={`p-4 rounded-xl border step-container ${answers.c_concl ? 'step-active' : 'step-pending'}`}>
+                                              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Paso 9: Análisis de Simetría y Conclusión</p>
+                                              <div className="text-lg leading-loose text-slate-700 text-justify">
+                                                  El resultado del vector neto en el espacio indica que <InlineSelect id="c_concl" value={answers.c_concl} onChange={handleInputChange} isSubmitted={isSubmitted} expected="ok" options={optsConclusionAnillo} />.
+                                              </div>
+                                          </div>
+                                          
+                                          <div className="h-48 w-full pointer-events-none"></div> {/* Spacer to allow scrolling when dropdown is open */}
+                                      </div>
+                                  </div>
+                              </div>
+                            </MisionBox>
+                        </div>
+                    )}
+
+            {/* Pagination Controls */}
+            <div className="flex flex-col md:flex-row justify-between items-center mt-12 pt-8 border-t-4 border-slate-200 gap-6">
+              {currentPage > 1 ? (
+                  <button onClick={() => { setCurrentPage(p => p - 1); window.scrollTo(0,0); }} className="w-full md:w-auto px-6 py-4 bg-white border-2 border-slate-300 text-slate-700 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors shadow-sm">
+                      <ChevronLeft size={20} /> Hoja Anterior
+                  </button>
+              ) : <div className="hidden md:block w-[180px]"></div>}
+              
+              {currentPage < totalPages && !isSubmitted ? (
+                  <button onClick={() => { setCurrentPage(p => p + 1); window.scrollTo(0,0); }} className="w-full md:w-auto px-8 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-orange-700 transition-colors shadow-md">
+                      Siguiente Hoja <ChevronRight size={20} />
+                  </button>
+              ) : null}
+
+              {currentPage === totalPages && !isSubmitted && (
+                <button onClick={handleSubmit} className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 text-white px-10 py-4 rounded-2xl font-black text-lg tracking-widest shadow-[0_10px_30px_rgba(15,23,42,0.4)] hover:shadow-[0_20px_40px_rgba(15,23,42,0.5)] transition-all hover:-translate-y-1 inline-flex items-center justify-center gap-3 border-b-8 border-slate-950 active:border-b-0 active:translate-y-2">
+                  <Save size={28}/> PROCESAR EXAMEN
+                </button>
+              )}
+
+              {isSubmitted && (
+                <div className="bg-emerald-50 text-emerald-800 border-2 border-emerald-200 p-6 rounded-3xl inline-flex items-center justify-center gap-4 shadow-sm w-full md:w-auto">
+                  <CheckCircle2 size={36} className="text-emerald-500" />
+                  <div className="text-left">
+                    <p className="font-black text-2xl uppercase">Evaluación Procesada</p>
+                    <p className="text-emerald-600 font-bold text-sm">El reporte está disponible.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW: RESULTS */}
+      {view === 'results' && (
+        <div className="max-w-5xl mx-auto mt-16 p-6 animate-in zoom-in-95 duration-500 flex-grow">
+          <div className="bg-slate-900 rounded-[3rem] shadow-2xl overflow-hidden text-white relative border border-slate-800 pb-16">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[150%] h-[300px] bg-orange-600/20 blur-[120px] pointer-events-none rounded-full"></div>
+            
+            <div className="p-8 md:p-12 text-center relative z-10">
+              <insignia.icon size={80} className={`mx-auto mb-8 drop-shadow-lg ${insignia.color}`} />
+              <h2 className="text-4xl md:text-5xl font-black mb-4 uppercase tracking-tighter">Reporte de Misión</h2>
+              <p className="text-slate-400 font-medium text-lg md:text-xl">Calificación procesada por el motor adaptativo neuronal.</p>
+
+              <div className="my-16 flex flex-col md:flex-row items-center justify-center gap-12">
+                <div className="relative w-64 h-64 flex items-center justify-center bg-slate-800 rounded-full shadow-[0_0_80px_rgba(234,88,12,0.3)] border-8 border-slate-700 shrink-0">
+                  <div className="text-center">
+                    <span className="text-7xl font-black bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400 drop-shadow-sm">{score}</span>
+                    <span className="block text-base text-orange-400 mt-2 font-black tracking-widest">/ 5.0 PTS</span>
+                  </div>
+                </div>
+                
+                <div className="text-left bg-slate-800/50 p-8 rounded-3xl border border-slate-700 flex-grow w-full max-w-md">
+                    <h3 className="font-black text-2xl mb-2 flex items-center gap-2 text-white"><Award size={24} className={insignia.color}/> Rango Obtenido:</h3>
+                    <p className={`text-xl font-bold mb-6 ${insignia.color}`}>{insignia.title}</p>
+                    
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase mb-1"><span>Hoja 1: Teoría (1.3 pts)</span> <span>{Math.round((scoreData.details.s1 / 1.3)*100)}%</span></div>
+                            <div className="w-full bg-slate-700 rounded-full h-2"><div className={`bg-emerald-500 h-2 rounded-full progress-bar-fill`} style={{width: `${(scoreData.details.s1 / 1.3)*100}%`}}></div></div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase mb-1"><span>Hoja 2: Fuerza Neta (1.85 pts)</span> <span>{Math.round((scoreData.details.s2 / 1.85)*100)}%</span></div>
+                            <div className="w-full bg-slate-700 rounded-full h-2"><div className={`bg-blue-500 h-2 rounded-full progress-bar-fill`} style={{width: `${(scoreData.details.s2 / 1.85)*100}%`}}></div></div>
+                        </div>
+                        <div>
+                            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase mb-1"><span>Hoja 3: Campo en Circ. (1.85 pts)</span> <span>{Math.round((scoreData.details.s3 / 1.85)*100)}%</span></div>
+                            <div className="w-full bg-slate-700 rounded-full h-2"><div className={`bg-violet-500 h-2 rounded-full progress-bar-fill`} style={{width: `${(scoreData.details.s3 / 1.85)*100}%`}}></div></div>
+                        </div>
+                    </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                  {/* Pedagogical Feedback */}
+                  <div className={`p-8 rounded-3xl border-2 ${score >= 4.0 ? 'bg-emerald-900/40 border-emerald-500/50 text-emerald-100' : score >= 3.0 ? 'bg-blue-900/40 border-blue-500/50 text-blue-100' : 'bg-red-900/40 border-red-500/50 text-red-100'}`}>
+                    <h3 className="font-black text-2xl mb-4 flex items-center gap-3">
+                      <BrainCircuit size={28}/> Análisis Cognitivo Detallado
+                    </h3>
+                    <p className="leading-relaxed text-lg font-medium mb-4">
+                      {score >= 4.0 ? "¡Excelente! Tu dominio teórico y tu capacidad para estructurar procedimientos matemáticos en el espacio es sólida. Entiendes las simetrías y los diagramas de cuerpo libre perfectamente." : 
+                       score >= 3.0 ? "Buen trabajo procedimental. Entiendes el diagrama de cuerpo libre, pero la telemetría sugiere que necesitas afianzar la descomposición vectorial (uso de unitarios y sumatorias) para no perder puntos en cálculo puro." : 
+                       "Anomalía detectada. El sistema IRT (Item Response Theory) detecta fallos desde la estructura conceptual base (DCL) y en la sustitución de las distancias relativas. ¡La perseverancia y el orden son la clave de la física!"}
+                    </p>
+                    <div className="text-sm font-bold opacity-80 border-t border-current pt-4 flex flex-col gap-3 text-left">
+                        <span className="flex items-start gap-2"><Timer size={18} className="shrink-0"/>{timeMsg}</span>
+                        <span className="flex items-start gap-2"><Compass size={18} className="shrink-0"/>{doubtMsg}</span>
+                        {usedTips.length > 0 && <span className="flex items-start gap-2"><AlertTriangle size={18} className="shrink-0"/>Penalización por {usedTips.length} asistencia(s) cognitiva(s) aplicada (-{usedTips.length * 0.05} pts).</span>}
+                    </div>
+                  </div>
+
+                  {/* IMPORTANCIA DE LOS APUNTES */}
+                  <div className="p-8 rounded-3xl border-2 bg-amber-900/30 border-amber-500/50 text-amber-100 flex flex-col justify-center">
+                      <h3 className="font-black text-2xl mb-4 flex items-center gap-3">
+                        <BookOpenCheck size={28} className="text-amber-400"/> El Poder del Lápiz y Papel
+                      </h3>
+                      <p className="leading-relaxed text-base font-medium mb-4">
+                        Recuerda que esta plataforma interactiva es un complemento de diagnóstico. La verdadera ingeniería se forja tomando apuntes rigurosos y resolviendo los 10 pasos a mano. Las conexiones neuronales al escribir son irremplazables.
+                      </p>
+                      <ul className="text-sm font-bold opacity-90 space-y-2 list-disc list-inside ml-4">
+                          <li>Dedica 30 min diarios a transcribir el procedimiento de clase.</li>
+                          <li>Dibuja los DCL en tu cuaderno antes de tocar el simulador.</li>
+                          <li>Tus apuntes organizados garantizan tu éxito profesional.</li>
+                      </ul>
+                  </div>
+              </div>
+
+              {/* RATING REAL SYSTEM */}
+              <div className="mt-12 bg-slate-800/50 p-8 rounded-3xl border border-slate-700/50 backdrop-blur-sm shadow-lg max-w-4xl mx-auto">
+                  <h3 className="text-white font-black mb-6 uppercase tracking-widest text-xl text-center flex items-center justify-center gap-3"><MessageSquare/> Encuesta de Calidad de la Plataforma</h3>
+                  
+                  {!hasRated ? (
+                  <div className="space-y-6">
+                      <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900/50 p-4 rounded-xl">
+                          <span className="font-bold text-slate-300">1. Usabilidad e Interfaz:</span>
+                          <div className="flex gap-2 mt-2 md:mt-0">
+                              {[1,2,3,4,5].map(star => (
+                                  <button key={star} onClick={() => setSurvey({...survey, platform: star})} className={`hover:scale-125 transition-transform ${survey.platform >= star ? 'text-amber-400' : 'text-slate-600'}`}>
+                                      <Star size={28} className={survey.platform >= star ? 'fill-current' : ''} />
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+                      <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900/50 p-4 rounded-xl">
+                          <span className="font-bold text-slate-300">2. Calidad de Explicaciones y Gráficos:</span>
+                          <div className="flex gap-2 mt-2 md:mt-0">
+                              {[1,2,3,4,5].map(star => (
+                                  <button key={star} onClick={() => setSurvey({...survey, graphics: star})} className={`hover:scale-125 transition-transform ${survey.graphics >= star ? 'text-amber-400' : 'text-slate-600'}`}>
+                                      <Star size={28} className={survey.graphics >= star ? 'fill-current' : ''} />
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+                      <div className="flex flex-col md:flex-row justify-between items-center bg-slate-900/50 p-4 rounded-xl">
+                          <span className="font-bold text-slate-300">3. Nivel de Desafío del Examen:</span>
+                          <div className="flex gap-2 mt-2 md:mt-0">
+                              {[1,2,3,4,5].map(star => (
+                                  <button key={star} onClick={() => setSurvey({...survey, challenge: star})} className={`hover:scale-125 transition-transform ${survey.challenge >= star ? 'text-amber-400' : 'text-slate-600'}`}>
+                                      <Star size={28} className={survey.challenge >= star ? 'fill-current' : ''} />
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+                      <div>
+                          <label className="font-bold text-slate-300 block mb-2">Comentarios Adicionales (Opcional):</label>
+                          <textarea value={survey.comment} onChange={e=>setSurvey({...survey, comment: e.target.value})} className="w-full bg-slate-900 text-white border border-slate-700 rounded-xl p-4 outline-none focus:border-orange-500" rows="3" placeholder="¿Qué mejorarías de esta evaluación?"></textarea>
+                      </div>
+                      <button onClick={submitRating} className="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-xl shadow-lg transition-colors uppercase tracking-widest">Enviar Feedback</button>
+                  </div>
+                  ) : (
+                      <div className="text-center py-10">
+                          <CheckCircle2 size={64} className="mx-auto text-emerald-500 mb-4" />
+                          <p className="text-emerald-400 font-black text-2xl">¡Feedback Recibido!</p>
+                          <p className="text-slate-400 font-medium mt-2">Tus respuestas ayudarán a mejorar el modelo de evaluación universitaria.</p>
+                      </div>
+                  )}
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-6 justify-center mt-14">
+                 <button onClick={() => { setView('exam'); setCurrentPage(1); window.scrollTo(0,0); }} className="bg-slate-800 hover:bg-slate-700 text-white font-black tracking-widest uppercase px-8 py-4 rounded-xl transition-all border border-slate-600 shadow-md hover:shadow-lg">
+                  REVISAR CORRECCIONES EN LA HOJA
+                </button>
+                <button onClick={() => { setView('login'); setRole(null); signOut(auth); }} className="bg-white hover:bg-slate-100 text-slate-900 font-black tracking-widest uppercase px-8 py-4 rounded-xl transition-all shadow-md hover:shadow-lg">
+                  FINALIZAR Y SALIR
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW: TEACHER DASHBOARD */}
+      {view === 'dashboard' && role === 'teacher' && (
+        <div className="max-w-[1200px] mx-auto mt-12 px-6 animate-in fade-in duration-500 pb-20 flex-grow">
+          <div className="mb-10">
+            <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Centro de Mando Docente</h2>
+            <p className="text-slate-500 font-bold text-lg">Analíticas reales calculadas directamente desde Firestore (Escala 5.0).</p>
+          </div>
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 hover:shadow-lg transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl"><Eye size={28}/></div>
+                <span className="text-sm font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg">Real</span>
+              </div>
+              <h3 className="text-4xl font-black text-slate-800">{metrics.views}</h3>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Estudiantes Reg.</p>
+            </div>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 hover:shadow-lg transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-4 bg-violet-50 text-violet-600 rounded-2xl"><BarChart2 size={28}/></div>
+              </div>
+              <h3 className="text-4xl font-black text-slate-800">{metrics.avgScore} / 5.0</h3>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">Nota Promedio</p>
+            </div>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 hover:shadow-lg transition-shadow">
+              <div className="flex justify-between items-start mb-4">
+                <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl"><Clock size={28}/></div>
+              </div>
+              <h3 className="text-4xl font-black text-slate-800">{formatTime(metrics.avgTime)}</h3>
+              <p className="text-sm font-bold text-slate-500 uppercase tracking-widest mt-1">T. Medio Examen</p>
+            </div>
+            <div className="bg-slate-900 p-6 rounded-3xl shadow-xl border border-slate-800 text-white relative overflow-hidden group">
+              <TrendingUp className="absolute -right-6 -bottom-6 text-slate-800 group-hover:scale-110 transition-transform duration-500" size={120} />
+              <div className="relative z-10">
+                <h3 className="text-xl font-black mb-2 text-orange-400">IA de Ajuste Pedagógico</h3>
+                <p className="text-base text-slate-300 mb-6 font-medium leading-snug">Índice de Frustración: <span className="font-mono text-xl">{metrics.frustrationIndex}</span></p>
+                <span className={`text-white text-sm font-black px-4 py-2 rounded-xl flex items-center gap-2 w-max shadow-md ${metrics.frustrationIndex > 5 ? 'bg-red-500' : 'bg-emerald-500'}`}>
+                  {metrics.frustrationIndex > 5 ? <AlertTriangle size={16}/> : <Activity size={16}/>}
+                  {metrics.frustrationIndex > 5 ? 'Alerta: Alta Frustración' : 'Monitoreo Activo Óptimo'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ADVANCED DATA SCIENCE SECTION */}
+          <MisionBox title="Analítica Avanzada: Psicometría y Data Science" points="PRO">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                  
+                  {/* Teoria de Respuesta al Item (IRT) */}
+                  <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 shadow-inner">
+                      <div className="flex items-center gap-3 mb-6">
+                          <Network className="text-blue-600" size={28} />
+                          <div>
+                              <h4 className="font-black text-slate-800 text-xl">Teoría de Respuesta al Ítem (IRT)</h4>
+                              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Modelos de Rasch & Lord</p>
+                          </div>
+                      </div>
+                      <div className="overflow-x-auto">
+                          <table className="w-full text-left">
+                              <thead>
+                                  <tr className="text-[10px] uppercase tracking-widest text-slate-500 border-b border-slate-300">
+                                      <th className="py-2">Módulo Evaluado</th>
+                                      <th className="py-2 text-center" title="Índice de Dificultad (p = Aciertos / Total)">Dif. ($p$)</th>
+                                      <th className="py-2 text-center" title="Índice de Discriminación (Top 27% - Bottom 27%)">Discrim. ($D$)</th>
+                                  </tr>
+                              </thead>
+                              <tbody className="text-sm font-bold text-slate-700">
+                                  <tr className="border-b border-slate-100">
+                                      <td className="py-3 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Hoja 1: Teoría</td>
+                                      <td className="py-3 text-center">{metrics.irt?.p1}</td>
+                                      <td className="py-3 text-center text-emerald-600">{metrics.irt?.d1}</td>
+                                  </tr>
+                                  <tr className="border-b border-slate-100">
+                                      <td className="py-3 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Hoja 2: Fuerza Neta</td>
+                                      <td className="py-3 text-center">{metrics.irt?.p2}</td>
+                                      <td className="py-3 text-center text-blue-600">{metrics.irt?.d2}</td>
+                                  </tr>
+                                  <tr>
+                                      <td className="py-3 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-violet-500"></div> Hoja 3: C. Anillo</td>
+                                      <td className="py-3 text-center">{metrics.irt?.p3}</td>
+                                      <td className="py-3 text-center text-violet-600">{metrics.irt?.d3}</td>
+                                  </tr>
+                              </tbody>
+                          </table>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-4 leading-relaxed">
+                          * Un $p$ cercano a 1.0 indica un ítem muy fácil. Un $D$ alto ($> 0.3$) indica que la hoja discrimina correctamente entre los estudiantes de alto y bajo rendimiento.
+                      </p>
+                  </div>
+
+                  {/* Early Warning System & Scatter */}
+                  <div className="flex flex-col gap-6">
+                      <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 shadow-inner">
+                          <div className="flex items-center gap-3 mb-4">
+                              <PieChart className="text-orange-600" size={28} />
+                              <div>
+                                  <h4 className="font-black text-slate-800 text-xl">Sistema de Alerta Temprana (EWS)</h4>
+                                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">K-Means Clustering</p>
+                              </div>
+                          </div>
+                          <div className="flex flex-wrap gap-4">
+                              <div className="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm flex-1 text-center">
+                                  <div className="text-2xl font-black text-emerald-600">{metrics.clusters?.engaged}</div>
+                                  <div className="text-[10px] font-bold text-slate-500 uppercase">Óptimos</div>
+                              </div>
+                              <div className="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm flex-1 text-center">
+                                  <div className="text-2xl font-black text-amber-600">{metrics.clusters?.guessing}</div>
+                                  <div className="text-[10px] font-bold text-slate-500 uppercase">Adivinando</div>
+                              </div>
+                              <div className="bg-white px-4 py-3 rounded-xl border border-slate-200 shadow-sm flex-1 text-center">
+                                  <div className="text-2xl font-black text-red-600">{metrics.clusters?.struggling}</div>
+                                  <div className="text-[10px] font-bold text-slate-500 uppercase">Bloqueados</div>
+                              </div>
+                          </div>
+                      </div>
+
+                  </div>
+
+              </div>
+          </MisionBox>
+
+          {/* Legacy Metrics */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-8 py-6 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 className="font-black text-slate-800 text-xl">Mapeo de Competencias (Rendimiento)</h3>
+                <span className="text-xs text-slate-500 font-black uppercase tracking-widest bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm">Identificación de Brechas</span>
+              </div>
+              <div className="p-6 border-b border-slate-100 bg-white">
+                 <h4 className="font-bold text-slate-700 mb-2 uppercase text-sm tracking-widest">Campana de Notas (Frecuencia)</h4>
+                 <ScoreHistogram attempts={metrics.attempts} />
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-widest text-slate-500 border-b-2 border-slate-100 bg-slate-50">
+                      <th className="px-8 py-5 font-black">Misión Evaluada</th>
+                      <th className="px-8 py-5 font-black">Nota Media</th>
+                      <th className="px-8 py-5 font-black">T. Medio</th>
+                      <th className="px-8 py-5 font-black">Estado del Grupo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-base font-bold bg-white">
+                    {metrics.questionMetrics.map(q => (
+                      <tr key={q.id} className="hover:bg-slate-50 transition-colors group">
+                        <td className="px-8 py-6 text-slate-800 flex items-center gap-4">
+                          <div className={`w-3 h-3 rounded-full shadow-inner ${q.status === 'optimal' ? 'bg-emerald-500' : q.status === 'review' ? 'bg-amber-500' : 'bg-red-500'}`}></div>
+                          {q.title}
+                        </td>
+                        <td className="px-8 py-6 font-mono text-slate-600 text-lg">{q.avgScore}</td>
+                        <td className="px-8 py-6 font-mono text-slate-500 flex items-center gap-2"><Timer size={16} className="text-slate-400"/> {q.avgTime}s</td>
+                        <td className="px-8 py-6">
+                          {q.status === 'optimal' ? <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm">Óptimo</span> :
+                           q.status === 'review' ? <span className="bg-amber-50 text-amber-700 border border-amber-200 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm">Revisar</span> :
+                           <span className="bg-red-50 text-red-700 border border-red-200 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-sm">Crítico</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+              <div className="px-8 py-6 border-b border-slate-200 bg-slate-50">
+                <h3 className="font-black text-slate-800 text-xl">Últimos Entregados (Real)</h3>
+              </div>
+              <div className="p-0 flex-grow bg-white overflow-y-auto max-h-[850px] custom-scrollbar">
+                {metrics.attempts.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400 font-bold">No hay evaluaciones registradas en Firestore.</div>
+                ) : (
+                  metrics.attempts.map((a, idx) => (
+                    <div key={idx} className="p-8 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors">
+                      <div className="flex justify-between items-center mb-3">
+                        <span className="font-black text-slate-800 text-sm break-all" title={a.agent}>{a.agent.length > 20 ? a.agent.substring(0,18)+'...' : a.agent}</span>
+                        <span className={`font-mono font-black text-base px-3 py-1.5 rounded-lg border flex-shrink-0 ${a.score > 3.0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm' : 'bg-red-50 text-red-700 border-red-200 shadow-sm'}`}>{a.score} pts</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-500 font-bold uppercase tracking-wider mt-2">
+                        <span>{a.date}</span>
+                        <span className="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200"><Timer size={14}/> {formatTime(a.time)}</span>
+                      </div>
+                      {a.hesitation > 0 && (
+                          <div className="mt-3 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md inline-block">
+                              Índice de Duda: {a.hesitation} cambios
+                          </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER Nivel Producción */}
+      <footer className="mt-auto py-8 bg-slate-900 border-t border-slate-800 text-center relative z-50">
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center px-6 gap-4">
+              <div className="text-slate-400 font-medium text-sm">
+                  &copy; 2026 <span className="font-black text-white">physics10.easy</span> - Todos los derechos reservados.
+              </div>
+              
+              <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-1 bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700 shadow-inner">
+                      {[1,2,3,4,5].map(star => (
+                         <Star key={star} size={14} className={`text-orange-400 ${star <= Math.round(ratingStats.average) ? 'fill-current' : ''}`} />
+                      ))}
+                      <span className="ml-2 font-bold text-orange-100 text-xs">{ratingStats.average}/5 ({ratingStats.count})</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 text-xs font-bold text-blue-400">
+                      <Eye size={14}/>
+                      <span>{realViews} Vistas en tiempo real</span>
+                  </div>
+              </div>
+          </div>
+      </footer>
+
+    </div>
+  );
+}
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Virtual: Modelo de Drude y Corriente Continua</title>
+
+    <!-- Tailwind CSS con Configuración -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#020617',
+                        darkcard: 'rgba(15, 23, 42, 0.75)',
+                        lightbg: '#f8fafc',
+                        lightcard: 'rgba(255, 255, 255, 0.85)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow-x: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Fondos Ambientales */
+        body.light { background-color: #f1f5f9; }
+        body.dark { background-color: #020617; }
+        
+        .ambient-bg {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+            transition: opacity 0.5s ease;
+        }
+        .light .ambient-bg {
+            background: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 35%),
+                        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 35%);
+        }
+        .dark .ambient-bg {
+            background: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                        radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+        }
+
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex; position: relative; z-index: 1;
+        }
+
+        /* Glassmorphism Principal */
+        .slide {
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            width: 100%; height: 100%; border-radius: 1.5vmin; 
+            display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;
+            transition: all 0.3s ease;
+        }
+        .light .slide { background-color: rgba(255, 255, 255, 0.7); box-shadow: 0 10px 40px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.6); }
+        .dark .slide { background-color: rgba(15, 23, 42, 0.65); box-shadow: 0 10px 50px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+        /* Paneles Internos Glass */
+        .glass-card {
+            backdrop-filter: blur(10px); transition: all 0.3s ease;
+        }
+        .light .glass-card { background: rgba(255, 255, 255, 0.8) !important; border: 1px solid rgba(0, 0, 0, 0.08) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .dark .glass-card { background: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(13px, 1.1vw, 17px); line-height: 1.5; }
+        .light .text-academic { color: #334155; }
+        .dark .text-academic { color: #e2e8f0; }
+
+        .math-display { font-size: clamp(14px, 1.2vw, 19px); font-weight: bold; text-align: center; margin: 1vmin 0; }
+        .light .math-display { color: #1e40af; text-shadow: none; }
+        .dark .math-display { color: #93c5fd; text-shadow: 0 0 8px rgba(147, 197, 253, 0.3); }
+
+        /* Canvas Enclosures */
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative; min-height: 40vh;
+            border-radius: 0.5rem; overflow: hidden; transition: all 0.3s ease;
+        }
+        .light .canvas-wrapper { background: radial-gradient(circle at center, #e2e8f0, #cbd5e1); border: 1px solid #94a3b8; box-shadow: inset 0 0 15px rgba(0,0,0,0.1); }
+        .dark .canvas-wrapper { background: radial-gradient(circle at center, rgba(15,23,42,0.8), rgba(2,6,23,0.95)); border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
+        .canvas-wrapper canvas { cursor: grab; }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+
+        .dcl-wrapper { 
+            border-radius: 0.5rem; overflow: hidden; position: relative; 
+            background-size: 20px 20px; transition: all 0.3s; backdrop-filter: blur(5px);
+        }
+        .light .dcl-wrapper { background-color: #f8fafc; background-image: linear-gradient(rgba(59,130,246,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.05) 1px, transparent 1px); border: 1px solid #cbd5e1; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
+        .dark .dcl-wrapper { background-color: rgba(2,6,23,0.8); background-image: linear-gradient(rgba(59,130,246,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(59,130,246,0.1) 1px, transparent 1px); border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 0 20px rgba(0,0,0,1); }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; padding: 8px 14px; border-radius: 6px; 
+            font-size: clamp(10px, 0.8vw, 13px); font-weight: 600; pointer-events: none; z-index: 10;
+            border-left: 4px solid #3b82f6; backdrop-filter: blur(8px); transition: all 0.3s;
+        }
+        .light .hint-overlay { background: rgba(255,255,255,0.9); color: #1e293b; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-top: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+        .dark .hint-overlay { background: rgba(15,23,42,0.7); color: #f8fafc; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border-top: 1px solid rgba(255,255,255,0.1); border-right: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+        input[type=range] { accent-color: #3b82f6; width: 100%; cursor: pointer; background: transparent; }
+        
+        .control-panel { border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; font-size: clamp(11px, 0.9vw, 15px); transition: all 0.3s; }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltip System */
+        .tip-content { display: none; } 
+        .global-tip {
+            position: fixed; z-index: 999999; pointer-events: none; opacity: 0; transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 280px; padding: 1.5vmin; border-radius: 0.5rem; font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px);
+            backdrop-filter: blur(12px); box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        .light .global-tip { background: rgba(255, 255, 255, 0.95); border: 1px solid #93c5fd; color: #1e3a8a; }
+        .dark .global-tip { background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(96, 165, 250, 0.4); color: #e2e8f0; }
+        
+        .tip-btn { 
+            cursor: help; display: inline-flex; align-items: center; justify-content: center; 
+            width: 1.8em; height: 1.8em; border-radius: 50%; margin-left: 0.5em; transition: all 0.2s; 
+        }
+        .light .tip-btn { background-color: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe; }
+        .dark .tip-btn { background-color: rgba(59,130,246,0.2); color: #60a5fa; border: 1px solid rgba(96,165,250,0.5); box-shadow: 0 0 10px rgba(59,130,246,0.2); }
+        .tip-btn:hover { transform: scale(1.1); }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { border-radius: 10px; }
+        .light .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; }
+        .dark .custom-scroll::-webkit-scrollbar-thumb { background-color: rgba(100, 116, 139, 0.5); }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+
+        #paint-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; touch-action: none; pointer-events: none; }
+        .paint-mode-active { cursor: crosshair !important; pointer-events: auto !important; }
+
+        .btn-ui { padding: 0.3rem 0.6rem; border-radius: 0.25rem; font-size: 0.85em; font-weight: 600; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; }
+        .btn-ui:hover { opacity: 0.9; transform: scale(1.02); }
+
+        /* Accents */
+        .neon-text-blue { color: #3b82f6; }
+        .dark .neon-text-blue { color: #60a5fa; text-shadow: 0 0 10px rgba(96,165,250,0.6); }
+        
+        .neon-text-green { color: #10b981; }
+        .dark .neon-text-green { color: #34d399; text-shadow: 0 0 10px rgba(52,211,153,0.6); }
+        
+        .neon-text-yellow { color: #d97706; }
+        .dark .neon-text-yellow { color: #fbbf24; text-shadow: 0 0 10px rgba(251,191,36,0.6); }
+        
+        .neon-text-red { color: #ef4444; }
+        .dark .neon-text-red { color: #f87171; text-shadow: 0 0 10px rgba(248,113,113,0.6); }
+
+        /* Tabla de Materiales */
+        .mat-table th { padding: 6px; text-align: left; }
+        .mat-table td { padding: 6px; }
+        .light .mat-table th { border-bottom: 1px solid #cbd5e1; color: #475569; }
+        .light .mat-table td { border-bottom: 1px solid #e2e8f0; color: #334155; }
+        .dark .mat-table th { border-bottom: 1px solid rgba(255,255,255,0.1); color: #94a3b8; }
+        .dark .mat-table td { border-bottom: 1px solid rgba(255,255,255,0.05); color: #cbd5e1; }
+        
+        .row-active { border-left: 3px solid #3b82f6; }
+        .light .row-active { background-color: #eff6ff; }
+        .dark .row-active { background-color: rgba(59, 130, 246, 0.15); box-shadow: inset 0 0 10px rgba(59,130,246,0.1); }
+
+    </style>
+</head>
+<body class="light">
+    
+    <!-- Orbes ambientales de fondo -->
+    <div class="ambient-bg"></div>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none flex justify-between items-center px-[3vmin] py-[1.5vmin] border-b-[1px] relative overflow-hidden transition-colors
+                           light:bg-white/80 light:border-blue-200 dark:bg-slate-900/60 dark:border-blue-500/50">
+                <div class="flex-1">
+                    <h1 class="font-bold tracking-wide flex items-center gap-3 relative z-10 transition-colors light:text-slate-800 dark:text-white" style="font-size: clamp(18px, 2vw, 36px);">
+                        <i data-lucide="microscope" class="w-8 h-8 text-blue-500"></i> Laboratorio Virtual: Electrodinámica y Modelo de Drude
+                    </h1>
+                    <p class="relative z-10 transition-colors light:text-slate-600 dark:text-blue-300/80" style="font-size: clamp(11px, 1vw, 18px);">
+                        Conducción Microscópica, Ley de Ohm y Resolución de Circuitos de CD en Tiempo Real
+                    </p>
+                </div>
+                <!-- Toggle Mode Button -->
+                <button id="btn-theme" class="relative z-10 flex items-center gap-2 px-3 py-1.5 rounded-full font-bold text-sm transition-all border
+                                              light:bg-slate-100 light:text-slate-700 light:border-slate-300 light:hover:bg-slate-200
+                                              dark:bg-slate-800 dark:text-yellow-400 dark:border-slate-600 dark:hover:bg-slate-700">
+                    <i data-lucide="moon" id="icon-theme" class="w-4 h-4"></i> <span id="text-theme">Modo Oscuro</span>
+                </button>
+            </header>
+
+            <!-- Responsive Wrapper -->
+            <div class="flex-1 flex flex-col lg:flex-row p-[1.5vmin] gap-[2vmin] min-h-0 overflow-y-auto lg:overflow-hidden">
+
+                <!-- COLUMNA IZQUIERDA: MARCO TEÓRICO ACTIVO FIJO -->
+                <div class="w-full lg:w-[42%] flex flex-col text-academic lg:overflow-y-auto pr-2 custom-scroll shrink-0" id="theory-container">
+                    
+                    <!-- BLOQUE 1: FUNDAMENTO FÍSICO -->
+                    <div class="glass-card p-[1.5vmin] border-l-[3px] border-blue-500 rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span><strong>1. El Modelo de Drude:</strong> En los metales, los electrones libres se comportan como un "gas clásico". Al aplicar un <strong>Campo Eléctrico ($\vec{E}$)</strong>, adquieren una velocidad de deriva ($\vec{v}_d$) superpuesta al movimiento térmico.</span>
+                            <span class="relative tip-wrapper inline-block z-50">
+                                <span class="tip-btn"><i data-lucide="info" class="w-4 h-4"></i></span>
+                                <span class="tip-content"><strong class="text-blue-500 flex items-center gap-2 mb-1"><i data-lucide="arrow-left-right" class="w-4 h-4"></i> Convención de Signos:</strong> Los electrones (carga negativa) viajan físicamente en dirección <strong>opuesta</strong> al vector de Campo Eléctrico ($\vec{E}$) y a la dirección de la Corriente Convencional ($I$).</span>
+                            </span>
+                        </p>
+                        <div class="math-display overflow-x-auto custom-scroll">$$\vec{v}_d = \frac{-q\tau}{m_e} \vec{E}$$</div>
+                        <p class="text-xs italic opacity-80">Donde $\tau$ es el tiempo medio libre entre colisiones. La simulación modela este ensamble estadístico en 3D.</p>
+                    </div>
+
+                    <!-- BLOQUE 2: DEMOSTRACIÓN LEY DE OHM FIJA -->
+                    <div class="glass-card p-[1.5vmin] border-l-[3px] border-emerald-500 rounded-r-lg mb-[1vmin]">
+                        <p class="font-bold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-2">
+                            <i data-lucide="file-check-2" class="w-5 h-5"></i> 2. Demostración Formal: Ley de Ohm
+                        </p>
+                        <div class="flex flex-col gap-[0.8vmin]">
+                            <div class="bg-emerald-50/50 dark:bg-emerald-950/30 p-[1vmin] rounded border border-emerald-200 dark:border-emerald-800/50">
+                                <p class="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">Paso 1: Ecuación de Movimiento (Newton + Fricción)</p>
+                                <div class="math-display text-[14px] text-emerald-900 dark:text-emerald-100 overflow-x-auto custom-scroll">
+                                    $$m_e \frac{d\vec{v}}{dt} = -e\vec{E} - \frac{m_e \vec{v}}{\tau}$$
+                                </div>
+                            </div>
+                            
+                            <div class="bg-emerald-50/50 dark:bg-emerald-950/30 p-[1vmin] rounded border border-emerald-200 dark:border-emerald-800/50">
+                                <p class="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">Paso 2: En Estado Estacionario ($\frac{d\vec{v}}{dt} = 0$)</p>
+                                <div class="math-display text-[14px] text-emerald-900 dark:text-emerald-100 overflow-x-auto custom-scroll">
+                                    $$\vec{v}_d = -\frac{e\tau}{m_e}\vec{E}$$
+                                </div>
+                            </div>
+                            
+                            <div class="bg-emerald-50/50 dark:bg-emerald-950/30 p-[1vmin] rounded border border-emerald-200 dark:border-emerald-800/50">
+                                <p class="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">Paso 3: Densidad de Corriente ($\vec{J} = -ne\vec{v}_d$)</p>
+                                <div class="math-display text-[14px] text-emerald-900 dark:text-emerald-100 overflow-x-auto custom-scroll">
+                                    $$\vec{J} = -ne\left(-\frac{e\tau}{m_e}\vec{E}\right) = \underbrace{\left(\frac{ne^2\tau}{m_e}\right)}_{\sigma} \vec{E}$$
+                                </div>
+                            </div>
+                            
+                            <div class="bg-emerald-50/50 dark:bg-emerald-950/30 p-[1vmin] rounded border border-emerald-200 dark:border-emerald-800/50">
+                                <p class="text-[12px] font-bold text-emerald-800 dark:text-emerald-300">Paso 4: Variables Macroscópicas ($J = I/A$ y $E = V/L$)</p>
+                                <div class="math-display text-[14px] text-emerald-900 dark:text-emerald-100 overflow-x-auto custom-scroll">
+                                    $$\frac{I}{A} = \sigma \frac{V}{L} \implies V = \underbrace{\left(\frac{L}{\sigma A}\right)}_{R} I \implies V = R \cdot I$$
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE 3: DENSIDAD DE CORRIENTE FIJA -->
+                    <div class="glass-card p-[1.5vmin] border-l-[3px] border-indigo-500 rounded-r-lg mb-[1vmin]">
+                        <p class="font-bold text-indigo-700 dark:text-indigo-400 flex items-center">
+                            3. Densidad de Corriente ($\vec{J}$) y Corriente ($I$)
+                            <span class="relative tip-wrapper inline-block z-50">
+                                <span class="tip-btn"><i data-lucide="users" class="w-4 h-4"></i></span>
+                                <span class="tip-content"><strong class="text-indigo-500 flex items-center gap-2 mb-1"><i data-lucide="box" class="w-4 h-4"></i> Densidad de Portadores ($n$):</strong> Un mayor número de electrones disponibles por unidad de volumen permite transportar más carga ($I$) a la misma velocidad ($\vec{v}_d$).</span>
+                            </span>
+                        </p>
+                        <p class="mt-1 text-sm">El flujo de carga a través de la sección transversal ($A$) relaciona lo microscópico con lo macroscópico:</p>
+                        <div class="math-display overflow-x-auto custom-scroll">
+                            \begin{aligned}
+                            \vec{J} &= -n e \vec{v}_d \\
+                            I &= \iint \vec{J} \cdot d\vec{A} = n e v_d A
+                            \end{aligned}
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE 4: TABLA DE MATERIALES -->
+                    <div class="glass-card p-[1.5vmin] border-l-[3px] border-amber-500 rounded-r-lg mb-[1vmin]">
+                        <p class="font-bold text-amber-600 dark:text-amber-400 mb-2 text-center text-sm tracking-wide uppercase flex justify-center items-center gap-2">
+                            <i data-lucide="book-open" class="w-4 h-4"></i> Propiedades Físicas Tabuladas (T₀ = 20°C)
+                        </p>
+                        <div class="overflow-x-auto custom-scroll">
+                            <table class="w-full text-[11px] text-left border-collapse mat-table font-mono whitespace-nowrap">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Resist. $\rho_0$ ($\Omega\cdot m$)</th>
+                                        <th>Conduct. $\sigma$ ($S/m$)</th>
+                                        <th>Densidad $n$ ($m^{-3}$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-materials-body">
+                                    <!-- Generado dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE 5: ESTADO DEL SISTEMA -->
+                    <div class="glass-card p-[1.5vmin] border-l-[3px] border-blue-400 rounded-r-lg bg-blue-50/30 dark:bg-slate-900/30">
+                        <p class="font-bold text-blue-600 dark:text-blue-400 mb-1 text-center uppercase tracking-widest text-xs flex justify-center items-center gap-2">
+                            <i data-lucide="activity" class="w-4 h-4"></i> Variables Térmicas en Tiempo Real
+                        </p>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="bg-white/80 dark:bg-slate-950/50 p-2 rounded flex justify-between items-center border border-slate-200 dark:border-slate-700/50">
+                                <span class="text-[10px] uppercase opacity-70 font-bold">Resistividad $\rho(T)$:</span>
+                                <span class="font-mono text-amber-600 dark:text-yellow-400 font-bold text-right"><span id="ui-th-rho">1.68</span> <span class="text-[9px] opacity-60">x10⁻⁸ Ωm</span></span>
+                            </div>
+                            <div class="bg-white/80 dark:bg-slate-950/50 p-2 rounded flex justify-between items-center border border-slate-200 dark:border-slate-700/50">
+                                <span class="text-[10px] uppercase opacity-70 font-bold">Densidad $n$:</span>
+                                <span class="font-mono text-emerald-600 dark:text-emerald-400 font-bold text-right"><span id="ui-th-n">8.5</span> <span class="text-[9px] opacity-60">x10²⁸ m⁻³</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-full lg:w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL AVANZADO -->
+                    <div class="control-panel glass-card relative z-20 flex-col !items-start">
+                        
+                        <!-- Fila 1: Materiales y Geometría -->
+                        <div class="flex flex-wrap w-full gap-[1.5vmin] border-b border-slate-300 dark:border-slate-600/50 pb-2 mb-1 items-center justify-between">
+                            <div class="flex gap-[1.5vmin] flex-wrap">
+                                <div class="control-group pr-2">
+                                    <label class="font-bold text-xs uppercase tracking-wide flex items-center gap-1 opacity-80">
+                                        <i data-lucide="layers" class="w-3 h-3"></i> Material:
+                                    </label>
+                                    <select id="select-material" class="bg-white dark:bg-slate-900/80 border border-blue-400 rounded px-2 py-1 font-bold text-blue-600 dark:text-blue-300 outline-none cursor-pointer transition-colors shadow-sm">
+                                        <!-- Generado dinámicamente -->
+                                    </select>
+                                </div>
+                                <div class="control-group border-l border-slate-300 dark:border-slate-600 pl-2">
+                                    <label class="font-bold text-xs uppercase tracking-wide flex items-center gap-1 opacity-80">
+                                        <i data-lucide="shapes" class="w-3 h-3"></i> Forma:
+                                    </label>
+                                    <select id="select-shape" class="bg-white dark:bg-slate-900/80 border border-indigo-400 rounded px-2 py-1 font-bold text-indigo-600 dark:text-indigo-300 outline-none cursor-pointer shadow-sm">
+                                        <option value="cilindro">Cilindro (Alambre)</option>
+                                        <option value="prisma">Prisma Rectangular</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="control-group flex gap-2 flex-wrap mt-2 sm:mt-0">
+                                <button id="btn-toggle-3d" class="btn-ui bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-600/30 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-500/50">
+                                    <i data-lucide="box" class="w-4 h-4"></i> Vista 2D
+                                </button>
+                                <label class="flex items-center cursor-pointer px-2 py-1 rounded text-xs font-bold transition-colors border shadow-sm
+                                              bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100
+                                              dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-500/30 dark:hover:bg-amber-800/50" title="Herramienta Pizarra">
+                                    <input type="checkbox" id="toggle-paint" class="mr-1 accent-amber-500"> 
+                                    <i data-lucide="pen-tool" class="w-3 h-3 mr-1"></i> Anotar
+                                </label>
+                                <button id="btn-clear-paint" class="btn-ui hidden bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 border border-red-300 dark:border-red-500/50">
+                                    <i data-lucide="eraser" class="w-4 h-4"></i>
+                                </button>
+                                <button id="btn-play" class="btn-ui shadow-md transition-all
+                                             bg-slate-200 text-slate-700 border-slate-400 hover:bg-slate-300
+                                             dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-600" title="Activar/Desactivar Circuito">
+                                    <i data-lucide="power" class="w-4 h-4"></i> Circuito OFF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2: Variables Geométricas y Físicas -->
+                        <div class="flex flex-wrap w-full gap-x-[2vmin] gap-y-[1vmin] items-center pt-1">
+                            <div class="control-group pr-2 flex-1 min-w-[120px]">
+                                <label class="font-bold text-blue-600 dark:text-blue-400 text-[11px] flex items-center gap-1">
+                                    <i data-lucide="battery" class="w-3 h-3"></i> Voltaje $V$:
+                                </label>
+                                <input type="range" id="slider-V" min="0" max="24" step="0.5" value="12" class="w-full">
+                                <div class="flex justify-between w-full text-[10px] opacity-70"><span>0</span><span><span id="val-V" class="font-bold text-sm text-blue-600 dark:text-blue-300">12.0</span> V</span></div>
+                            </div>
+
+                            <div class="control-group border-l border-slate-300 dark:border-slate-600/50 pl-3 pr-2 flex-1 min-w-[120px]">
+                                <label class="font-bold text-emerald-600 dark:text-emerald-400 text-[11px] flex items-center gap-1">
+                                    <i data-lucide="ruler" class="w-3 h-3"></i> Longitud $L$:
+                                </label>
+                                <input type="range" id="slider-L" min="1" max="20" step="1" value="10" class="w-full">
+                                <div class="flex justify-between w-full text-[10px] opacity-70"><span>1</span><span><span id="val-L" class="font-bold text-sm text-emerald-600 dark:text-emerald-300">10.0</span> m</span></div>
+                            </div>
+
+                            <div class="control-group border-l border-slate-300 dark:border-slate-600/50 pl-3 pr-2 flex-1 min-w-[120px]">
+                                <label class="font-bold text-purple-600 dark:text-purple-400 text-[11px] flex items-center gap-1">
+                                    <i data-lucide="scaling" class="w-3 h-3"></i> Sección $A$:
+                                </label>
+                                <input type="range" id="slider-A" min="0.5" max="10" step="0.5" value="2" class="w-full">
+                                <div class="flex justify-between w-full text-[10px] opacity-70"><span>0.5</span><span><span id="val-A" class="font-bold text-sm text-purple-600 dark:text-purple-300">2.0</span> mm²</span></div>
+                            </div>
+
+                            <div class="control-group border-l border-slate-300 dark:border-slate-600/50 pl-3 flex-1 min-w-[120px]">
+                                <label class="font-bold text-red-600 dark:text-red-400 text-[11px] flex items-center gap-1">
+                                    <i data-lucide="thermometer" class="w-4 h-4"></i> Temp $T$:
+                                </label>
+                                <input type="range" id="slider-T" min="-100" max="800" step="10" value="20" class="w-full">
+                                <div class="flex justify-between w-full text-[10px] opacity-70"><span>-100</span><span><span id="val-T" class="font-bold text-sm text-red-600 dark:text-red-300">20</span> °C</span></div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex flex-col lg:flex-row gap-[1vmin] min-h-[60vh] lg:min-h-0">
+                        
+                        <!-- 3D Canvas / Simulador Drude -->
+                        <div class="w-full lg:w-[55%] h-[30vh] lg:h-full canvas-wrapper relative" id="canvas-wrapper-3d">
+                            <div class="hint-overlay flex flex-col gap-1 border-l-4 border-indigo-500">
+                                <span class="flex items-center gap-1"><i data-lucide="mouse-pointer-click" class="w-3 h-3 text-indigo-500 dark:text-indigo-300"></i> <strong>Arrastra</strong> para orbitar.</span>
+                                
+                                <!-- LEYENDA VECTORES MEJORADA -->
+                                <div class="mt-1 flex flex-col gap-1 text-[10px] bg-white/80 dark:bg-slate-900/80 p-1.5 rounded border border-slate-300 dark:border-slate-600/50 backdrop-blur-sm">
+                                    <div class="flex items-center gap-2"><div class="w-3 h-1 bg-green-500 dark:bg-green-400 shadow-[0_0_5px_rgba(74,222,128,0.5)]"></div><span class="opacity-80 font-bold">Campo Eléctrico $\vec{E}$</span></div>
+                                    <div class="flex items-center gap-2"><div class="w-3 h-1 bg-blue-500 dark:bg-blue-400 shadow-[0_0_5px_rgba(96,165,250,0.5)]"></div><span class="opacity-80 font-bold">Flujo Electrones ($e^-$)</span></div>
+                                    <div class="flex items-center gap-2"><div class="w-3 h-1 bg-red-600 dark:bg-red-500 shadow-[0_0_5px_rgba(239,68,68,0.5)]"></div><span class="opacity-80 font-bold">Corriente Convencional ($I$)</span></div>
+                                </div>
+                                <span id="hint-e-field" class="text-[11px] opacity-70 font-mono mt-1 flex items-center gap-1"><i data-lucide="zap-off" class="w-3 h-3"></i> Apagado</span>
+                            </div>
+                            
+                            <!-- Contenedor del Motor 3D -->
+                            <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                            
+                            <!-- Pizarra Overlay -->
+                            <canvas id="paint-canvas"></canvas>
+                        </div>
+
+                        <!-- PANEL INFERIOR: INSTRUMENTACIÓN Y RESOLUCIÓN -->
+                        <div class="w-full lg:w-[45%] h-auto flex flex-col gap-[1vmin]">
+                            
+                            <!-- Circuito Virtual Equivalente (Corregido) -->
+                            <div class="h-[25vh] lg:h-[55%] dcl-wrapper p-[1vmin] flex flex-col items-center justify-center relative group">
+                                <div class="absolute top-2 left-2 text-left font-bold text-[10px] tracking-widest bg-white/90 dark:bg-slate-900/80 px-2 py-1 rounded border border-slate-300 dark:border-slate-700/50 z-10 flex items-center gap-1 shadow-sm">
+                                    <i data-lucide="cpu" class="w-3 h-3 text-indigo-500 dark:text-indigo-400"></i> ESQUEMA KIRCCHOFF
+                                </div>
+                                <div class="flex-1 w-full relative" id="circuit-container">
+                                    <canvas id="circuit-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Instrumentación Virtual (Osciloscopio / Medidores) -->
+                            <div class="flex-1 lg:h-[45%] glass-card p-[1.5vmin] rounded-lg flex flex-col justify-between">
+                                <div class="text-center font-bold text-[10px] border-b border-slate-300 dark:border-slate-700/50 pb-1 mb-2 tracking-widest flex justify-between px-2 opacity-80">
+                                    <span class="flex items-center gap-1"><i data-lucide="gauge" class="w-3 h-3"></i> TELEMETRÍA</span>
+                                    <span class="text-green-600 dark:text-green-400 animate-pulse flex items-center gap-1" id="status-live"><i data-lucide="radio" class="w-3 h-3"></i> LIVE</span>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-2 flex-1 items-center">
+                                    <!-- Voltímetro -->
+                                    <div class="bg-black/5 dark:bg-black/30 rounded p-2 border border-slate-200 dark:border-slate-700/50 shadow-inner flex flex-col items-center">
+                                        <span class="text-[9px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-widest flex items-center gap-1"><i data-lucide="activity" class="w-3 h-3"></i> Voltaje (V)</span>
+                                        <div class="flex items-end gap-1">
+                                            <span id="meter-V" class="font-mono text-xl font-bold neon-text-blue">0.00</span>
+                                        </div>
+                                    </div>
+                                    <!-- Amperímetro -->
+                                    <div class="bg-black/5 dark:bg-black/30 rounded p-2 border border-slate-200 dark:border-slate-700/50 shadow-inner flex flex-col items-center">
+                                        <span class="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Corriente (I)</span>
+                                        <div class="flex items-end gap-1">
+                                            <span id="meter-I" class="font-mono text-xl font-bold neon-text-green">0.00</span>
+                                        </div>
+                                    </div>
+                                    <!-- Óhmetro -->
+                                    <div class="bg-black/5 dark:bg-black/30 rounded p-2 border border-slate-200 dark:border-slate-700/50 shadow-inner flex flex-col items-center">
+                                        <span class="text-[9px] text-amber-600 dark:text-yellow-400 font-bold uppercase tracking-widest flex items-center gap-1"><i data-lucide="scan-line" class="w-3 h-3"></i> Resistencia (R)</span>
+                                        <div class="flex items-end gap-1">
+                                            <span id="meter-R" class="font-mono text-lg font-bold neon-text-yellow">0.00</span>
+                                        </div>
+                                    </div>
+                                    <!-- Vatímetro -->
+                                    <div class="bg-black/5 dark:bg-black/30 rounded p-2 border border-slate-200 dark:border-slate-700/50 shadow-inner flex flex-col items-center">
+                                        <span class="text-[9px] text-red-600 dark:text-red-400 font-bold uppercase tracking-widest flex items-center gap-1"><i data-lucide="flame" class="w-3 h-3"></i> Potencia (P)</span>
+                                        <div class="flex items-end gap-1">
+                                            <span id="meter-P" class="font-mono text-lg font-bold neon-text-red">0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-2 h-[16px] w-full bg-slate-200 dark:bg-slate-950/80 rounded overflow-hidden relative border border-slate-300 dark:border-slate-700/50 shadow-inner">
+                                    <div class="absolute inset-0 flex items-center justify-center text-[9px] font-bold opacity-70 font-mono z-10 tracking-widest drop-shadow-md">VELOCIDAD DERIVA $|\vec{v}_d|$</div>
+                                    <div id="bar-vd" class="h-full w-[0%] transition-all duration-300 opacity-80" style="background: linear-gradient(90deg, transparent, #6366f1, #818cf8);"></div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS, INTERACCIÓN Y MATEMÁTICAS -->
+    <script>
+        lucide.createIcons();
+
+        // ==========================================
+        // 1. TEMA CLARO / OSCURO (TOGGLE)
+        // ==========================================
+        const btnTheme = document.getElementById('btn-theme');
+        const iconTheme = document.getElementById('icon-theme');
+        const textTheme = document.getElementById('text-theme');
+        const html = document.documentElement;
+        const body = document.body;
+
+        btnTheme.addEventListener('click', () => {
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark'); body.classList.remove('dark'); body.classList.add('light');
+                textTheme.textContent = "Modo Oscuro";
+                iconTheme.setAttribute('data-lucide', 'moon');
+            } else {
+                html.classList.add('dark'); body.classList.remove('light'); body.classList.add('dark');
+                textTheme.textContent = "Modo Día";
+                iconTheme.setAttribute('data-lucide', 'sun');
+            }
+            lucide.createIcons();
+        });
+
+        // ==========================================
+        // 2. BASE DE DATOS DE MATERIALES Y ESTADO
+        // ==========================================
+        const MAT_DB = {
+            'Ag': { rho0: 1.59, n: 5.86, alpha: 0.0038, color: 0xe2e8f0, name: 'Plata' },
+            'Cu': { rho0: 1.68, n: 8.50, alpha: 0.0039, color: 0xb87333, name: 'Cobre' },
+            'Au': { rho0: 2.44, n: 5.90, alpha: 0.0034, color: 0xffd700, name: 'Oro' },
+            'Al': { rho0: 2.65, n: 6.00, alpha: 0.0039, color: 0xc0c0c0, name: 'Aluminio' },
+            'W':  { rho0: 5.60, n: 6.30, alpha: 0.0045, color: 0x8a8a8a, name: 'Tungsteno' },
+            'Fe': { rho0: 9.71, n: 17.0, alpha: 0.0050, color: 0x64748b, name: 'Hierro' },
+            'Pb': { rho0: 22.0, n: 13.2, alpha: 0.0039, color: 0x475569, name: 'Plomo' }
+        };
+
+        const tableBody = document.getElementById('table-materials-body');
+        const selectMat = document.getElementById('select-material');
+        
+        for(let key in MAT_DB) {
+            let m = MAT_DB[key];
+            let sigma = (1 / m.rho0) * 10;
+            // Tabla
+            let tr = document.createElement('tr');
+            tr.id = `row-${key}`;
+            tr.innerHTML = `
+                <td><strong>${m.name}</strong> (${key})</td>
+                <td>${m.rho0.toFixed(2)} x10⁻⁸</td>
+                <td>${sigma.toFixed(2)} x10⁷</td>
+                <td>${m.n.toFixed(1)} x10²⁸</td>
+            `;
+            tableBody.appendChild(tr);
+            // Select
+            let opt = document.createElement('option');
+            opt.value = key; opt.textContent = `${m.name} (${key})`;
+            if(key === 'Cu') opt.selected = true;
+            selectMat.appendChild(opt);
+        }
+
+        let state = {
+            mat: 'Cu', shape: 'cilindro',
+            V_source: 12.0, L: 10.0, A: 2.0, T: 20,
+            isCircuitClosed: false, is3D: true,
+            rho_T: 0, R: 0, I: 0, P: 0, vd_mag: 0, E_mag: 0,
+            SCALE_RHO: 1e-2, SCALE_VD: 0.15, SCALE_VTH: 0.05  
+        };
+
+        function highlightTableRow() {
+            document.querySelectorAll('.mat-table tbody tr').forEach(tr => tr.classList.remove('row-active'));
+            document.getElementById(`row-${state.mat}`).classList.add('row-active');
+        }
+        highlightTableRow();
+
+        // ==========================================
+        // 3. INICIALIZACIÓN DE THREE.JS Y ESCENA
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(45, cont3D.clientWidth / cont3D.clientHeight, 0.1, 100);
+        cam.position.set(15, 10, 20);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true; ctrl.maxDistance = 40; ctrl.minDistance = 5;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(10, 20, 15); scene.add(light);
+
+        const wireGroup = new THREE.Group(); scene.add(wireGroup);
+        const wireMat = new THREE.MeshPhysicalMaterial({ 
+            color: MAT_DB[state.mat].color, transparent: true, opacity: 0.25,
+            roughness: 0.2, transmission: 0.9, thickness: 0.5
+        });
+        
+        let wireMesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 32), wireMat);
+        wireMesh.geometry.rotateZ(Math.PI / 2);
+        wireGroup.add(wireMesh);
+
+        let ions = []; let electrons = [];
+        const ION_COUNT = 80; const ELEC_COUNT = 150;
+        const ionGeo = new THREE.SphereGeometry(0.3, 16, 16);
+        const ionMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
+        const elecGeo = new THREE.SphereGeometry(0.12, 8, 8);
+        const elecMat = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+
+        const eFieldGroup = new THREE.Group(); const currentArrowGroup = new THREE.Group();
+        wireGroup.add(eFieldGroup); wireGroup.add(currentArrowGroup);
+
+        const arrowDirE = new THREE.Vector3(1,0,0); 
+        for(let i=0; i<5; i++) {
+            let arrow = new THREE.ArrowHelper(arrowDirE, new THREE.Vector3(-5 + i*2.5, 0, 0), 2, 0x22c55e, 0.6, 0.4);
+            eFieldGroup.add(arrow);
+        }
+        const currentArrow = new THREE.ArrowHelper(arrowDirE, new THREE.Vector3(0, 3, 0), 6, 0xef4444, 1.5, 1);
+        currentArrowGroup.add(currentArrow);
+
+        function updateGeometryType() {
+            wireMesh.geometry.dispose();
+            if(state.shape === 'cilindro') {
+                wireMesh.geometry = new THREE.CylinderGeometry(1, 1, 1, 32);
+                wireMesh.geometry.rotateZ(Math.PI / 2);
+            } else {
+                wireMesh.geometry = new THREE.BoxGeometry(1, 2, 2); 
+            }
+        }
+
+        function buildLattice() {
+            ions.forEach(ion => wireGroup.remove(ion.mesh));
+            electrons.forEach(el => wireGroup.remove(el.mesh));
+            ions = []; electrons = [];
+
+            const maxL = 14; const maxR = 2.5; 
+            
+            for(let i=0; i<ION_COUNT; i++) {
+                let mesh = new THREE.Mesh(ionGeo, ionMat);
+                let x = (Math.random() - 0.5) * maxL;
+                let y=0, z=0;
+                if(state.shape === 'cilindro') {
+                    let r = Math.random() * maxR * 0.8;
+                    let theta = Math.random() * Math.PI * 2;
+                    y = r * Math.cos(theta); z = r * Math.sin(theta);
+                } else {
+                    y = (Math.random() - 0.5) * (maxR*1.8);
+                    z = (Math.random() - 0.5) * (maxR*1.8);
+                }
+                mesh.position.set(x, y, z); wireGroup.add(mesh);
+                ions.push({ mesh, baseX: x, baseY: y, baseZ: z, phase: Math.random()*Math.PI*2 });
+            }
+
+            for(let i=0; i<ELEC_COUNT; i++) {
+                let mesh = new THREE.Mesh(elecGeo, elecMat);
+                let x = (Math.random() - 0.5) * maxL;
+                let y=0, z=0;
+                if(state.shape === 'cilindro') {
+                    let r = Math.random() * maxR * 0.9;
+                    let theta = Math.random() * Math.PI * 2;
+                    y = r * Math.cos(theta); z = r * Math.sin(theta);
+                } else {
+                    y = (Math.random() - 0.5) * (maxR*1.9);
+                    z = (Math.random() - 0.5) * (maxR*1.9);
+                }
+                mesh.position.set(x, y, z); wireGroup.add(mesh);
+                electrons.push({ mesh, vx: (Math.random()-0.5)*2, vy: (Math.random()-0.5)*2, vz: (Math.random()-0.5)*2 });
+            }
+        }
+        buildLattice();
+
+        // ==========================================
+        // 4. MOTOR FÍSICO
+        // ==========================================
+        function computePhysics() {
+            const matInfo = MAT_DB[state.mat];
+            let deltaT = state.T - 20;
+            state.rho_T = matInfo.rho0 * (1 + matInfo.alpha * deltaT);
+            if (state.rho_T < 0.1) state.rho_T = 0.1;
+            
+            state.R = state.rho_T * (state.L / state.A) * state.SCALE_RHO;
+            
+            if (state.isCircuitClosed) {
+                state.I = state.V_source / state.R;
+                state.P = state.V_source * state.I;
+                state.E_mag = state.V_source / state.L;
+                state.vd_mag = (state.I / (matInfo.n * state.A)) * state.SCALE_VD;
+            } else {
+                state.I = 0; state.P = 0; state.E_mag = 0; state.vd_mag = 0;
+            }
+
+            document.getElementById('ui-th-rho').textContent = state.rho_T.toFixed(2);
+            document.getElementById('ui-th-n').textContent = matInfo.n.toFixed(1);
+            
+            document.getElementById('meter-V').textContent = state.isCircuitClosed ? state.V_source.toFixed(1) : "0.0";
+            document.getElementById('meter-I').textContent = state.I.toFixed(2);
+            document.getElementById('meter-R').textContent = state.R.toFixed(2);
+            document.getElementById('meter-P').textContent = state.P.toFixed(1);
+            
+            let vdPercent = Math.min((state.vd_mag / 0.5) * 100, 100);
+            document.getElementById('bar-vd').style.width = vdPercent + '%';
+
+            const hintE = document.getElementById('hint-e-field');
+            if(state.isCircuitClosed) {
+                hintE.innerHTML = `<i data-lucide="zap" class="w-3 h-3 text-green-500 inline"></i> <span class="text-green-600 dark:text-green-400 font-bold opacity-100">$\vec{E}$ = ${state.E_mag.toFixed(2)} V/m <i data-lucide="arrow-right" class="w-3 h-3 inline"></i></span>`;
+            } else {
+                hintE.innerHTML = `<i data-lucide="zap-off" class="w-3 h-3 inline"></i> Apagado (Circuito Abierto)`;
+            }
+            lucide.createIcons({root: hintE});
+        }
+
+        // ==========================================
+        // 5. ACTUALIZACIÓN GRÁFICA DEL MOTOR 3D
+        // ==========================================
+        function update3DVisuals(time) {
+            let visualL = 5 + (state.L / 20) * 10;
+            let visualR = 1 + Math.sqrt(state.A) * 0.5;
+            
+            wireMesh.scale.set(visualL, visualR, visualR);
+            wireMat.color.setHex(MAT_DB[state.mat].color);
+
+            let vibrationAmp = Math.max(0, (state.T + 100) / 900) * 0.3;
+            if(state.T < -273) vibrationAmp = 0;
+            
+            let ionCol = new THREE.Color(0x475569);
+            if(state.T > 100) ionCol.lerp(new THREE.Color(0xef4444), Math.min(1, (state.T-100)/700));
+            ionMat.color = ionCol;
+
+            ions.forEach(ion => {
+                ion.mesh.position.x = (ion.baseX / 14) * visualL + Math.sin(time*10 + ion.phase) * vibrationAmp;
+                let factorR = state.shape === 'cilindro' ? 2.5 : 2.5; 
+                ion.mesh.position.y = (ion.baseY / factorR) * visualR + Math.cos(time*12 + ion.phase) * vibrationAmp;
+                ion.mesh.position.z = (ion.baseZ / factorR) * visualR + Math.sin(time*15 + ion.phase) * vibrationAmp;
+            });
+
+            eFieldGroup.visible = state.isCircuitClosed;
+            currentArrowGroup.visible = state.isCircuitClosed;
+            eFieldGroup.children.forEach((arrow, i) => {
+                let xPos = (-visualL/2 + 1) + (i/4)*(visualL - 2);
+                arrow.position.set(xPos, 0, 0); arrow.setLength(1 + state.E_mag*0.5, 0.5, 0.4);
+            });
+            currentArrow.position.set(-3, visualR + 1.2, 0);
+
+            let dt = 0.016; 
+            let baseThermalSpeed = Math.max(0.5, Math.sqrt(state.T + 273) * state.SCALE_VTH);
+            
+            electrons.forEach(el => {
+                el.mesh.position.x += (el.vx * baseThermalSpeed - state.vd_mag * 5) * dt;
+                el.mesh.position.y += (el.vy * baseThermalSpeed) * dt;
+                el.mesh.position.z += (el.vz * baseThermalSpeed) * dt;
+
+                if(state.shape === 'cilindro') {
+                    let r2 = el.mesh.position.y**2 + el.mesh.position.z**2;
+                    if(r2 > (visualR - 0.2)**2) {
+                        let angle = Math.atan2(el.mesh.position.z, el.mesh.position.y);
+                        el.vy = -Math.cos(angle) * Math.abs(el.vy); el.vz = -Math.sin(angle) * Math.abs(el.vz);
+                        let safeR = visualR - 0.21;
+                        el.mesh.position.y = safeR * Math.cos(angle); el.mesh.position.z = safeR * Math.sin(angle);
+                    }
+                } else {
+                    if(Math.abs(el.mesh.position.y) > visualR - 0.2) {
+                        el.vy *= -1; el.mesh.position.y = Math.sign(el.mesh.position.y) * (visualR - 0.21);
+                    }
+                    if(Math.abs(el.mesh.position.z) > visualR - 0.2) {
+                        el.vz *= -1; el.mesh.position.z = Math.sign(el.mesh.position.z) * (visualR - 0.21);
+                    }
+                }
+
+                if(el.mesh.position.x < -visualL/2) {
+                    el.mesh.position.x = visualL/2;
+                    el.vy = (Math.random()-0.5)*2; el.vz = (Math.random()-0.5)*2;
+                } else if(el.mesh.position.x > visualL/2) {
+                     el.mesh.position.x = -visualL/2;
+                }
+            });
+        }
+
+        // ==========================================
+        // 6. CIRCUITO VIRTUAL (CORREGIDO: RUTAS PRECISAS)
+        // ==========================================
+        const circCanvas = document.getElementById('circuit-canvas');
+        const cCtx = circCanvas.getContext('2d');
+
+        function resizeCircuit() {
+            const container = document.getElementById('circuit-container');
+            circCanvas.width = container.clientWidth;
+            circCanvas.height = container.clientHeight;
+        }
+
+        function drawCircuit(time) {
+            const w = circCanvas.width; const h = circCanvas.height;
+            cCtx.clearRect(0, 0, w, h);
+
+            const cx = w/2; const cy = h/2;
+            const width = w * 0.7; const height = h * 0.6;
+            
+            const left = cx - width/2; const right = cx + width/2;
+            const top = cy - height/2; const bottom = cy + height/2;
+            const perimeter = 2*width + 2*height;
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const strokeColorOff = isDark ? '#475569' : '#94a3b8';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            cCtx.lineWidth = 3; cCtx.lineCap = 'round'; cCtx.lineJoin = 'round';
+            cCtx.strokeStyle = state.isCircuitClosed ? '#3b82f6' : strokeColorOff;
+            
+            cCtx.beginPath();
+            cCtx.moveTo(left, bottom); cCtx.lineTo(right, bottom); cCtx.lineTo(right, top);
+            
+            const rWidth = 40; cCtx.lineTo(cx + rWidth/2, top);
+            const zSteps = 6; const zW = rWidth/zSteps; let currX = cx + rWidth/2;
+            for(let i=0; i<zSteps; i++) {
+                currX -= zW; cCtx.lineTo(currX + zW/2, i%2===0 ? top-12 : top+12);
+            }
+            cCtx.lineTo(currX, top); cCtx.lineTo(left, top); cCtx.lineTo(left, cy - 15);
+            cCtx.stroke();
+
+            cCtx.beginPath();
+            if(!state.isCircuitClosed) {
+                cCtx.moveTo(left, cy - 15); cCtx.lineTo(left - 15, cy + 10);
+                cCtx.moveTo(left, cy + 15); cCtx.lineTo(left, bottom);
+            } else {
+                cCtx.moveTo(left, cy - 15); cCtx.lineTo(left, cy + 15);
+                cCtx.moveTo(left, cy + 15); cCtx.lineTo(left, bottom);
+            }
+            cCtx.stroke();
+
+            cCtx.lineWidth = 4; cCtx.strokeStyle = '#ef4444'; 
+            cCtx.beginPath(); cCtx.moveTo(left - 20, cy - 15); cCtx.lineTo(left + 20, cy - 15); cCtx.stroke();
+            cCtx.lineWidth = 6; cCtx.strokeStyle = '#3b82f6';
+            cCtx.beginPath(); cCtx.moveTo(left - 10, cy + 15); cCtx.lineTo(left + 10, cy + 15); cCtx.stroke();
+
+            cCtx.fillStyle = textColor; cCtx.font = 'bold 12px sans-serif'; cCtx.textAlign = 'center';
+            cCtx.fillText('+', left - 30, cy - 10); cCtx.fillText('-', left - 25, cy + 18);
+            cCtx.fillText(`${state.V_source.toFixed(1)}V`, left - 40, cy);
+            cCtx.fillText(`R = ${state.R.toFixed(2)}Ω`, cx, top - 25);
+
+            if(state.isCircuitClosed) {
+                cCtx.fillStyle = '#ef4444'; cCtx.font = 'bold 14px sans-serif';
+                cCtx.fillText(`I = ${state.I.toFixed(2)}A`, cx, bottom - 20);
+
+                let speed = state.I * 15; let offset = (time * speed) % perimeter;
+
+                const getCoordConv = (d) => {
+                    d = d % perimeter;
+                    if(d <= height) return {x: left, y: bottom - d}; 
+                    d -= height;
+                    if(d <= width) return {x: left + d, y: top}; 
+                    d -= width;
+                    if(d <= height) return {x: right, y: top + d}; 
+                    d -= height;
+                    return {x: right - d, y: bottom}; 
+                };
+
+                const getCoordElec = (d) => {
+                    d = d % perimeter;
+                    if(d <= width) return {x: left + d, y: bottom}; 
+                    d -= width;
+                    if(d <= height) return {x: right, y: bottom - d}; 
+                    d -= height;
+                    if(d <= width) return {x: right - d, y: top}; 
+                    d -= width;
+                    return {x: left, y: top + d}; 
+                };
+
+                const numParticles = 10;
+                for(let i=0; i<numParticles; i++) {
+                    let pC = getCoordConv((offset + i*(perimeter/numParticles)));
+                    cCtx.fillStyle = '#ef4444';
+                    cCtx.beginPath(); cCtx.arc(pC.x, pC.y, 4, 0, Math.PI*2); cCtx.fill();
+
+                    let pE = getCoordElec((offset + i*(perimeter/numParticles)));
+                    cCtx.fillStyle = '#3b82f6';
+                    cCtx.beginPath(); cCtx.arc(pE.x, pE.y, 3, 0, Math.PI*2); cCtx.fill();
+                }
+                
+                cCtx.fillStyle = '#ef4444'; cCtx.font = '10px sans-serif';
+                cCtx.fillText('▶ Flujo (I)', cx, bottom + 15);
+                cCtx.fillStyle = '#3b82f6';
+                cCtx.fillText('◀ Flujo (e⁻)', cx, top + 25);
+            }
+        }
+
+        // ==========================================
+        // 7. HERRAMIENTA PAINT / PIZARRA
+        // ==========================================
+        const paintCanvas = document.getElementById('paint-canvas');
+        const pCtx = paintCanvas.getContext('2d');
+        let isPainting = false;
+
+        function resizePaint() {
+            paintCanvas.width = paintCanvas.offsetWidth; paintCanvas.height = paintCanvas.offsetHeight;
+            pCtx.lineWidth = 3; pCtx.lineCap = 'round'; pCtx.strokeStyle = '#f59e0b'; 
+        }
+
+        const startPaint = (e) => {
+            isPainting = true;
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.beginPath(); pCtx.moveTo(clientX - rect.left, clientY - rect.top);
+        };
+        const drawPaint = (e) => {
+            if (!isPainting) return;
+            e.preventDefault();
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.lineTo(clientX - rect.left, clientY - rect.top); pCtx.stroke();
+        };
+        const stopPaint = () => { isPainting = false; };
+
+        paintCanvas.addEventListener('mousedown', startPaint); paintCanvas.addEventListener('mousemove', drawPaint);
+        window.addEventListener('mouseup', stopPaint);
+        paintCanvas.addEventListener('touchstart', startPaint, {passive: false}); paintCanvas.addEventListener('touchmove', drawPaint, {passive: false});
+        paintCanvas.addEventListener('touchend', stopPaint);
+
+        document.getElementById('btn-clear-paint').addEventListener('click', () => { pCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height); });
+        document.getElementById('toggle-paint').addEventListener('change', (e) => {
+            const btnClear = document.getElementById('btn-clear-paint');
+            if(e.target.checked) {
+                paintCanvas.classList.add('paint-mode-active'); btnClear.classList.remove('hidden'); renderer.domElement.style.pointerEvents = "none";
+            } else {
+                paintCanvas.classList.remove('paint-mode-active'); btnClear.classList.add('hidden'); renderer.domElement.style.pointerEvents = "auto";
+            }
+        });
+
+        // ==========================================
+        // 8. EVENTOS UI Y BUCLE DE ANIMACIÓN
+        // ==========================================
+        document.getElementById('select-material').addEventListener('change', e => {
+            state.mat = e.target.value; highlightTableRow(); computePhysics();
+        });
+
+        document.getElementById('select-shape').addEventListener('change', e => {
+            state.shape = e.target.value; updateGeometryType(); buildLattice();
+        });
+
+        const bindSlider = (idSlider, idVal, stateKey, isInt=false) => {
+            document.getElementById(idSlider).addEventListener('input', e => {
+                let v = parseFloat(e.target.value); state[stateKey] = v;
+                document.getElementById(idVal).textContent = isInt ? Math.round(v) : v.toFixed(1);
+                computePhysics();
+                if(stateKey === 'L' || stateKey === 'A') buildLattice();
+            });
+        };
+
+        bindSlider('slider-V', 'val-V', 'V_source'); bindSlider('slider-L', 'val-L', 'L');
+        bindSlider('slider-A', 'val-A', 'A'); bindSlider('slider-T', 'val-T', 'T', true);
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            state.isCircuitClosed = !state.isCircuitClosed;
+            const btn = document.getElementById('btn-play');
+            const statusLive = document.getElementById('status-live');
+            
+            if(state.isCircuitClosed) {
+                btn.className = "btn-ui shadow-md bg-emerald-100 text-emerald-700 border-emerald-400 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.4)]";
+                btn.innerHTML = '<i data-lucide="zap" class="w-4 h-4 mr-1"></i> Circuito ON';
+                statusLive.style.opacity = 1;
+            } else {
+                btn.className = "btn-ui shadow-md transition-all bg-slate-200 text-slate-700 border-slate-400 hover:bg-slate-300 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-600";
+                btn.innerHTML = '<i data-lucide="power" class="w-4 h-4 mr-1"></i> Circuito OFF';
+                statusLive.style.opacity = 0.2;
+            }
+            lucide.createIcons(); computePhysics();
+        });
+
+        document.getElementById('btn-toggle-3d').addEventListener('click', () => {
+            state.is3D = !state.is3D;
+            const btn = document.getElementById('btn-toggle-3d');
+            if(state.is3D) {
+                btn.innerHTML = '<i data-lucide="box" class="w-4 h-4"></i> Vista 2D';
+                cam.position.set(15, 10, 20); ctrl.enableRotate = true; wireGroup.rotation.x = 0;
+            } else {
+                btn.innerHTML = '<i data-lucide="cuboid" class="w-4 h-4"></i> Volver a 3D';
+                cam.position.set(0, 0, 25); cam.lookAt(0,0,0); ctrl.enableRotate = false; wireGroup.rotation.x = Math.PI / 2;
+            }
+            lucide.createIcons();
+        });
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-wrapper-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height); resizePaint();
+                } else if(entry.target.id === 'circuit-container') resizeCircuit(); 
+            }
+        });
+        resizeObserver.observe(document.getElementById('canvas-wrapper-3d')); resizeObserver.observe(document.getElementById('circuit-container'));
+
+        computePhysics();
+        setTimeout(() => { resizePaint(); resizeCircuit(); document.getElementById('status-live').style.opacity = 0.2; }, 100);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            let time = performance.now() * 0.001;
+            update3DVisuals(time); drawCircuit(time); ctrl.update(); renderer.render(scene, cam);
+        }
+        animate();
+
+        // ==========================================
+        // 9. TOOLTIP SYSTEM GLOBAL CORREGIDO (Seguro y Responsivo)
+        // ==========================================
+        (function () {
+            let globalTip = document.createElement("div"); 
+            globalTip.className = "global-tip"; 
+            document.body.appendChild(globalTip);
+            
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                wrapper.addEventListener("mouseenter", () => {
+                    const localTip = wrapper.querySelector(".tip-content");
+                    if(!localTip) return;
+                    globalTip.innerHTML = localTip.innerHTML; 
+                    
+                    const rect = wrapper.getBoundingClientRect(); 
+                    
+                    lucide.createIcons({root: globalTip});
+
+                    globalTip.style.top = (rect.top + window.scrollY) + "px"; 
+                    let leftPos = rect.right + 10;
+                    
+                    globalTip.style.display = "block"; 
+                    if (leftPos + 280 > window.innerWidth) {
+                        leftPos = rect.left - 290;
+                    }
+                    globalTip.style.left = leftPos + "px"; 
+                    globalTip.style.opacity = "1"; 
+                });
+                wrapper.addEventListener("mouseleave", () => { 
+                    globalTip.style.opacity = "0"; 
+                    globalTip.style.left = "-9999px"; 
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

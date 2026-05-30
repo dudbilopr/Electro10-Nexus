@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio App: Dinámica Vectorial Avanzada de Cargas</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- MathJax (kLaTeX) -->
+    <script>
+        window.MathJax = { 
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']], tags: 'none' }, 
+            chtml: { matchFontHeight: false } 
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        body, html { margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden; background-color: #0f172a; display: flex; justify-content: center; align-items: center; font-family: system-ui, -apple-system, sans-serif; touch-action: none; }
+        #slide-wrapper { width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin; box-sizing: border-box; display: flex; }
+        .slide { background-color: #f8fafc; width: 100%; height: 100%; border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; overflow: hidden; }
+        .math-display { font-size: clamp(12px, 1.1vw, 15px); font-weight: bold; color: #1e40af; text-align: center; margin: 1vmin 0; overflow-x: auto;}
+        .canvas-wrapper, .graph-wrapper, .dcl-wrapper { border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+        .canvas-wrapper { background: radial-gradient(circle at center, #1e293b, #020617); cursor: grab; }
+        .canvas-wrapper:active { cursor: grabbing; }
+        .graph-wrapper { background: #ffffff; } .dcl-wrapper { background: #0f172a; }
+        .control-panel { background: #f1f5f9; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-direction: column; gap: 1vmin; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 14px); }
+        .btn-ui { padding: 0.4rem 0.8rem; border-radius: 0.375rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+        .btn-ui:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 6px rgba(0,0,0,0.1); opacity: 0.95; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; } .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; }
+        
+        .tab-btn { padding: 0.5rem 0.75rem; font-weight: 600; font-size: 0.8rem; color: #64748b; border-bottom: 2px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 0.4rem; cursor: pointer; white-space: nowrap;}
+        .tab-btn:hover { color: #3b82f6; background: #eff6ff; }
+        .tab-btn.active { color: #1d4ed8; border-bottom-color: #1d4ed8; background: #eff6ff; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Estilos para las Ecuaciones de Texto */
+        .vec-input { width: 75px; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; padding: 4px; font-family: monospace; font-size: 13px; font-weight: bold; background-color: #f8fafc; color: #0f172a; transition: all 0.2s;}
+        .vec-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.3); background-color: #ffffff;}
+        .vec-group { display: flex; align-items: center; gap: 6px; background: white; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <div id="slide-wrapper">
+        <div class="slide">
+            <!-- HEADER APP -->
+            <header class="flex-none bg-slate-900 text-white p-[1.5vmin] border-b-[0.5vmin] border-blue-500 shadow-md z-10 flex items-center justify-between">
+                <h1 class="font-bold text-xl md:text-2xl flex items-center gap-3">
+                    <i data-lucide="zap" class="w-7 h-7 text-yellow-400"></i>
+                    Electrodinámica: Análisis Funcional y Lorentz 3D
+                </h1>
+                <div class="bg-slate-800 px-3 py-1.5 rounded border border-slate-600 text-xs text-emerald-400 flex items-center gap-2 font-mono">
+                    <i data-lucide="cpu" class="w-4 h-4"></i> Parseador Matemático (x,y,z,t) Activo
+                </div>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0 bg-slate-50">
+                
+                <!-- COLUMNA IZQUIERDA: TEORÍA Y DEMOSTRACIONES -->
+                <div class="w-[42%] flex flex-col bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden">
+                    
+                    <!-- NAVEGACIÓN -->
+                    <div class="flex border-b border-slate-200 bg-slate-50 overflow-x-auto custom-scroll">
+                        <button class="tab-btn active shrink-0" data-tab="tab-particulas"><i data-lucide="orbit" class="w-4 h-4"></i> Cargas Libre</button>
+                        <button class="tab-btn shrink-0" data-tab="tab-corrientes"><i data-lucide="git-commit" class="w-4 h-4"></i> De Partícula a Hilo</button>
+                        <button class="tab-btn shrink-0" data-tab="tab-regla"><i data-lucide="hand" class="w-4 h-4"></i> Análisis Espacial</button>
+                        <button class="tab-btn shrink-0" data-tab="tab-aplicaciones"><i data-lucide="microscope" class="w-4 h-4 text-rose-500"></i> Uso en la Realidad</button>
+                    </div>
+
+                    <!-- CONTENIDO DE TABS -->
+                    <div class="flex-1 overflow-y-auto p-4 custom-scroll text-sm text-slate-800 relative">
+                        
+                        <!-- TAB 1: PARTÍCULAS -->
+                        <div id="tab-particulas" class="tab-content active space-y-4">
+                            <div class="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-600 shadow-sm">
+                                <h2 class="font-bold text-blue-900 flex items-center gap-2 text-base border-b border-blue-200 pb-2 mb-2">
+                                    <i data-lucide="crosshair" class="w-5 h-5 text-blue-600"></i> Interacción Lorentz Dinámica y Estática
+                                </h2>
+                                <p class="mb-2 text-justify text-xs text-blue-900">La fuerza electromagnética instantánea sobre una carga que atraviesa campos dados por funciones escalares depende rigurosamente del producto cruz:</p>
+                                <div class="math-display">$$\vec{F} = q(\vec{E}(x,y,z,t) + \vec{v}(t) \times \vec{B}(x,y,z,t))$$</div>
+                                
+                                <p class="text-[11px] text-blue-900 text-justify mt-3 bg-white p-3 rounded-lg border border-blue-100 shadow-sm leading-relaxed">
+                                    <strong><i data-lucide="mouse-pointer-click" class="w-3 h-3 inline"></i> Prueba Analítica en el Simulador:</strong><br>
+                                    Pausa la simulación. En este instante de tiempo ($t$), la partícula está estática en el espacio, pero retiene su vector velocidad inicial $\vec{v}$. Modifica la ecuación del campo magnético (ej. pon <code>x</code> o <code>sin(t)</code>) y observa cómo el vector de la Fuerza $\vec{F}$ (Rojo) se re-dibuja y calcula instantáneamente antes de que la partícula inicie su movimiento.
+                                </p>
+
+                                <div class="grid grid-cols-2 gap-2 mt-3">
+                                    <div class="bg-white p-2 rounded border border-indigo-100 text-center shadow-sm">
+                                        <p class="font-bold text-[11px] text-indigo-700">Radio de Giro ($R$)</p>
+                                        <div class="math-display text-xs">$$R = \frac{m|\vec{v}_\perp|}{|q||\vec{B}|}$$</div>
+                                    </div>
+                                    <div class="bg-white p-2 rounded border border-indigo-100 text-center shadow-sm">
+                                        <p class="font-bold text-[11px] text-indigo-700">Frecuencia ($f$)</p>
+                                        <div class="math-display text-xs">$$f = \frac{|q||\vec{B}|}{2\pi m}$$</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: CORRIENTES (DEMOSTRACIÓN PEDIDA) -->
+                        <div id="tab-corrientes" class="tab-content space-y-4">
+                            <div class="bg-emerald-50 p-4 rounded-lg border-l-4 border-emerald-600 shadow-sm">
+                                <h2 class="font-bold text-emerald-900 flex items-center gap-2 text-base border-b border-emerald-200 pb-2 mb-2">
+                                    <i data-lucide="graduation-cap" class="w-5 h-5 text-emerald-600"></i> Demostración: De Partícula a Corriente
+                                </h2>
+                                <p class="text-xs text-emerald-800 mb-2 text-justify">La Ley de Laplace para un conductor (hilo) no es una ley nueva, sino la consecuencia directa de la fuerza de Lorentz actuando en simultáneo sobre billones de electrones en el hilo. El paso a paso es el siguiente:</p>
+                                
+                                <div class="bg-white border border-emerald-200 p-4 rounded-lg text-[11px] text-slate-800 shadow-sm">
+                                    <p class="mb-1"><strong>1. Fuerza individual:</strong> Un solo electrón ($q$) moviéndose a una velocidad de deriva $\vec{v}_d$ sufre:</p>
+                                    <div class="math-display text-xs text-emerald-700">$$\vec{f} = q(\vec{v}_d \times \vec{B})$$</div>
+                                    
+                                    <p class="mb-1 mt-2"><strong>2. Volumen del Conductor:</strong> Para un cable de longitud $L$, área $A$ y densidad de electrones $n$ (partículas por $m^3$), el número total de cargas es $N = n \cdot A \cdot L$.</p>
+                                    
+                                    <p class="mb-1 mt-2"><strong>3. Fuerza total integrada:</strong> Multiplicando la fuerza individual por $N$:</p>
+                                    <div class="math-display text-xs text-emerald-700">$$\vec{F}_{total} = (n A L) q (\vec{v}_d \times \vec{B})$$</div>
+                                    
+                                    <p class="mb-1 mt-2"><strong>4. Conversión a Corriente:</strong> Sabiendo que la corriente eléctrica se define como carga atravesando el área por segundo ($I = n q v_d A$), extraemos esos términos. Asociando la dirección de $\vec{v}_d$ al vector longitud $\vec{L}$, se obtiene finalmente:</p>
+                                    <div class="bg-emerald-100 p-2 rounded text-center font-bold text-emerald-900 text-sm mt-2">
+                                        $$\vec{F}_{Laplace} = I(\vec{L} \times \vec{B})$$
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: REGLA DE LA MANO DERECHA -->
+                        <div id="tab-regla" class="tab-content space-y-4">
+                            <h2 class="font-bold text-slate-900 flex items-center gap-2 text-base border-b border-slate-200 pb-2">
+                                <i data-lucide="hand" class="w-5 h-5 text-rose-600"></i> Producto Cruz y Geometría 3D
+                            </h2>
+                            <p class="text-xs text-slate-700 mb-2">Para hallar la dirección de la fuerza sin usar las ecuaciones analíticas, usa la Regla de la Mano Derecha para cargas positivas:</p>
+                            
+                            <div class="bg-white border border-slate-200 p-4 rounded-lg shadow-sm">
+                                <ol class="list-decimal pl-5 text-xs text-slate-800 space-y-3 font-medium">
+                                    <li>Extiende la mano. Los dedos apuntan en la dirección de la <strong>Velocidad $\vec{v}$ (Magenta)</strong>.</li>
+                                    <li>Cierra los dedos (como haciendo un puño) hacia donde apunta el <strong>Campo $\vec{B}$ (Cian)</strong>.</li>
+                                    <li>Tu <strong>pulgar extendido</strong> indica indefectiblemente el vector <strong>Fuerza $\vec{F}$ (Rojo)</strong>.</li>
+                                </ol>
+                                
+                                <div class="mt-4 bg-rose-50 p-3 border-l-4 border-rose-400 rounded text-[11px] text-rose-900 shadow-sm text-justify">
+                                    <p class="font-bold mb-1 flex items-center gap-1"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Excepción Cargas Negativas</p>
+                                    Si $q < 0$ (electrón), el producto se invierte matemáticamente por el escalar negativo. La fuerza apuntará en <strong>dirección contraria</strong> al pulgar. Puedes comprobarlo ajustando el valor de $q$ a negativo en el panel.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 4: APLICACIONES (El "Para qué sirve") -->
+                        <div id="tab-aplicaciones" class="tab-content space-y-4">
+                            <h2 class="font-bold text-violet-900 flex items-center gap-2 text-base border-b border-violet-200 pb-2 mb-2">
+                                <i data-lucide="cpu" class="w-5 h-5 text-violet-600"></i> Aplicaciones Científicas y Reales
+                            </h2>
+                            <p class="text-xs text-violet-800 mb-3 text-justify">El dominio absoluto de estas ecuaciones es lo que diferencia la tecnología primitiva de la era cuántica y nuclear contemporánea. ¿Para qué sirve entender esto?</p>
+                            
+                            <div class="space-y-3">
+                                <div class="bg-white border border-violet-100 p-3 rounded-lg shadow-sm">
+                                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i data-lucide="filter" class="w-4 h-4 text-indigo-500"></i> 1. Espectrómetro de Masas</h3>
+                                    <p class="text-[11px] text-slate-600 mt-1 text-justify">Usando campos cruzados ortogonales ($\vec{E} \perp \vec{B}$), la partícula no se desvía solo si $v = E/B$ (Filtro de velocidades). Luego entra a una zona solo magnética donde $R = mv/qB$. Usado para calcular masas atómicas, datar fósiles con Carbono-14 y descubrir isótopos exóticos en astrofísica.</p>
+                                </div>
+
+                                <div class="bg-white border border-violet-100 p-3 rounded-lg shadow-sm">
+                                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i data-lucide="radiation" class="w-4 h-4 text-amber-500"></i> 2. Reactores de Fusión (Tokamak)</h3>
+                                    <p class="text-[11px] text-slate-600 mt-1 text-justify">Para crear una estrella en la Tierra, el plasma alcanza 150 millones de grados Celsius, derritiendo cualquier pared material física. Se utilizan campos magnéticos colosales en forma de "Dona" para generar <strong>confinamiento magnético</strong>; las partículas cargadas quedan levitando en órbitas helicoidales, sin tocar el contenedor.</p>
+                                </div>
+                                
+                                <div class="bg-white border border-violet-100 p-3 rounded-lg shadow-sm">
+                                    <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i data-lucide="train" class="w-4 h-4 text-emerald-500"></i> 3. Trenes Maglev y Frenado</h3>
+                                    <p class="text-[11px] text-slate-600 mt-1 text-justify">Al mover rieles conductores en presencia de imanes, los electrones libres de la estructura sienten la fuerza de Lorentz, formando vórtices eléctricos que inducen repulsión magnética potente (Ley de Lenz), logrando trenes que flotan y se mueven sin rozamiento a más de 600 km/h.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: SIMULADOR VECTORIAL FUNCIONAL -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+                    
+                    <!-- PANEL DE CONTROL VECTORIAL AVANZADO (AHORA CON FUNCIONES STRING) -->
+                    <div class="control-panel z-20">
+                        
+                        <!-- Barra de Herramientas -->
+                        <div class="flex w-full gap-3 border-b border-slate-300 pb-2 items-center justify-between">
+                            <div class="flex gap-2 items-center">
+                                <i data-lucide="monitor-play" class="w-4 h-4 text-slate-600"></i>
+                                <select id="sel-scene" class="bg-white border border-slate-300 rounded px-2 py-1 outline-none font-semibold text-blue-700 shadow-sm text-xs cursor-pointer focus:ring-2 focus:ring-blue-300">
+                                    <option value="particula">1. Carga Libre Analítica</option>
+                                    <option value="selector">2. Campos Cruzados (E y B)</option>
+                                    <option value="hilo">3. Conductor Recto</option>
+                                    <option value="espira">4. Espira de Corriente (Torque)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="flex gap-2 items-center">
+                                <button id="btn-play" class="btn-ui text-xs bg-amber-500 text-white shadow-sm hover:bg-amber-600 w-[145px]"><i data-lucide="pause-circle" class="w-4 h-4"></i> Pausar Simulación</button>
+                                <button id="btn-reset" class="btn-ui text-xs bg-slate-200 text-slate-700 border-slate-300 hover:bg-slate-300 shadow-sm"><i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset y Aplicar Ec.</button>
+                            </div>
+                        </div>
+
+                        <!-- AVISO DE USO DE FUNCIONES -->
+                        <div class="w-full text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded p-1.5 flex items-center gap-2">
+                            <i data-lucide="info" class="w-4 h-4"></i>
+                            <span><b>Tip Pro:</b> Puedes ingresar números fijos (ej: <code>5</code>) o funciones que dependan de <code>t</code> (tiempo), <code>x</code>, <code>y</code>, <code>z</code>. Por ejemplo: <code>sin(t)*5</code>, <code>x</code>, <code>cos(y)</code>.</span>
+                        </div>
+
+                        <!-- ENTRADAS VECTORIALES (V, B, E) -> AHORA SON STRING (TEXT) -->
+                        <div class="flex w-full gap-2 items-center justify-between flex-wrap bg-slate-100 p-2 rounded border border-slate-200 shadow-inner">
+                            
+                            <!-- Carga/Corriente -->
+                            <div class="flex items-center gap-1 bg-white border border-slate-300 px-2 py-1.5 rounded shadow-sm">
+                                <b class="text-[11px] text-slate-700" title="Carga (q) / Corriente (I)">$q$/$I$:</b> 
+                                <input type="number" id="in-q" value="2" step="1" class="vec-input !w-[45px]">
+                            </div>
+
+                            <!-- Vector Velocidad (Condición Inicial o Fija en pausa) -->
+                            <div class="vec-group" id="grp-v">
+                                <div class="flex flex-col items-center border-r border-fuchsia-200 pr-1 mr-1">
+                                    <b class="text-[11px] text-fuchsia-700 leading-none">Vel.</b>
+                                    <b class="text-[12px] font-mono text-fuchsia-600">$\vec{v}_0$</b>
+                                </div>
+                                <input type="text" id="in-vx" value="8" class="vec-input" title="Ecuación Componente X">
+                                <input type="text" id="in-vy" value="0" class="vec-input" title="Ecuación Componente Y">
+                                <input type="text" id="in-vz" value="2" class="vec-input" title="Ecuación Componente Z">
+                            </div>
+
+                            <!-- Vector Campo B (Función Espacial) -->
+                            <div class="vec-group">
+                                <div class="flex flex-col items-center border-r border-cyan-200 pr-1 mr-1">
+                                    <b class="text-[11px] text-cyan-700 leading-none">Mag.</b>
+                                    <b class="text-[12px] font-mono text-cyan-600">$\vec{B}$</b>
+                                </div>
+                                <input type="text" id="in-bx" value="0" class="vec-input" title="Ec. B_x (soporta x,y,z,t)">
+                                <input type="text" id="in-by" value="0" class="vec-input" title="Ec. B_y (soporta x,y,z,t)">
+                                <input type="text" id="in-bz" value="2" class="vec-input" title="Ec. B_z (soporta x,y,z,t)">
+                            </div>
+
+                            <!-- Vector Campo E (Oculto por defecto) -->
+                            <div class="vec-group hidden" id="grp-e">
+                                <div class="flex flex-col items-center border-r border-amber-200 pr-1 mr-1">
+                                    <b class="text-[11px] text-amber-700 leading-none">Eléc.</b>
+                                    <b class="text-[12px] font-mono text-amber-600">$\vec{E}$</b>
+                                </div>
+                                <input type="text" id="in-ex" value="0" class="vec-input" title="Ec. E_x">
+                                <input type="text" id="in-ey" value="-16" class="vec-input" title="Ec. E_y">
+                                <input type="text" id="in-ez" value="0" class="vec-input" title="Ec. E_z">
+                            </div>
+                        </div>
+
+                        <!-- INTERRUPTORES DE VECTORES 3D -->
+                        <div class="flex w-full justify-between items-center bg-slate-50 border border-slate-200 p-2 rounded shadow-sm">
+                            <span class="text-[11px] font-bold text-slate-600 ml-1 flex items-center gap-1"><i data-lucide="eye" class="w-4 h-4"></i> Interruptores de Fuerzas:</span>
+                            <div class="flex gap-4">
+                                <label class="flex items-center gap-1.5 text-[11px] font-bold text-fuchsia-700 cursor-pointer bg-fuchsia-50 px-2 py-1 rounded border border-fuchsia-200 hover:bg-fuchsia-100 transition"><input type="checkbox" id="chk-v" checked> Ver $\vec{v}$ (Magenta)</label>
+                                <label class="flex items-center gap-1.5 text-[11px] font-bold text-cyan-700 cursor-pointer bg-cyan-50 px-2 py-1 rounded border border-cyan-200 hover:bg-cyan-100 transition"><input type="checkbox" id="chk-b" checked> Ver $\vec{B}$ local (Cian)</label>
+                                <label class="flex items-center gap-1.5 text-[11px] font-bold text-rose-700 cursor-pointer bg-rose-50 px-2 py-1 rounded border border-rose-200 hover:bg-rose-100 transition"><input type="checkbox" id="chk-f" checked> Ver $\vec{F}$ Neta (Rojo)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL 3D/2D -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        <!-- Canvas 3D -->
+                        <div class="w-[65%] h-full canvas-wrapper relative shadow-inner" id="cont-3d">
+                            <div class="hint-overlay text-blue-800">
+                                <i data-lucide="camera" class="w-4 h-4 text-blue-600"></i>
+                                <span class="text-[11px]">Arrastra para rotar. Modifica las ecuaciones arriba.</span>
+                            </div>
+                            <!-- Aviso de Estado Estático -->
+                            <div id="static-warn" class="absolute top-2 right-2 bg-amber-100 text-amber-800 border border-amber-400 px-3 py-1.5 rounded-lg text-xs font-bold hidden items-center gap-2 shadow-md z-10">
+                                <i data-lucide="pause" class="w-4 h-4 animate-pulse"></i> SIMULACIÓN ESTÁTICA - Vectores actualizados en tiempo real
+                            </div>
+                            <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                        </div>
+
+                        <!-- Gráficas y DCL -->
+                        <div class="w-[35%] h-full flex flex-col gap-[1vmin]">
+                            <!-- Diagrama DCL Vectorial -->
+                            <div class="h-[55%] dcl-wrapper p-2 flex flex-col items-center shadow-inner relative">
+                                <p class="text-[11px] font-bold text-cyan-400 mb-1 z-10 bg-slate-900/80 px-3 py-1 rounded-full border border-cyan-800 flex items-center gap-2 shadow-md">
+                                    <i data-lucide="crosshair" class="w-3 h-3"></i> Proyección Transversal DCL
+                                </p>
+                                <canvas id="cv-dcl" class="w-full h-full absolute top-0 left-0"></canvas>
+                                <div class="absolute bottom-2 left-2 right-2 text-[9px] text-white bg-slate-800/90 p-1.5 rounded border border-slate-600 shadow-md flex justify-between">
+                                    <span class="text-fuchsia-400">$\vec{v}$ / $\vec{I}$</span> 
+                                    <span class="text-cyan-400">Campo local $\vec{B}$</span> 
+                                    <span class="text-rose-400">Fuerza $\vec{F}$</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Telemetría Dinámica -->
+                            <div class="h-[45%] graph-wrapper p-3 flex flex-col shadow-sm border border-slate-200 bg-slate-50">
+                                <p class="text-xs font-bold text-slate-800 mb-2 text-center flex items-center justify-center gap-2 border-b border-slate-200 pb-1">
+                                    <i data-lucide="gauge" class="w-4 h-4 text-indigo-600"></i> Magnitudes Escalares
+                                </p>
+                                <div class="text-[11px] font-mono flex flex-col gap-1.5 w-full mt-1">
+                                    <div class="flex justify-between bg-white border border-slate-200 p-2 rounded shadow-sm items-center">
+                                        <span class="text-slate-600 font-sans font-bold flex items-center gap-1"><i data-lucide="fast-forward" class="w-3 h-3 text-fuchsia-600"></i> $|\vec{v}|$ actual</span>
+                                        <span class="font-bold text-fuchsia-700 text-sm"><span id="out-v">0.0</span> m/s</span>
+                                    </div>
+                                    <div class="flex justify-between bg-white border border-slate-200 p-2 rounded shadow-sm items-center">
+                                        <span class="text-slate-600 font-sans font-bold flex items-center gap-1"><i data-lucide="arrow-down-to-dot" class="w-3 h-3 text-rose-600"></i> $|\vec{F}_{net}|$ Fuerza</span>
+                                        <span class="font-bold text-rose-700 text-sm"><span id="out-f">0.0</span> N</span>
+                                    </div>
+                                    <div class="flex justify-between bg-white border border-slate-200 p-2 rounded shadow-sm items-center">
+                                        <span class="text-slate-600 font-sans font-bold flex items-center gap-1" id="lbl-out-3"><i data-lucide="orbit" class="w-3 h-3 text-indigo-600"></i> Cinemática</span>
+                                        <span class="font-bold text-indigo-700 text-sm"><span id="out-3">0.0</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar Iconos Lucide
+        lucide.createIcons();
+
+        // Utilidades DOM Seguras
+        const $ = id => document.getElementById(id);
+        const getValFloat = (id, def) => $(id) ? parseFloat($(id).value) : def;
+        const setValStr = (id, val) => { if($(id)) $(id).value = val; };
+        
+        // GESTOR DE PESTAÑAS (TABS)
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                let target = $(btn.getAttribute('data-tab'));
+                if(target) target.classList.add('active');
+            });
+        });
+
+        // PARSEADOR MATEMÁTICO ROBUSTO (Convierte strings en funciones y las evalúa)
+        const parseMath = (str, env = {}) => {
+            try {
+                if (str === null || str === undefined || str.trim() === '') return 0;
+                let s = str.toString().toLowerCase();
+                
+                // Limpieza de caracteres no permitidos (solo matemática permitida)
+                if (!/^[0-9xxyztp\.\+\-\*\/\(\)\s(sin)(cos)(tan)(sqrt)(exp)(abs)(pow)(log)]+$/.test(s)) return 0;
+
+                // Reemplazo de funciones a notación Math de JS
+                const funcs = ['sin', 'cos', 'tan', 'sqrt', 'exp', 'abs', 'pow', 'log'];
+                funcs.forEach(f => { s = s.replace(new RegExp(f, 'g'), `Math.${f}`); });
+                s = s.replace(/pi/g, 'Math.PI');
+                
+                // Constructor dinámico seguro (las variables de entorno vienen por argumento)
+                const f = new Function('x', 'y', 'z', 't', `return ${s};`);
+                let res = f(env.x || 0, env.y || 0, env.z || 0, env.t || 0);
+                
+                if (isNaN(res) || !isFinite(res)) return 0;
+                return res;
+            } catch (e) {
+                return 0; // Fail safe si hay error sintáctico mientras el usuario escribe
+            }
+        };
+
+        // Función auxiliar para recuperar vectores desde los inputs tipo String
+        const getVecParsed = (prefix, pos = {x:0, y:0, z:0}, t = 0) => {
+            let vx = parseMath($(`in-${prefix}x`).value, {x: pos.x, y: pos.y, z: pos.z, t: t});
+            let vy = parseMath($(`in-${prefix}y`).value, {x: pos.x, y: pos.y, z: pos.z, t: t});
+            let vz = parseMath($(`in-${prefix}z`).value, {x: pos.x, y: pos.y, z: pos.z, t: t});
+            return new THREE.Vector3(vx, vy, vz);
+        };
+
+        // ESTADO GLOBAL FÍSICO
+        const state = { 
+            scene: 'particula', 
+            isPlaying: true, 
+            time: 0,
+            part: { pos: new THREE.Vector3(0,-8,0), vel: new THREE.Vector3() },
+            espira: { theta: 0, omega: 0 }
+        };
+
+        // 1. INICIALIZACIÓN THREE.JS
+        const cont3D = $('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(45, cont3D.clientWidth/cont3D.clientHeight, 0.1, 200);
+        cam.position.set(22, -28, 25);
+        cam.lookAt(0,0,0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true; ctrl.dampingFactor = 0.05;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 10, 20); scene.add(dirLight);
+
+        const gridHelper = new THREE.GridHelper(60, 60, 0x334155, 0x0f172a);
+        gridHelper.rotation.x = Math.PI / 2; gridHelper.position.z = -0.1;
+        scene.add(gridHelper);
+
+        // Grid Volumétrico de Flechas B
+        const bFieldArrows = new THREE.Group(); scene.add(bFieldArrows);
+        let arrowDataList = [];
+        
+        // Creamos los objetos ArrowHelper una sola vez
+        for(let x=-15; x<=15; x+=7.5) {
+            for(let y=-15; y<=15; y+=7.5) {
+                // Posición Z en 0 y en 10 para dar profundidad a las flechas pero sin sobrecargar
+                [0, 10, -10].forEach(z => {
+                    let a = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(x,y,z), 1, 0x06b6d4, 1, 0.5);
+                    a.line.material.transparent = true; a.line.material.opacity = 0.25;
+                    a.cone.material.transparent = true; a.cone.material.opacity = 0.4;
+                    bFieldArrows.add(a);
+                    arrowDataList.push({a, pos: new THREE.Vector3(x,y,z)});
+                });
+            }
+        }
+
+        const updateBFieldVisuals = () => {
+            // Evaluamos la ecuación del usuario en cada punto del espacio en tiempo real
+            let hasT_in_B = $('in-bx').value.includes('t') || $('in-by').value.includes('t') || $('in-bz').value.includes('t');
+            
+            // Optimization: Si no estamos en play y no depende de T, no redibujamos siempre. Pero para ser seguros y "app-like", dibujamos en el bucle principal.
+            arrowDataList.forEach(data => {
+                let localB = getVecParsed('b', data.pos, state.time);
+                if (localB.length() > 0.01) {
+                    data.a.setDirection(localB.clone().normalize());
+                    data.a.setLength(Math.min(localB.length() * 2, 7), 1, 0.5); // Escalado visual
+                    data.a.visible = true;
+                } else {
+                    data.a.visible = false;
+                }
+            });
+        };
+
+        // 2. OBJETOS DE ESCENAS
+        // A. Partícula (Carga)
+        const particleGrp = new THREE.Group(); scene.add(particleGrp);
+        const particleMesh = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), new THREE.MeshStandardMaterial({color: 0xfacc15, roughness:0.2, metalness:0.3}));
+        particleGrp.add(particleMesh);
+        
+        // Vectores visuales sobre la partícula
+        const arrV = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 0, 0xd946ef, 1.5, 0.8); // Velocidad
+        const arrB = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 0, 0x06b6d4, 1.5, 0.8); // Campo local
+        const arrF = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 0, 0xf43f5e, 1.5, 0.8); // Fuerza
+        arrV.line.material.linewidth = 4; arrB.line.material.linewidth = 4; arrF.line.material.linewidth = 5;
+        particleGrp.add(arrV, arrB, arrF);
+
+        const trailMat = new THREE.LineBasicMaterial({ color: 0xfacc15, linewidth: 2 });
+        const trailGeo = new THREE.BufferGeometry();
+        const trailLine = new THREE.Line(trailGeo, trailMat);
+        let trailPts = []; scene.add(trailLine);
+
+        // B. Placas del Selector (Campo Eléctrico visualizado como cristales rojos y azules)
+        const plates = new THREE.Group();
+        const p1 = new THREE.Mesh(new THREE.BoxGeometry(30, 0.5, 10), new THREE.MeshPhysicalMaterial({color: 0xef4444, transparent:true, opacity:0.3, side: THREE.DoubleSide})); p1.position.y = 8;
+        const p2 = new THREE.Mesh(new THREE.BoxGeometry(30, 0.5, 10), new THREE.MeshPhysicalMaterial({color: 0x3b82f6, transparent:true, opacity:0.3, side: THREE.DoubleSide})); p2.position.y = -8;
+        plates.add(p1, p2); scene.add(plates);
+
+        // C. Conductor Hilo
+        const wireGroup = new THREE.Group();
+        const wireMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 30, 16), new THREE.MeshStandardMaterial({color: 0xb45309}));
+        wireMesh.rotation.z = Math.PI/2; 
+        const currentArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,1.5,0), 4, 0xd946ef, 1.5, 0.8);
+        const forceWireArrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 5, 0xf43f5e, 1.5, 0.8);
+        forceWireArrow.line.material.linewidth = 5;
+        wireGroup.add(wireMesh, currentArrow, forceWireArrow); scene.add(wireGroup);
+
+        // D. Espira (Loop magnético)
+        const loopGroup = new THREE.Group();
+        const loopMesh = new THREE.Mesh(new THREE.TorusGeometry(5, 0.3, 16, 64), new THREE.MeshStandardMaterial({color: 0xb45309}));
+        const muArrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 6, 0x8b5cf6, 1.5, 0.8); // Purpura
+        const f1Arrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(5,0,0), 5, 0xf43f5e, 1.5, 0.8);
+        const f2Arrow = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(-5,0,0), 5, 0xf43f5e, 1.5, 0.8);
+        f1Arrow.line.material.linewidth = 4; f2Arrow.line.material.linewidth = 4;
+        loopGroup.add(loopMesh, muArrow, f1Arrow, f2Arrow); scene.add(loopGroup);
+
+
+        // 3. CONTROL DE ESCENAS
+        const resetSimulation = () => {
+            state.time = 0; trailPts = []; trailGeo.setFromPoints([]);
+            state.espira.theta = 0; state.espira.omega = 0;
+            loopGroup.rotation.set(0,0,0);
+            bFieldArrows.rotation.set(0,0,0);
+
+            // Al resetear, leemos las ecuaciones (o variables) en la UI y las asignamos como V inicial.
+            let initV = getVecParsed('v', state.part.pos, 0);
+
+            if(state.scene === 'particula') {
+                particleGrp.visible = true; trailLine.visible = true;
+                plates.visible = false; wireGroup.visible = false; loopGroup.visible = false;
+                $('grp-e').classList.add('hidden'); $('grp-v').classList.remove('hidden');
+                
+                state.part.pos.set(0, 0, 0); // Inicio en el origen para mejor visión
+                state.part.vel.copy(initV);
+                
+                if($('lbl-out-3')) $('lbl-out-3').innerHTML = `<i data-lucide="circle-dashed" class="w-3 h-3 text-indigo-500"></i> Radio Giro $R$`;
+            }
+            else if(state.scene === 'selector') {
+                particleGrp.visible = true; trailLine.visible = true; plates.visible = true;
+                wireGroup.visible = false; loopGroup.visible = false;
+                $('grp-e').classList.remove('hidden'); $('grp-v').classList.remove('hidden');
+                
+                state.part.pos.set(-14, 0, 0); 
+                state.part.vel.copy(initV);
+                
+                if($('lbl-out-3')) $('lbl-out-3').innerHTML = `<i data-lucide="layers" class="w-3 h-3 text-indigo-500"></i> Balance $E/B$`;
+            }
+            else if(state.scene === 'hilo') {
+                particleGrp.visible = false; trailLine.visible = false; plates.visible = false;
+                wireGroup.visible = true; loopGroup.visible = false;
+                $('grp-e').classList.add('hidden'); $('grp-v').classList.add('hidden');
+                
+                if($('lbl-out-3')) $('lbl-out-3').innerHTML = `<i data-lucide="zap" class="w-3 h-3 text-indigo-500"></i> Long. Hilo $L$`;
+            }
+            else if(state.scene === 'espira') {
+                particleGrp.visible = false; trailLine.visible = false; plates.visible = false;
+                wireGroup.visible = false; loopGroup.visible = true;
+                $('grp-e').classList.add('hidden'); $('grp-v').classList.add('hidden');
+                
+                if($('lbl-out-3')) $('lbl-out-3').innerHTML = `<i data-lucide="orbit" class="w-3 h-3 text-indigo-500"></i> Dipolo $\\vec{\\mu}$`;
+            }
+            lucide.createIcons();
+            updateBFieldVisuals();
+        };
+
+        if($('sel-scene')) $('sel-scene').addEventListener('change', e => { state.scene = e.target.value; resetSimulation(); });
+        if($('btn-reset')) $('btn-reset').addEventListener('click', resetSimulation);
+        
+        if($('btn-play')) {
+            $('btn-play').addEventListener('click', () => { 
+                state.isPlaying = !state.isPlaying; 
+                $('btn-play').innerHTML = state.isPlaying ? `<i data-lucide="pause-circle" class="w-4 h-4"></i> Pausar Simulación` : `<i data-lucide="play-circle" class="w-4 h-4"></i> Activar Dinámica`; 
+                $('btn-play').className = state.isPlaying ? "btn-ui text-xs bg-amber-500 text-white shadow-sm hover:bg-amber-600 w-[145px]" : "btn-ui text-xs bg-emerald-500 text-white shadow-sm hover:bg-emerald-600 w-[145px]";
+                
+                if(state.isPlaying) {
+                    $('static-warn').style.display = 'none';
+                    $('canvas-3d').classList.remove('border-4', 'border-amber-400');
+                    // Opcionalmente al quitar pausa, tomar la velocidad de la UI como "nueva velocidad inicial instantanea"
+                    // state.part.vel.copy(getVecParsed('v', state.part.pos, state.time));
+                } else {
+                    $('static-warn').style.display = 'flex';
+                    $('canvas-3d').classList.add('border-4', 'border-amber-400');
+                }
+                lucide.createIcons();
+            });
+        }
+
+
+        // 4. MOTOR DE FÍSICAS VECTORIAL
+        let lastT = performance.now();
+        let refVel = new THREE.Vector3(), refB = new THREE.Vector3(), refF = new THREE.Vector3();
+
+        const updatePhysics = () => {
+            let dt = Math.min((performance.now() - lastT)/1000, 0.03); lastT = performance.now();
+            
+            let q = getValFloat('in-q', 1);
+            let m = 1.0; 
+            
+            // Para el fondo (Visual Grid), usamos la ecuación del campo evaluada en cada punto x,y,z (llamado independientemente)
+            updateBFieldVisuals();
+            
+            if (state.scene === 'particula' || state.scene === 'selector') {
+                particleMesh.material.color.setHex(q < 0 ? 0x10b981 : (q > 0 ? 0xf43f5e : 0x94a3b8));
+
+                // Evaluar Campo E en la posición actual
+                let E = new THREE.Vector3(0,0,0);
+                if (state.scene === 'selector') E = getVecParsed('e', state.part.pos, state.time);
+                
+                // Evaluar Campo B local exacto en la posición de la partícula
+                let B = getVecParsed('b', state.part.pos, state.time);
+
+                let v = new THREE.Vector3();
+                if (state.isPlaying) {
+                    state.time += dt;
+                    v.copy(state.part.vel);
+                } else {
+                    // Si está pausado, la velocidad mostrada y usada para la Fuerza es la que está escrita en los inputs
+                    v = getVecParsed('v', state.part.pos, state.time);
+                    state.part.vel.copy(v);
+                }
+
+                // LEY DE LORENTZ VECTORIAL RIGUROSA
+                let Fb = v.clone().cross(B).multiplyScalar(q);
+                let Fe = E.clone().multiplyScalar(q);
+                let Fnet = Fb.clone().add(Fe);
+
+                if (state.isPlaying) {
+                    let a = Fnet.clone().divideScalar(m);
+                    state.part.vel.add(a.multiplyScalar(dt));
+                    state.part.pos.add(state.part.vel.clone().multiplyScalar(dt));
+
+                    // Teletransporte de limites de simulación (Para no salir del mapa)
+                    if (state.scene === 'selector' && state.part.pos.x > 15) {
+                        state.part.pos.set(-14, 0, 0); trailPts = [];
+                    }
+                    if (state.scene === 'particula' && (state.part.pos.length() > 30)) {
+                        state.part.pos.set(0,0,0); trailPts = []; 
+                    }
+
+                    trailPts.push(state.part.pos.clone());
+                    if(trailPts.length > 500) trailPts.shift();
+                    trailGeo.setFromPoints(trailPts);
+                }
+                
+                particleGrp.position.copy(state.part.pos);
+                
+                // INTERRUPTORES 3D Y VECTORES
+                let showV = $('chk-v').checked; let showB = $('chk-b').checked; let showF = $('chk-f').checked;
+                
+                if (showV && v.length() > 0.01) { arrV.setDirection(v.clone().normalize()); arrV.setLength(Math.min(v.length()*0.4, 8), 1, 0.5); arrV.visible = true; } else arrV.visible = false;
+                if (showB && B.length() > 0.01) { arrB.setDirection(B.clone().normalize()); arrB.setLength(Math.min(B.length()*1.5, 8), 1, 0.5); arrB.visible = true; } else arrB.visible = false;
+                if (showF && Fnet.length() > 0.01) { arrF.setDirection(Fnet.clone().normalize()); arrF.setLength(Math.min(Fnet.length()*0.1, 10), 1.5, 0.5); arrF.visible = true; } else arrF.visible = false;
+                
+                refVel.copy(v); refB.copy(B); refF.copy(Fnet);
+                
+                // UI Escalar Actualización
+                if($('out-v')) $('out-v').innerText = v.length().toFixed(1);
+                if($('out-f')) $('out-f').innerText = Fnet.length().toFixed(1);
+                
+                if(state.scene === 'particula') {
+                    // Radio requiere componente perpendicular
+                    let Bnorm = B.clone().normalize();
+                    let v_paralela = Bnorm.clone().multiplyScalar(v.dot(Bnorm));
+                    let v_perp = v.clone().sub(v_paralela);
+                    let r = (m * v_perp.length()) / (Math.abs(q) * B.length() + 0.001);
+                    if($('out-3')) $('out-3').innerText = (B.length()===0||q===0) ? "∞ m" : r.toFixed(2) + " m";
+                } else {
+                    let idealV = B.length() > 0 ? E.length() / B.length() : 0;
+                    if($('out-3')) $('out-3').innerText = idealV.toFixed(1) + " m/s";
+                }
+
+            } 
+            // CABLES Y ESPIRAS ESTÁTICOS EN EL ESPACIO, SUFREN FUERZAS GLOBALES
+            else if (state.scene === 'hilo') {
+                let I = q; 
+                let L_vec = new THREE.Vector3(20, 0, 0); // Hilo mide 20, alojado en X
+                let B = getVecParsed('b', new THREE.Vector3(0,0,0), state.time); // B local en origen
+                
+                // Laplace: F = I (L x B)
+                let F = L_vec.clone().cross(B).multiplyScalar(I);
+                
+                let bow = F.y * 0.02; // Deformación
+                wireMesh.position.y = bow;
+                wireMesh.position.z = F.z * 0.02; // Tambien deforma en Z
+                
+                currentArrow.setDirection(new THREE.Vector3(Math.sign(I)||1, 0, 0));
+                currentArrow.setLength(Math.abs(I)+2, 1, 0.5);
+                currentArrow.position.set(0, bow + 1, F.z * 0.02);
+
+                if (F.length() > 0.01) {
+                    forceWireArrow.setDirection(F.clone().normalize());
+                    forceWireArrow.setLength(Math.min(F.length()*0.05, 12), 1.5, 0.5);
+                    forceWireArrow.position.set(0, bow, F.z * 0.02);
+                    forceWireArrow.visible = true;
+                } else forceWireArrow.visible = false;
+
+                refVel.set(Math.sign(I)||1, 0, 0); refB.copy(B); refF.copy(F);
+                if($('out-v')) $('out-v').innerText = "-"; 
+                if($('out-f')) $('out-f').innerText = F.length().toFixed(1); 
+                if($('out-3')) $('out-3').innerText = L_vec.length().toFixed(1) + " m";
+            }
+            else if (state.scene === 'espira') {
+                let I = q;
+                let B = getVecParsed('b', new THREE.Vector3(0,0,0), state.time);
+                
+                // Normal actual de la espira dada su rotación. Empieza apuntando en Z (0,0,1)
+                let normal = new THREE.Vector3(0,0,1).applyAxisAngle(new THREE.Vector3(1,0,0), state.espira.theta);
+                let area = Math.PI * 5 * 5; // Radio 5
+                let mu = normal.clone().multiplyScalar(I * area); // Dipolo
+                
+                let tau = mu.clone().cross(B);
+                
+                if(state.isPlaying) {
+                    state.time += dt;
+                    let I_inercia = 50;
+                    // Proyección simplificada del torque al eje X para rotación de la malla
+                    let alpha = tau.x / I_inercia;
+                    state.espira.omega = (state.espira.omega + alpha*dt) * 0.95; 
+                    state.espira.theta += state.espira.omega * dt;
+                }
+                
+                loopGroup.rotation.x = state.espira.theta;
+
+                if (mu.length() > 0) {
+                    muArrow.setDirection(normal.clone().multiplyScalar(Math.sign(I)||1));
+                    muArrow.setLength(Math.abs(I)*0.1+5, 1.5, 0.5);
+                    muArrow.visible = true;
+                } else muArrow.visible = false;
+                
+                // Visualizar fuerzas opuestas como ejemplo
+                let F_side = I * 5 * B.length(); 
+                f1Arrow.setLength(Math.min(Math.abs(F_side)*0.1+0.1, 7), 1, 0.5); f2Arrow.setLength(Math.min(Math.abs(F_side)*0.1+0.1, 7), 1, 0.5);
+                f1Arrow.setDirection(new THREE.Vector3(0,0, Math.sign(I)).applyAxisAngle(new THREE.Vector3(1,0,0), state.espira.theta));
+                f2Arrow.setDirection(new THREE.Vector3(0,0, -Math.sign(I)).applyAxisAngle(new THREE.Vector3(1,0,0), state.espira.theta));
+
+                refVel.copy(mu); refB.copy(B); refF.copy(tau); // Pasamos torque a F_DCL
+                if($('out-v')) $('out-v').innerText = "-"; 
+                if($('out-f')) $('out-f').innerText = tau.length().toFixed(1) + " (Torque)"; 
+                if($('out-3')) $('out-3').innerText = mu.length().toFixed(1);
+            }
+
+            drawDCL(refVel, refB, refF);
+        };
+
+        // 5. DIAGRAMA 2D PROYECTADO
+        const cvDcl = $('cv-dcl'), ctx = cvDcl.getContext('2d');
+        const drawDclArrow = (v, color, cx, cy, maxLen) => {
+            let len = v.length(); if(len<0.01) return;
+            // Proyección al plano XY de la cámara virtual Frontal
+            let v_proj = new THREE.Vector2(v.x, v.y);
+            let len_proj = v_proj.length();
+            if(len_proj < 0.01) return;
+
+            let scale = Math.min(len_proj*15, maxLen)/len_proj;
+            let vn = v_proj.clone().multiplyScalar(scale);
+            let ex = cx+vn.x, ey = cy-vn.y, ang = Math.atan2(-vn.y, vn.x);
+            
+            ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=3; ctx.lineCap='round';
+            ctx.moveTo(cx,cy); ctx.lineTo(ex,ey);
+            ctx.lineTo(ex-8*Math.cos(ang-0.5), ey-8*Math.sin(ang-0.5)); ctx.moveTo(ex,ey);
+            ctx.lineTo(ex-8*Math.cos(ang+0.5), ey-8*Math.sin(ang+0.5)); ctx.stroke();
+        };
+        
+        const drawDCL = (v, b, f) => {
+            if(!cvDcl || !cvDcl.parentElement) return;
+            cvDcl.width = cvDcl.parentElement.clientWidth; cvDcl.height = cvDcl.parentElement.clientHeight;
+            let cx = cvDcl.width/2, cy = cvDcl.height/2; ctx.clearRect(0,0,cvDcl.width,cvDcl.height);
+            
+            ctx.beginPath(); ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1; 
+            ctx.moveTo(0,cy); ctx.lineTo(cvDcl.width, cy); ctx.moveTo(cx,0); ctx.lineTo(cx, cvDcl.height); ctx.stroke();
+
+            // Identificar si la componente Z del Campo predomina visualmente
+            if(Math.abs(b.z) > Math.abs(b.x) && Math.abs(b.z) > Math.abs(b.y)) {
+                ctx.beginPath(); ctx.fillStyle="#06b6d4";
+                if(b.z > 0) { // Punto (Saliente de Pantalla)
+                    ctx.arc(cx, cy, 7, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI*2); ctx.fill();
+                } else { // Cruz (Entrante)
+                    ctx.arc(cx, cy, 7, 0, Math.PI*2); ctx.fill();
+                    ctx.strokeStyle="#fff"; ctx.lineWidth=2;
+                    ctx.moveTo(cx-3,cy-3); ctx.lineTo(cx+3,cy+3); ctx.moveTo(cx+3,cy-3); ctx.lineTo(cx-3,cy+3); ctx.stroke();
+                }
+            } else {
+                drawDclArrow(b, "#06b6d4", cx, cy, 40); 
+            }
+
+            drawDclArrow(v, "#d946ef", cx, cy, 45); // Vel / I (Magenta)
+            drawDclArrow(f, "#f43f5e", cx, cy, 55); // Fuerza (Rojo)
+        };
+
+        // BUCLE PRINCIPAL Y ARRANQUE
+        window.addEventListener('DOMContentLoaded', () => {
+            resetSimulation();
+            const anim = () => { requestAnimationFrame(anim); updatePhysics(); ctrl.update(); renderer.render(scene, cam); };
+            anim();
+
+            new ResizeObserver(() => {
+                cam.aspect = cont3D.clientWidth / cont3D.clientHeight; cam.updateProjectionMatrix();
+                renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+                if(cvDcl && cvDcl.parentElement) { cvDcl.width = cvDcl.parentElement.clientWidth; cvDcl.height = cvDcl.parentElement.clientHeight; }
+            }).observe(cont3D);
+        });
+
+    </script>
+</body>
+</html>

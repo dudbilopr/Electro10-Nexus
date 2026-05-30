@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Faraday: FEM de Movimiento</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; padding: 6px; border-radius: 6px; width: 100%; font-size: 0.85rem; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        input[type="range"] { accent-color: #ef4444; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center px-4 z-20 shrink-0 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-red-500/20">V</div>
+            <h1 class="text-lg font-bold text-white">Simulador <span class="text-red-400">FEM de Movimiento</span></h1>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Controls Sidebar -->
+        <aside class="w-80 glass-panel border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto z-10 p-4 space-y-6">
+            
+            <div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Variables Físicas</h2>
+                
+                <div class="space-y-4">
+                    <!-- Campo B -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-purple-400 font-medium">Campo B ($B$)</span>
+                            <span id="B-val" class="font-mono text-slate-300">1.0 T</span>
+                        </div>
+                        <input type="range" id="B-slider" min="0.1" max="5" step="0.1" value="1.0" class="w-full accent-purple-500">
+                    </div>
+
+                    <!-- Longitud L -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-emerald-400 font-medium">Longitud Barra ($L$)</span>
+                            <span id="L-val" class="font-mono text-slate-300">0.5 m</span>
+                        </div>
+                        <input type="range" id="L-slider" min="0.1" max="2.0" step="0.1" value="0.5" class="w-full accent-emerald-500">
+                    </div>
+
+                    <!-- Velocidad v -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-red-400 font-medium">Velocidad ($v$)</span>
+                            <span id="v-val" class="font-mono text-slate-300">2.0 m/s</span>
+                        </div>
+                        <input type="range" id="v-slider" min="-10" max="10" step="0.5" value="2.0" class="w-full accent-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto">
+                 <button id="anim-btn" class="w-full py-2 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-colors shadow-lg mb-2">
+                    Iniciar Movimiento
+                </button>
+            </div>
+        </aside>
+
+        <!-- Center Area -->
+        <div class="flex-1 flex flex-col relative bg-slate-950">
+            <!-- 2D Canvas SVG -->
+            <div id="svg-container" class="w-full h-[55%] border-b border-slate-800 relative flex items-center justify-center bg-slate-900 overflow-hidden p-4">
+                
+                <svg id="sim-svg" viewBox="0 0 600 300" class="w-full h-full max-w-3xl border border-slate-800 bg-slate-950 shadow-inner rounded-xl">
+                    <defs>
+                        <!-- Magnetic Field crosses (B into page) -->
+                        <pattern id="b-field" width="40" height="40" patternUnits="userSpaceOnUse">
+                            <path d="M15 15L25 25M25 15L15 25" stroke="#a855f7" stroke-width="2" opacity="0.5"/>
+                        </pattern>
+                        <marker id="arrow-I" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" />
+                        </marker>
+                    </defs>
+
+                    <!-- Background B field -->
+                    <rect x="0" y="0" width="600" height="300" fill="url(#b-field)" />
+
+                    <!-- Rails (U shape) -->
+                    <!-- L visual mapping: 0.5m = 100px. Center vertically at 150 -->
+                    <g id="rails-group">
+                        <path id="rail-wire" d="M 500 100 L 100 100 L 100 200 L 500 200" fill="none" stroke="#64748b" stroke-width="6"/>
+                        <!-- Resistor / Lightbulb on the left -->
+                        <rect x="85" y="130" width="30" height="40" fill="#334155" rx="4"/>
+                        <text x="100" y="155" fill="white" font-size="12" text-anchor="middle">R</text>
+                    </g>
+
+                    <!-- Moving Bar -->
+                    <g id="moving-bar" transform="translate(300, 0)">
+                        <rect id="bar-rect" x="-8" y="90" width="16" height="120" fill="#f59e0b" rx="2" stroke="#b45309" stroke-width="2"/>
+                        <text id="v-text" x="15" y="155" fill="#ef4444" font-size="14" font-weight="bold">v</text>
+                        <path id="v-arrow" d="M 12 145 L 35 145" stroke="#ef4444" stroke-width="3" marker-end="url(#arrow-I)"/>
+                    </g>
+                    
+                    <!-- Induced Current Path -->
+                    <path id="i-path" d="" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5" marker-end="url(#arrow-I)" opacity="0"/>
+                    <text id="i-text" x="200" y="85" fill="#ef4444" font-size="14" font-weight="bold" opacity="0">I</text>
+
+                </svg>
+
+                <div class="absolute top-4 left-4 z-10 glass-panel px-3 py-2 rounded-lg pointer-events-none">
+                    <div class="text-xs font-bold text-slate-400">Esquema 2D: Rieles en Campo Magnético</div>
+                    <div class="text-[10px] text-slate-500">Cruces moradas = $\vec{B}$ (entrando a la pantalla).</div>
+                </div>
+            </div>
+
+            <!-- Theory and Math (Bottom) -->
+            <div class="w-full h-[45%] p-6 overflow-y-auto bg-slate-900 scrollbar-thin flex gap-6">
+                
+                <!-- Math Panel -->
+                <div class="flex-1 min-w-[300px]">
+                    <h3 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        Cálculo de la FEM Inducida
+                    </h3>
+                    <div class="glass-panel p-4 rounded-xl border-red-500/30 border">
+                        <div id="math-steps" class="space-y-4 text-sm text-slate-300 font-light">
+                            <!-- Injected Math -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphic Panel -->
+                <div class="flex-1 min-w-[300px] flex flex-col">
+                    <h3 class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                        F.E.M. ($\mathcal{E}$) vs Velocidad ($v$)
+                    </h3>
+                    <div class="flex-1 glass-panel rounded-xl p-3 relative">
+                        <canvas id="chartCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // State
+        let state = {
+            B: 1.0,
+            L: 0.5,
+            v: 2.0,
+            x: 300, // starting position in pixels (100 to 500)
+            animating: false
+        };
+
+        // UI Elements
+        const bSlider = document.getElementById('B-slider');
+        const lSlider = document.getElementById('L-slider');
+        const vSlider = document.getElementById('v-slider');
+        const bVal = document.getElementById('B-val');
+        const lVal = document.getElementById('L-val');
+        const vVal = document.getElementById('v-val');
+        const mathSteps = document.getElementById('math-steps');
+        const animBtn = document.getElementById('anim-btn');
+        
+        // SVG Elements
+        const movingBar = document.getElementById('moving-bar');
+        const railWire = document.getElementById('rail-wire');
+        const barRect = document.getElementById('bar-rect');
+        const vArrow = document.getElementById('v-arrow');
+        const vText = document.getElementById('v-text');
+        const iPath = document.getElementById('i-path');
+        const iText = document.getElementById('i-text');
+
+        // Animation Loop
+        let lastTime = 0;
+        function animate(time) {
+            if (!state.animating) {
+                lastTime = 0;
+                return;
+            }
+            if (lastTime === 0) lastTime = time;
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+
+            // v is m/s. Let's say 1 m/s = 50 pixels / sec
+            const pixelVel = state.v * 50;
+            state.x += pixelVel * dt;
+
+            // Boundaries (100 to 500)
+            if (state.x < 110) {
+                state.x = 110;
+                stopAnim();
+            }
+            if (state.x > 490) {
+                state.x = 490;
+                stopAnim();
+            }
+
+            movingBar.setAttribute('transform', `translate(${state.x}, 0)`);
+            drawCurrentArrow();
+
+            requestAnimationFrame(animate);
+        }
+
+        function stopAnim() {
+            state.animating = false;
+            animBtn.innerText = "Reiniciar Posición";
+            animBtn.classList.replace('bg-red-600', 'bg-slate-600');
+        }
+
+        animBtn.addEventListener('click', () => {
+            if (animBtn.innerText === "Reiniciar Posición") {
+                state.x = 300;
+                movingBar.setAttribute('transform', `translate(${state.x}, 0)`);
+                animBtn.innerText = "Iniciar Movimiento";
+                animBtn.classList.replace('bg-slate-600', 'bg-red-600');
+                drawCurrentArrow();
+            } else {
+                if (!state.animating) {
+                    state.animating = true;
+                    animBtn.innerText = "Pausar";
+                    requestAnimationFrame(animate);
+                } else {
+                    state.animating = false;
+                    animBtn.innerText = "Reanudar";
+                }
+            }
+        });
+
+        function updateVisuals() {
+            // L mapping: 0.5m = 100px. L ranges 0.1 to 2.0 (20px to 400px). Let's use 100px = 0.5m scale.
+            // Center is y=150
+            const lPx = (state.L / 0.5) * 100;
+            const topY = 150 - lPx/2;
+            const botY = 150 + lPx/2;
+            
+            // Update Rails
+            railWire.setAttribute('d', `M 500 ${topY} L 100 ${topY} L 100 ${botY} L 500 ${botY}`);
+            
+            // Update Bar
+            barRect.setAttribute('y', topY - 10);
+            barRect.setAttribute('height', lPx + 20);
+
+            // Update V Arrow direction and scale
+            if (state.v > 0) {
+                vArrow.setAttribute('d', `M 12 150 L 40 150`);
+                vText.setAttribute('x', '20');
+            } else if (state.v < 0) {
+                vArrow.setAttribute('d', `M -12 150 L -40 150`);
+                vText.setAttribute('x', '-35');
+            } else {
+                vArrow.setAttribute('d', '');
+                vText.setAttribute('x', '15');
+            }
+
+            drawCurrentArrow();
+            movingBar.setAttribute('transform', `translate(${state.x}, 0)`);
+        }
+
+        function drawCurrentArrow() {
+            if (Math.abs(state.v) < 0.1) {
+                iPath.setAttribute('opacity', '0');
+                iText.setAttribute('opacity', '0');
+                return;
+            }
+
+            const lPx = (state.L / 0.5) * 100;
+            const topY = 150 - lPx/2;
+            const botY = 150 + lPx/2;
+
+            iPath.setAttribute('opacity', '1');
+            iText.setAttribute('opacity', '1');
+
+            // Current direction (Lenz's Law). 
+            // B is INTO page. 
+            // If v > 0 (moving right), area increases, Flux IN increases. Induced B is OUT. Current is CCW.
+            // If v < 0 (moving left), area decreases, Flux IN decreases. Induced B is IN. Current is CW.
+            if (state.v > 0) {
+                // CCW
+                iPath.setAttribute('d', `M ${state.x} ${botY-20} L ${state.x} ${topY+20}`); // UP along the bar
+                iText.setAttribute('x', state.x - 25);
+                iText.setAttribute('y', 150);
+            } else {
+                // CW
+                iPath.setAttribute('d', `M ${state.x} ${topY+20} L ${state.x} ${botY-20}`); // DOWN along the bar
+                iText.setAttribute('x', state.x + 15);
+                iText.setAttribute('y', 150);
+            }
+        }
+
+
+        // Chart Setup
+        let eChart;
+        function initChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            eChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'FEM Inducida (V)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Operación Actual',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: '#3b82f6',
+                        pointRadius: 6,
+                        showLine: false
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'Velocidad v (m/s)', color: '#64748b' }, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+                        y: { title: { display: true, text: 'F.E.M (V)', color: '#64748b' }, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        function calculateEMF(v) {
+            // E = B * L * v
+            return state.B * state.L * v;
+        }
+
+        function updateChart() {
+            const numPoints = 21;
+            const vVals = Array.from({length: numPoints}, (_, i) => -10 + i); 
+            const E_vals = vVals.map(v => calculateEMF(v));
+            
+            eChart.data.labels = vVals;
+            eChart.data.datasets[0].data = E_vals;
+            
+            const currentE = calculateEMF(state.v);
+            eChart.data.datasets[1].data = [{x: state.v, y: currentE}];
+            
+            eChart.update();
+        }
+
+        function updateUI() {
+            bVal.innerText = `${state.B.toFixed(1)} T`;
+            lVal.innerText = `${state.L.toFixed(1)} m`;
+            vVal.innerText = `${state.v.toFixed(1)} m/s`;
+
+            const E = calculateEMF(state.v);
+            
+            let html = `
+                <div class="text-center">
+                    <span class="text-xs text-slate-400">Ley de Faraday (Conductor en Movimiento)</span>
+                    $$ \\mathcal{E} = - \\frac{d\\Phi_B}{dt} = B L v $$
+                </div>
+                <div class="mt-4 border-l-4 border-red-500 pl-3">
+                    <div class="text-xs text-slate-400 mb-1">Cálculo de magnitud:</div>
+                    <div class="overflow-x-auto text-sm">
+                        $$ \\mathcal{E} = (${state.B.toFixed(1)})(${state.L.toFixed(1)})(|${state.v.toFixed(1)}|) $$
+                    </div>
+                </div>
+                <div class="bg-red-500/10 p-3 rounded mt-4 border border-red-500/20 text-center">
+                    <span class="text-xs text-red-400 uppercase tracking-wider font-bold">Fuerza Electromotriz</span><br>
+                    <span class="text-xl font-mono text-white">$$ |\\mathcal{E}| = ${Math.abs(E).toFixed(2)}\\ \\text{V} $$</span>
+                </div>
+            `;
+            
+            mathSteps.innerHTML = html;
+            // Solo actualizamos mathjax si no estamos animando, para evitar lag
+            if (window.MathJax && !state.animating) MathJax.typesetPromise([mathSteps]);
+
+            updateVisuals();
+            updateChart();
+        }
+
+        function handleInput() {
+            state.B = parseFloat(bSlider.value);
+            state.L = parseFloat(lSlider.value);
+            state.v = parseFloat(vSlider.value);
+            updateUI();
+        }
+
+        // Listeners
+        bSlider.addEventListener('input', handleInput);
+        lSlider.addEventListener('input', handleInput);
+        vSlider.addEventListener('input', handleInput);
+
+        // Init
+        initChart();
+        handleInput();
+
+    </script>
+</body>
+</html>

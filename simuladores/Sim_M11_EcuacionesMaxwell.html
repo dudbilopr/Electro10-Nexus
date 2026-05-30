@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla Interactiva: Ecuaciones de Maxwell</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .step-card { transition: all 0.3s ease; opacity: 0; transform: translateY(10px); }
+        .step-card.visible { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <header class="w-full max-w-5xl mb-6 flex justify-between items-center glass-panel p-4 rounded-2xl shadow-lg">
+        <div>
+            <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                <span class="bg-indigo-500 text-white px-2 py-1 rounded-lg text-sm">M11</span>
+                Ecuaciones de Maxwell
+            </h1>
+            <p class="text-slate-400 text-sm mt-1">Comparación Forma Integral vs Forma Diferencial</p>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Sidebar -->
+        <aside class="glass-panel p-5 rounded-2xl h-fit">
+            <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Selecciona la Ecuación</h2>
+            
+            <div class="space-y-3">
+                <button onclick="loadEq('gaussE')" class="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-indigo-500 hover:bg-slate-800 transition-all focus:border-indigo-500 focus:bg-slate-800">
+                    <div class="font-bold text-indigo-400">Ley de Gauss (Eléctrica)</div>
+                </button>
+                
+                <button onclick="loadEq('gaussB')" class="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-indigo-500 hover:bg-slate-800 transition-all focus:border-indigo-500 focus:bg-slate-800">
+                    <div class="font-bold text-indigo-400">Ley de Gauss (Magnética)</div>
+                </button>
+
+                <button onclick="loadEq('faraday')" class="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-indigo-500 hover:bg-slate-800 transition-all focus:border-indigo-500 focus:bg-slate-800">
+                    <div class="font-bold text-indigo-400">Ley de Faraday</div>
+                </button>
+
+                <button onclick="loadEq('ampere')" class="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-indigo-500 hover:bg-slate-800 transition-all focus:border-indigo-500 focus:bg-slate-800">
+                    <div class="font-bold text-indigo-400">Ley de Ampere-Maxwell</div>
+                </button>
+            </div>
+            
+        </aside>
+
+        <!-- Main Content -->
+        <div id="steps-container" class="lg:col-span-2 space-y-4">
+            <div class="glass-panel p-10 rounded-2xl flex flex-col items-center justify-center text-center text-slate-500 min-h-[400px]">
+                <svg class="w-16 h-16 mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                <p>Selecciona una ecuación en el menú lateral para estudiarla a fondo.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const data = {
+            gaussE: {
+                title: "Ley de Gauss (Campo Eléctrico)",
+                desc: "Las cargas eléctricas son las fuentes y sumideros del campo eléctrico.",
+                steps: [
+                    { t: "Forma Integral", m: "$$ \\oint_S \\vec{E} \\cdot d\\vec{A} = \\frac{Q_{enc}}{\\varepsilon_0} $$", c: "bg-blue-900/40 border-blue-500" },
+                    { t: "Forma Diferencial", m: "$$ \\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0} $$", c: "bg-emerald-900/40 border-emerald-500" },
+                    { t: "Significado Físico", m: "El flujo eléctrico neto a través de una superficie cerrada es proporcional a la carga neta encerrada. La divergencia de $\\vec{E}$ indica si un punto del espacio es un manantial (carga positiva) o un sumidero (carga negativa).", c: "bg-slate-800 border-slate-600" }
+                ]
+            },
+            gaussB: {
+                title: "Ley de Gauss (Campo Magnético)",
+                desc: "No existen monopolos magnéticos aislados en la naturaleza.",
+                steps: [
+                    { t: "Forma Integral", m: "$$ \\oint_S \\vec{B} \\cdot d\\vec{A} = 0 $$", c: "bg-blue-900/40 border-blue-500" },
+                    { t: "Forma Diferencial", m: "$$ \\nabla \\cdot \\vec{B} = 0 $$", c: "bg-emerald-900/40 border-emerald-500" },
+                    { t: "Significado Físico", m: "Las líneas de campo magnético siempre forman bucles cerrados continuos. Toda línea que entra a una superficie cerrada debe salir. Por tanto, la divergencia de $\\vec{B}$ siempre es cero.", c: "bg-slate-800 border-slate-600" }
+                ]
+            },
+            faraday: {
+                title: "Ley de Faraday de la Inducción",
+                desc: "Un campo magnético cambiante en el tiempo induce un campo eléctrico rotacional.",
+                steps: [
+                    { t: "Forma Integral", m: "$$ \\oint_C \\vec{E} \\cdot d\\vec{l} = - \\frac{d\\Phi_B}{dt} $$", c: "bg-blue-900/40 border-blue-500" },
+                    { t: "Forma Diferencial", m: "$$ \\nabla \\times \\vec{E} = - \\frac{\\partial \\vec{B}}{\\partial t} $$", c: "bg-emerald-900/40 border-emerald-500" },
+                    { t: "Significado Físico", m: "La circulación del campo eléctrico alrededor de un camino cerrado no es cero si el flujo magnético está cambiando. El rotacional de $\\vec{E}$ es directamente proporcional a la tasa de cambio de $\\vec{B}$ (con signo negativo por la Ley de Lenz).", c: "bg-slate-800 border-slate-600" }
+                ]
+            },
+            ampere: {
+                title: "Ley de Ampere-Maxwell",
+                desc: "Los campos magnéticos se generan por corrientes eléctricas Y por campos eléctricos cambiantes.",
+                steps: [
+                    { t: "Forma Integral", m: "$$ \\oint_C \\vec{B} \\cdot d\\vec{l} = \\mu_0 I_{enc} + \\mu_0 \\varepsilon_0 \\frac{d\\Phi_E}{dt} $$", c: "bg-blue-900/40 border-blue-500" },
+                    { t: "Forma Diferencial", m: "$$ \\nabla \\times \\vec{B} = \\mu_0 \\vec{J} + \\mu_0 \\varepsilon_0 \\frac{\\partial \\vec{E}}{\\partial t} $$", c: "bg-emerald-900/40 border-emerald-500" },
+                    { t: "Significado Físico", m: "Maxwell agregó el término de 'corriente de desplazamiento' ($\\frac{d\\Phi_E}{dt}$) para que las matemáticas de las ondas EM funcionaran y resolvió la discontinuidad en circuitos con capacitores. El rotacional de $\\vec{B}$ depende de la densidad de corriente $\\vec{J}$ y del cambio en $\\vec{E}$.", c: "bg-slate-800 border-slate-600" }
+                ]
+            }
+        };
+
+        async function loadEq(key) {
+            const container = document.getElementById('steps-container');
+            const geom = data[key];
+            
+            let html = `
+                <div class="glass-panel p-6 rounded-2xl mb-4 border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-bold text-white mb-2">${geom.title}</h2>
+                    <p class="text-slate-300 font-light">${geom.desc}</p>
+                </div>
+            `;
+
+            geom.steps.forEach((step, index) => {
+                html += `
+                    <div class="step-card glass-panel p-5 rounded-xl border ${step.c}" id="step-${index}">
+                        <h3 class="text-sm font-bold text-white mb-2">${step.t}</h3>
+                        <div class="text-white text-sm">${step.m}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            
+            // Typeset MathJax
+            if (window.MathJax) await MathJax.typesetPromise();
+
+            // Animate steps
+            geom.steps.forEach((_, i) => {
+                setTimeout(() => {
+                    document.getElementById(`step-${i}`).classList.add('visible');
+                }, i * 200);
+            });
+        }
+    </script>
+</body>
+</html>

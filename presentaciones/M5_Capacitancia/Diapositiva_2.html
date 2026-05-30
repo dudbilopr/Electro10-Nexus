@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campo Eléctrico: Hilo Rectilíneo Cargado</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'none' },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        /* Base anti-scroll estricto */
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        /* Contenedor principal fluido */
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* Tipografía académica escalable */
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(13px, 1.25vw, 20px); line-height: 1.4; }
+        .math-display { font-size: clamp(15px, 1.4vw, 24px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 1vmin 0; }
+
+        /* Contenedores Canvas */
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+
+        .graph-wrapper {
+            background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative;
+        }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 4px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #475569; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        /* Etiqueta 3D del ángulo */
+        .angle-label {
+            position: absolute; transform: translate(-50%, -50%);
+            font-weight: bold; font-family: monospace; color: #d97706;
+            background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 12px;
+            pointer-events: none; z-index: 20; border: 1px solid #fcd34d;
+            font-size: clamp(11px, 0.9vw, 15px); display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; }
+        
+        /* Controles Globales UI */
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Ventanas Flotantes (Tips) */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <!-- CABECERA -->
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-red-600">
+                <h1 class="font-bold tracking-wide" style="font-size: clamp(20px, 2vw, 40px);">Campo Eléctrico: Hilo Rectilíneo Cargado</h1>
+                <p class="text-red-300" style="font-size: clamp(12px, 1vw, 18px);">Simulación 3D de Simetría Cilíndrica y Ley de Gauss</p>
+            </header>
+
+            <!-- CUERPO PRINCIPAL -->
+            <div class="flex-1 flex flex-row p-[2vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA Y MATEMÁTICA -->
+                <!-- <div class="w-[40%] flex flex-col justify-between text-academic"> -->
+                <!-- COLUMNA IZQUIERDA: TEORÍAS DINÁMICAS -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <div class="bg-white p-[1.5vmin] border-l-[0.5vmin] border-red-600 shadow-sm rounded-r-lg relative">
+                        <p class="flex items-start">
+                            <span><strong>1. Simetría del Problema:</strong> Un hilo rectilíneo infinitamente largo con densidad lineal de carga $\lambda$ genera un campo eléctrico puramente radial.</span>
+                            <span class="relative tip-wrapper inline-block">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Simetría:</strong> Las componentes paralelas al hilo se cancelan por pares de cargas opuestas. El campo solo puede apuntar hacia afuera o hacia adentro.</span>
+                            </span>
+                        </p>
+                        <p class="mt-[0.5vmin]">Elegimos una <strong>superficie gaussiana cilíndrica</strong> de radio $r$ y longitud $L$ coaxial con el hilo.</p>
+                    </div>
+
+                    <div class="bg-white p-[1.5vmin] border border-slate-200 shadow-sm rounded-lg relative">
+                        <p class="mb-[0.5vmin] flex items-start">
+                            <span><strong>2. Análisis del Flujo:</strong> Dividimos la superficie cilíndrica en tres partes: las dos bases y la superficie lateral.</span>
+                            <span class="relative tip-wrapper inline-block z-40">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Bases = 0:</strong> En las tapas del cilindro, el vector área $d\vec{S}$ es paralelo al hilo, pero $\vec{E}$ es radial. Son perpendiculares, $\cos(90^\circ)=0$.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">
+                            $$ \Phi = \int_{bases} \vec{E} \cdot d\vec{S} + \int_{lateral} \vec{E} \cdot d\vec{S} $$
+                        </div>
+                        <p class="text-center font-semibold text-slate-700">$\Phi_{bases} = 0 \quad \text{y} \quad \vec{E} \parallel d\vec{S} \text{ (lateral)}$</p>
+                    </div>
+
+                    <div class="bg-white p-[1.5vmin] border border-slate-200 shadow-sm rounded-lg relative">
+                        <p class="flex items-start">
+                            <span><strong>3. Ley de Gauss:</strong> Dado que el campo es constante en magnitud sobre la superficie lateral de área $2\pi r L$:</span>
+                        </p>
+                        <div class="math-display">$$ E \cdot (2\pi r L) = \frac{\lambda L}{\varepsilon_0} $$</div>
+                        <div class="bg-red-50 text-red-900 p-[1vmin] rounded border border-red-200 font-bold text-center" style="font-size: clamp(16px, 1.6vw, 26px);">
+                            $$ E = \frac{\lambda}{2\pi\varepsilon_0 r} $$
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-100 p-[1.5vmin] shadow-sm rounded-lg border border-slate-300 relative">
+                        <p class="flex items-start">
+                            <span><strong>4. Diferencia de Potencial:</strong> El trabajo por unidad de carga para movernos desde un radio $r_0$ hasta $r$ es la integral del campo:</span>
+                            <span class="relative tip-wrapper inline-block z-20">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Potencial:</strong> Corresponde al área bajo la curva $E$ vs $r$. Crece logarítmicamente conforme nos acercamos al hilo.</span>
+                            </span>
+                        </p>
+                        <div class="math-display bg-white py-[0.5vmin] rounded border border-slate-200 mt-[0.5vmin]">
+                            $$ V(r_0) - V(r) = \int_{r_0}^{r} E \cdot dr = \frac{\lambda}{2\pi\varepsilon_0} \ln\left(\frac{r}{r_0}\right) $$
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[60%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL -->
+                    <div class="control-panel shadow-sm">
+                        
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-red-700">Hilo ($\lambda$):</label>
+                            <input type="range" id="slider-lambda" min="-5" max="5" step="0.5" value="3" class="w-[5vw]">
+                            <span id="val-lambda" class="font-mono font-bold w-[2vw] text-right">3</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-blue-700">Cilindro (r, L):</label>
+                            $r$ <input type="range" id="slider-r" min="1" max="5" step="0.1" value="2.5" class="w-[4vw]">
+                            $L$ <input type="range" id="slider-l" min="2" max="8" step="0.5" value="5" class="w-[4vw]">
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-amber-600">Mover $d\vec{S}$:</label>
+                            $\theta$ <input type="range" id="slider-theta" min="0" max="360" value="45" class="w-[4vw]">
+                            $y$ <input type="range" id="slider-y" min="-1" max="1" step="0.05" value="0" class="w-[4vw]">
+                        </div>
+
+                        <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-sm font-semibold text-slate-700">
+                            <label><input type="checkbox" id="toggle-field" checked> Líneas E</label>
+                            <label><input type="checkbox" id="toggle-surf" checked> Superficie</label>
+                            <label><input type="checkbox" id="toggle-rotate" checked> Girar</label>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas -->
+                        <div class="w-[65%] h-full canvas-wrapper" id="canvas-3d">
+                            <div class="hint-overlay">⟲ Rotar 3D | ⚲ Zoom</div>
+                            <div id="lbl-angle" class="angle-label">0° ($\vec{E} \parallel d\vec{S}$)</div>
+                        </div>
+
+                        <!-- 2D Graph & Stats -->
+                        <div class="w-[35%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Gráfica -->
+                            <div class="flex-1 graph-wrapper p-[1vmin] flex flex-col">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 16px);">Gráfica: Campo vs Distancia</div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                                <div class="text-[10px] md:text-[12px] text-center text-slate-500 mt-1 font-semibold">
+                                    Área sombreada = $\Delta V = \int E \cdot dr$
+                                </div>
+                            </div>
+
+                            <!-- Stats Flujo -->
+                            <div class="bg-white border border-slate-200 rounded-lg p-[1.5vmin] text-center shadow-sm">
+                                <div class="text-slate-600 font-serif italic mb-1" style="font-size: clamp(12px, 1vw, 16px);">Flujo Local en Parche $d\vec{S}$</div>
+                                <div class="font-mono font-bold text-blue-700" style="font-size: clamp(16px, 1.8vw, 28px);">
+                                    $d\Phi = E \cdot dS \cdot \cos(0^\circ)$
+                                </div>
+                                <div class="mt-2 text-slate-500 font-semibold" style="font-size: clamp(11px, 0.9vw, 14px);">
+                                    Magnitud E local: <span id="val-e-local" class="text-red-600 font-bold">1.20</span> u/m
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS Y GRÁFICAS -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(40, cont3D.clientWidth / cont3D.clientHeight, 0.1, 100);
+        cam.position.set(12, 8, 12);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true; ctrl.autoRotate = true; ctrl.autoRotateSpeed = 1.0;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const light = new THREE.DirectionalLight(0xffffff, 0.6);
+        light.position.set(10, 20, 10); scene.add(light);
+
+        // ==========================================
+        // 2. ELEMENTOS DE LA ESCENA 3D
+        // ==========================================
+        
+        // Hilo Cargado (Línea roja infinita/larga)
+        const wireGeo = new THREE.CylinderGeometry(0.05, 0.05, 30, 16);
+        const wireMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 }); // Rojo
+        const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+        scene.add(wireMesh);
+
+        // Cilindro Gaussiano (Superficie Lateral)
+        const cylGroup = new THREE.Group();
+        scene.add(cylGroup);
+        
+        const cylMat = new THREE.MeshStandardMaterial({ 
+            color: 0x3b82f6, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false 
+        });
+        const cylWireMat = new THREE.MeshBasicMaterial({ 
+            color: 0xffffff, wireframe: true, transparent: true, opacity: 0.4 
+        });
+        
+        let cylMesh, cylWire;
+
+        // Bases del cilindro (Tapaderas)
+        const capMat = new THREE.MeshStandardMaterial({ 
+            color: 0x94a3b8, transparent: true, opacity: 0.5, side: THREE.DoubleSide 
+        });
+        let topCap, botCap;
+
+        // Vectores de Campo Eléctrico
+        const fieldGroup = new THREE.Group();
+        scene.add(fieldGroup);
+
+        // Parche Diferencial dS
+        const patchGroup = new THREE.Group();
+        const patchMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide }); // Ambar
+        let patchMesh;
+        const normalArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2, 0x111827, 0.4, 0.2); // Negro
+        const eFieldArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 2.5, 0xdc2626, 0.5, 0.25); // Rojo local
+        patchGroup.add(normalArrow);
+        patchGroup.add(eFieldArrow);
+        scene.add(patchGroup);
+
+        // ==========================================
+        // 3. ESTADO Y LÓGICA FÍSICA
+        // ==========================================
+        let params = { lambda: 3, r: 2.5, L: 5, theta: 45, yPos: 0 };
+        const k_visual = 2; // Constante visual para escalar el campo
+
+        function updateGeometry() {
+            // Recrear Cilindro
+            if(cylMesh) { cylGroup.remove(cylMesh, cylWire, topCap, botCap); }
+            
+            const geoCyl = new THREE.CylinderGeometry(params.r, params.r, params.L, 32, 1, true); // Abierto
+            cylMesh = new THREE.Mesh(geoCyl, cylMat);
+            cylWire = new THREE.Mesh(geoCyl, cylWireMat);
+            
+            const geoCap = new THREE.CircleGeometry(params.r, 32);
+            topCap = new THREE.Mesh(geoCap, capMat); topCap.rotation.x = -Math.PI/2; topCap.position.y = params.L/2;
+            botCap = new THREE.Mesh(geoCap, capMat); botCap.rotation.x = Math.PI/2; botCap.position.y = -params.L/2;
+
+            cylGroup.add(cylMesh, cylWire, topCap, botCap);
+
+            // Recrear Parche dS (Curvado)
+            if(patchMesh) patchGroup.remove(patchMesh);
+            // Parche es una pequeña sección de cilindro
+            const patchArc = 0.6 / params.r; // Arco constante visualmente
+            const geoPatch = new THREE.CylinderGeometry(params.r*1.01, params.r*1.01, 0.6, 16, 1, true, -patchArc/2, patchArc);
+            patchMesh = new THREE.Mesh(geoPatch, patchMat);
+            patchGroup.add(patchMesh);
+        }
+
+        function updateFieldVectors() {
+            fieldGroup.clear();
+            if(!document.getElementById('toggle-field').checked) return;
+
+            const maxR = 6;
+            const stepY = 1.5;
+            const rings = 6;
+            const dirMultiplier = params.lambda >= 0 ? 1 : -1;
+            const absLambda = Math.abs(params.lambda);
+
+            if(absLambda === 0) return;
+
+            for(let y = -8; y <= 8; y += stepY) {
+                // Anillos de vectores
+                for(let i = 1; i <= rings; i++) {
+                    const radius = i * 1.0;
+                    const numArrows = Math.max(4, Math.floor(2 * Math.PI * radius * 0.8)); // Densidad angular
+                    
+                    const eMag = (k_visual * absLambda) / radius;
+                    if(eMag < 0.2) continue; // No dibujar flechas muy pequeñas
+
+                    for(let j = 0; j < numArrows; j++) {
+                        const angle = (j / numArrows) * Math.PI * 2;
+                        const px = radius * Math.cos(angle);
+                        const pz = radius * Math.sin(angle);
+                        
+                        const dir = new THREE.Vector3(px, 0, pz).normalize().multiplyScalar(dirMultiplier);
+                        const origin = new THREE.Vector3(px, y, pz);
+                        
+                        // Si la carga es negativa, la flecha apunta hacia adentro (ajustar origen para que apunte al hilo)
+                        let renderOrigin = origin;
+                        if(dirMultiplier < 0) {
+                            renderOrigin = origin.clone().sub(dir.clone().multiplyScalar(Math.min(eMag, 1.5)));
+                        }
+
+                        const color = new THREE.Color().setHSL(0.6, 1, 0.2 + Math.min(eMag/3, 1)*0.5);
+                        fieldGroup.add(new THREE.ArrowHelper(dir, renderOrigin, Math.min(eMag, 1.5), color, 0.3, 0.15));
+                    }
+                }
+            }
+        }
+
+        function updatePatchPosition() {
+            const rad = params.theta * Math.PI / 180;
+            const realY = params.yPos * (params.L / 2); // Escalar al cilindro
+
+            // Rotar todo el grupo del parche
+            patchGroup.rotation.y = -rad + Math.PI/2; // Ajuste para que el centro del parche quede bien
+            patchGroup.position.y = realY;
+
+            // Vectores visuales del parche
+            const normalDir = new THREE.Vector3(0, 0, 1); // Porque el grupo está rotado
+            const dirMultiplier = params.lambda >= 0 ? 1 : -1;
+            const absLambda = Math.abs(params.lambda);
+            
+            const eMag = absLambda === 0 ? 0 : (k_visual * absLambda) / params.r;
+            
+            normalArrow.setDirection(normalDir);
+            normalArrow.position.set(0, 0, params.r); // Situar en la superficie
+            
+            eFieldArrow.setDirection(normalDir.clone().multiplyScalar(dirMultiplier));
+            eFieldArrow.position.set(0, 0, params.r);
+            eFieldArrow.setLength(eMag > 0 ? eMag : 0.01, 0.5, 0.25);
+            eFieldArrow.visible = (eMag > 0);
+
+            // Actualizar Label HTML del Ángulo
+            const lbl = document.getElementById('lbl-angle');
+            if(eMag > 0) {
+                lbl.style.display = 'block';
+                const angleText = params.lambda >= 0 ? "0° ($\\vec{E} \\parallel d\\vec{S}$)" : "180° ($\\vec{E} \\parallel -d\\vec{S}$)";
+                
+                // Optimización: Solo re-renderizar con MathJax si el texto realmente cambió y la librería está lista
+                if (lbl.getAttribute('data-text') !== angleText) {
+                    lbl.innerHTML = angleText;
+                    lbl.setAttribute('data-text', angleText);
+                    if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                        MathJax.typesetPromise([lbl]).catch((err) => console.log(err));
+                    }
+                }
+                
+                // Posicionar label en 2D sobre la coordenada 3D
+                // Vector real en el mundo:
+                const worldPos = new THREE.Vector3(params.r * Math.cos(rad), realY, params.r * Math.sin(rad));
+                worldPos.add(new THREE.Vector3(Math.cos(rad), 0, Math.sin(rad)).multiplyScalar(1.5)); // Alejar un poco
+                worldPos.project(cam);
+                
+                const x = (worldPos.x * 0.5 + 0.5) * cont3D.clientWidth;
+                const y = -(worldPos.y * 0.5 - 0.5) * cont3D.clientHeight;
+                lbl.style.left = x + 'px';
+                lbl.style.top = y + 'px';
+            } else {
+                lbl.style.display = 'none';
+            }
+
+            // Actualizar UI HTML
+            document.getElementById('val-e-local').textContent = eMag.toFixed(2);
+        }
+
+        // ==========================================
+        // 4. GRÁFICA 2D (E vs r)
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const canvas2D = document.getElementById('graph-2d');
+        const ctx = canvas2D.getContext('2d');
+
+        function resizeGraph() {
+            canvas2D.width = graphCont.clientWidth;
+            canvas2D.height = graphCont.clientHeight;
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const w = canvas2D.width;
+            const h = canvas2D.height;
+            const padX = 40; const padY = 30;
+            
+            ctx.clearRect(0, 0, w, h);
+
+            // Ejes
+            ctx.beginPath();
+            ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 2;
+            ctx.moveTo(padX, padY/2); ctx.lineTo(padX, h - padY); // Eje Y (E)
+            ctx.lineTo(w - padX/2, h - padY); // Eje X (r)
+            ctx.stroke();
+
+            // Textos de ejes
+            ctx.fillStyle = "#475569"; ctx.font = "14px serif";
+            ctx.fillText("E", padX - 15, padY);
+            ctx.fillText("r", w - padX, h - padY + 15);
+
+            if(params.lambda === 0) return;
+
+            const maxR_graph = 7;
+            const r0 = 6; // Punto de referencia para la integral
+            
+            // Función E(r) = k * lambda / r
+            const calcE = (rad) => (k_visual * Math.abs(params.lambda)) / rad;
+            const maxE = calcE(0.5); // Escala tope
+
+            const mapX = (rad) => padX + (rad / maxR_graph) * (w - padX * 1.5);
+            const mapY = (eVal) => (h - padY) - (eVal / maxE) * (h - padY * 1.5);
+
+            // Dibujar Área Sombreada (Integral)
+            ctx.beginPath();
+            let startedArea = false;
+            for(let r = params.r; r <= r0; r += 0.1) {
+                const x = mapX(r);
+                const y = mapY(calcE(r));
+                if(!startedArea) { ctx.moveTo(x, h - padY); ctx.lineTo(x, y); startedArea = true; }
+                else { ctx.lineTo(x, y); }
+            }
+            ctx.lineTo(mapX(r0), h - padY);
+            ctx.closePath();
+            ctx.fillStyle = "rgba(59, 130, 246, 0.2)"; // Azul translúcido
+            ctx.fill();
+
+            // Dibujar Curva E(r)
+            ctx.beginPath();
+            ctx.strokeStyle = "#dc2626"; // Rojo
+            ctx.lineWidth = 3;
+            for(let r = 0.5; r <= maxR_graph; r += 0.1) {
+                const x = mapX(r);
+                const y = mapY(calcE(r));
+                if(r === 0.5) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Marcador del r actual (Superficie Gaussiana)
+            const currentX = mapX(params.r);
+            const currentY = mapY(calcE(params.r));
+            
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]); ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 2;
+            ctx.moveTo(currentX, h - padY); ctx.lineTo(currentX, currentY);
+            ctx.stroke(); ctx.setLineDash([]);
+
+            // Punto local
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 5, 0, Math.PI*2);
+            ctx.fillStyle = "#2563eb"; ctx.fill();
+        }
+
+        // ==========================================
+        // 5. EVENTOS Y BUCLE PRINCIPAL
+        // ==========================================
+        function updateAll() {
+            updateGeometry();
+            updateFieldVectors();
+            updatePatchPosition();
+            drawGraph();
+        }
+
+        // Listeners UI
+        const binds = [
+            { id: 'slider-lambda', prop: 'lambda', valId: 'val-lambda', isFloat: true },
+            { id: 'slider-r', prop: 'r', isFloat: true },
+            { id: 'slider-l', prop: 'L', isFloat: true },
+            { id: 'slider-theta', prop: 'theta', isFloat: true },
+            { id: 'slider-y', prop: 'yPos', isFloat: true }
+        ];
+
+        binds.forEach(b => {
+            document.getElementById(b.id).addEventListener('input', (e) => {
+                params[b.prop] = b.isFloat ? parseFloat(e.target.value) : parseInt(e.target.value);
+                if(b.valId) document.getElementById(b.valId).textContent = params[b.prop];
+                updateAll();
+            });
+        });
+
+        document.getElementById('toggle-field').addEventListener('change', updateFieldVectors);
+        document.getElementById('toggle-surf').addEventListener('change', (e) => {
+            cylGroup.visible = e.target.checked;
+        });
+        document.getElementById('toggle-rotate').addEventListener('change', (e) => {
+            ctrl.autoRotate = e.target.checked;
+        });
+
+        // Resize fluido
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix();
+                    renderer.setSize(width, height);
+                } else if(entry.target.id === 'graph-container') {
+                    resizeGraph();
+                }
+            }
+        });
+        resizeObserver.observe(cont3D);
+        resizeObserver.observe(graphCont);
+
+        // Init
+        updateAll();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctrl.update();
+            updatePatchPosition(); // Necesario llamar en loop para actualizar posición de label HTML al rotar cámara
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tip encima de todo 
+      (function () {
+          let globalTip = document.createElement("div");
+          globalTip.className = "tip-content";
+          globalTip.style.position = "fixed";
+          globalTip.style.zIndex = "999999";
+          globalTip.style.pointerEvents = "none";
+          globalTip.style.opacity = "0";
+          globalTip.style.visibility = "hidden";
+        
+          document.body.appendChild(globalTip);
+        
+          document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+            const localTip = wrapper.querySelector(".tip-content");
+        
+            wrapper.addEventListener("mouseenter", () => {
+              const rect = wrapper.getBoundingClientRect();
+        
+              globalTip.innerHTML = localTip.innerHTML;
+        
+              globalTip.style.top = rect.top + "px";
+              globalTip.style.left = (rect.right + 10) + "px";
+        
+              globalTip.style.opacity = "1";
+              globalTip.style.visibility = "visible";
+            });
+        
+            wrapper.addEventListener("mouseleave", () => {
+              globalTip.style.opacity = "0";
+              globalTip.style.visibility = "hidden";
+            });
+          });
+        })();
+    </script>
+</body>
+</html>

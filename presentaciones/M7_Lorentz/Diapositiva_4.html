@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CircuitReductionResistor10.easy - Simulador Físico</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'], mono: ['Fira Code', 'monospace'] },
+                    colors: { 
+                        primary: '#2563eb', 
+                        colR1: '#ef4444', colR2: '#3b82f6', colR5: '#10b981', 
+                        colR43: '#f97316', colR67: '#8b5cf6', colRab: '#d946ef', 
+                        colReq: '#0ea5e9', txt: '#64748b', brand: '#fde047'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- KaTeX para LaTeX Profesional -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        body { margin: 0; background-color: #020617; color: #f8fafc; overflow: hidden; touch-action: pan-y; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+        
+        .grid-bg {
+            background-color: #020617;
+            background-image: 
+                linear-gradient(rgba(56, 189, 248, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(56, 189, 248, 0.08) 1px, transparent 1px);
+            background-size: 25px 25px;
+            background-position: center center;
+            box-shadow: inset 0 0 120px rgba(0,0,0,0.95);
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.2); box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        }
+
+        /* Puntero Láser */
+        body.laser-cursor, body.laser-cursor * { cursor: none !important; }
+        #laser-dot {
+            position: fixed; pointer-events: none; width: 14px; height: 14px; border-radius: 50%;
+            background: #ff0000; box-shadow: 0 0 12px #ff0000, 0 0 24px #ff0000; 
+            transform: translate(-50%, -50%); z-index: 99999; display: none;
+        }
+        body.laser-cursor #laser-dot { display: block; }
+
+        .math-box { overflow-x: auto; overflow-y: hidden; padding: 0.5rem 0; width: 100%; }
+        .latex-container { font-size: clamp(1.05rem, 1.2vw, 1.25rem); line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div id="laser-dot"></div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- COMPONENTES LATEX ---
+        const LatexBlock = ({ math }) => {
+            const html = katex.renderToString(math, { displayMode: true, throwOnError: false });
+            return <div className="math-box text-slate-800 latex-container font-medium" dangerouslySetInnerHTML={{ __html: html }} />;
+        };
+
+        const LatexInline = ({ math }) => {
+            const html = katex.renderToString(math, { displayMode: false, throwOnError: false });
+            return <span className="inline-block mx-1 font-bold tracking-wide" dangerouslySetInnerHTML={{ __html: html }} />;
+        };
+
+        const DescText = ({ text }) => {
+            if (!text) return null;
+            const parts = text.split(/(\$.*?\$)/g);
+            return (
+                <div className="text-slate-600 text-base md:text-lg leading-relaxed mb-6">
+                    {parts.map((part, i) => {
+                        if (part.startsWith('$') && part.endsWith('$')) {
+                            return <LatexInline key={i} math={part.slice(1, -1)} />;
+                        }
+                        return <span key={i} dangerouslySetInnerHTML={{__html: part}} />;
+                    })}
+                </div>
+            );
+        };
+
+        // --- UTILIDADES ---
+        const par = (a, b) => (a * b) / (a + b);
+        const fmt = (n) => Number.isInteger(n) ? n.toString() : (Math.round(n * 10000) / 10000).toString();
+        const toggleFullscreen = () => {
+            if (!document.fullscreenElement) { document.documentElement.requestFullscreen().catch(err => console.log(err)); } 
+            else { document.exitFullscreen(); }
+        };
+
+        const C = { r1: '#ef4444', r2: '#3b82f6', r5: '#10b981', r43: '#f97316', r67: '#8b5cf6', rab: '#d946ef', req: '#0ea5e9', txt: '#94a3b8' };
+
+        // --- APLICACIÓN PRINCIPAL ---
+        const App = () => {
+            const [step, setStep] = useState(0);
+            const [flowMode, setFlowMode] = useState('electron'); 
+            const [showParams, setShowParams] = useState(false);
+            const [isLaser, setIsLaser] = useState(false);
+            const canvasRef = useRef(null);
+            
+            // Valores Editables
+            const [v, setV] = useState({ volt: 40, r1: 5, r2: 15, r3: 6, r4: 12, r5: 60, r6: 20, r7: 80 });
+
+            const handleVChange = (e) => {
+                const val = parseFloat(e.target.value) || 0;
+                setV({ ...v, [e.target.name]: val });
+            };
+
+            // Swipe Handlers
+            const [touchStart, setTouchStart] = useState(null);
+            const [touchEnd, setTouchEnd] = useState(null);
+            const minSwipeDistance = 50;
+
+            const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
+            const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+            const onTouchEndFunc = () => {
+                if (!touchStart || !touchEnd) return;
+                const distance = touchStart - touchEnd;
+                if (distance > minSwipeDistance && step < stepsData.length - 1) setStep(s => s + 1);
+                if (distance < -minSwipeDistance && step > 0) setStep(s => s - 1);
+            };
+
+            // Efecto Puntero Láser
+            useEffect(() => {
+                const dot = document.getElementById('laser-dot');
+                const moveLaser = (e) => { if (isLaser) { dot.style.left = e.clientX + 'px'; dot.style.top = e.clientY + 'px'; } };
+                document.body.classList.toggle('laser-cursor', isLaser);
+                window.addEventListener('mousemove', moveLaser);
+                return () => window.removeEventListener('mousemove', moveLaser);
+            }, [isLaser]);
+
+            // --- LÓGICA FÍSICA ESTRICTA ---
+            const c = useMemo(() => {
+                const out = {};
+                out.r43 = par(v.r4, v.r3);        
+                out.r67 = par(v.r6, v.r7);        
+                out.rab = out.r43 + out.r67;      
+                out.rp = 1 / ((1/v.r2) + (1/v.r5) + (1/out.rab)); 
+                out.rt = v.r1 + out.rp;           
+                
+                out.it = v.volt / out.rt;         
+                out.vr1 = out.it * v.r1;          
+                out.vp = v.volt - out.vr1;        
+                
+                out.i2 = out.vp / v.r2;           
+                out.i5 = out.vp / v.r5;           
+                out.iab = out.vp / out.rab;       
+                
+                out.v43 = out.iab * out.r43;      
+                out.v67 = out.iab * out.r67;      
+                
+                out.i4 = out.v43 / v.r4;          
+                out.i3 = out.v43 / v.r3;          
+                out.i6 = out.v67 / v.r6;          
+                out.i7 = out.v67 / v.r7;          
+
+                out.i_puente = out.i3 - out.i7; 
+                return out;
+            }, [v]);
+
+            const N = {
+                S_Top: {x: 100, y: 150}, S_Bot: {x: 100, y: 450},
+                R1_L: {x: 200, y: 150}, R1_R: {x: 300, y: 150},
+                N2_T: {x: 350, y: 150}, N2_B: {x: 350, y: 450}, 
+                N5_T: {x: 500, y: 150}, N5_B: {x: 500, y: 450},   
+                Rab_T: {x: 650, y: 150}, Rab_M: {x: 650, y: 300}, Rab_B: {x: 650, y: 450},
+                R4_T: {x: 600, y: 150}, R4_B: {x: 600, y: 300}, R3_T: {x: 700, y: 150}, R3_B: {x: 700, y: 300},
+                R6_T: {x: 600, y: 300}, R6_B: {x: 600, y: 450}, R7_T: {x: 700, y: 300}, R7_B: {x: 700, y: 450},
+            };
+
+            // --- MOTOR DE DIBUJO ---
+            const drawCircuit = (ctx, t, width, height) => {
+                ctx.clearRect(0, 0, width, height);
+                const logicW = 1000; const logicH = 600;
+                const scale = Math.min(width / logicW, height / logicH) * 0.95; 
+                const offsetX = (width - logicW * scale) / 2;
+                const offsetY = (height - logicH * scale) / 2;
+                
+                ctx.save(); ctx.translate(offsetX, offsetY); ctx.scale(scale, scale);
+
+                const drawParticles = (x1, y1, x2, y2, current) => {
+                    if (flowMode === 'none' || Math.abs(current) <= 0.001) return;
+                    let actX1 = x1, actY1 = y1, actX2 = x2, actY2 = y2;
+                    if (current < 0) { actX1 = x2; actY1 = y2; actX2 = x1; actY2 = y1; }
+                    let absI = Math.abs(current);
+
+                    const dx = actX2 - actX1, dy = actY2 - actY1;
+                    const len = Math.hypot(dx, dy); const ang = Math.atan2(dy, dx);
+                    const speed = Math.max(25, Math.min(250, absI * 45)); 
+                    const numParticles = Math.max(1, Math.floor(len / 40));
+                    
+                    ctx.save(); ctx.translate(actX1, actY1); ctx.rotate(ang);
+                    for(let i=0; i<numParticles; i++) {
+                        let p = ((t * speed + i * (len/numParticles)) % len + len) % len;
+                        if (flowMode === 'electron') p = len - p; 
+                        ctx.beginPath();
+                        if (flowMode === 'electron') {
+                            ctx.arc(p, 0, 4.5, 0, Math.PI*2);
+                            ctx.fillStyle = '#fde047'; ctx.shadowBlur = 12; ctx.shadowColor = '#eab308'; ctx.fill();
+                        } else {
+                            ctx.moveTo(p+8, 0); ctx.lineTo(p-8, -7); ctx.lineTo(p-8, 7); ctx.fillStyle = '#ef4444'; ctx.fill();
+                        }
+                    }
+                    ctx.restore();
+                }
+
+                const drawWire = (x1, y1, x2, y2, alpha, current) => {
+                    if (alpha <= 0) return;
+                    ctx.globalAlpha = alpha;
+                    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+                    ctx.strokeStyle = '#475569'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.stroke();
+                    drawParticles(x1, y1, x2, y2, current);
+                    ctx.globalAlpha = 1.0;
+                };
+
+                const drawResistor = (x1, y1, x2, y2, val, label, alpha, colorCode, current, hl) => {
+                    if (alpha <= 0) return;
+                    ctx.globalAlpha = alpha;
+                    const isVert = x1 === x2;
+                    const cx = (x1 + x2)/2; const cy = (y1 + y2)/2;
+                    
+                    ctx.beginPath(); ctx.moveTo(x1, y1);
+                    if (isVert) { ctx.lineTo(cx, cy - 20); ctx.moveTo(cx, cy + 20); ctx.lineTo(x2, y2); } 
+                    else { ctx.lineTo(cx - 20, cy); ctx.moveTo(cx + 20, cy); ctx.lineTo(x2, y2); }
+                    ctx.strokeStyle = '#475569'; ctx.lineWidth = 4; ctx.stroke();
+
+                    ctx.save(); ctx.translate(cx, cy); if (isVert) ctx.rotate(Math.PI/2);
+                    ctx.beginPath(); const seg = 7, amp = 14;
+                    ctx.moveTo(-seg*3, 0); ctx.lineTo(-seg*2.5, -amp); ctx.lineTo(-seg*1.5, amp);
+                    ctx.lineTo(-seg*0.5, -amp); ctx.lineTo(seg*0.5, amp); ctx.lineTo(seg*1.5, -amp);
+                    ctx.lineTo(seg*2.5, amp); ctx.lineTo(seg*3, 0);
+                    
+                    ctx.strokeStyle = hl ? '#ffffff' : colorCode; ctx.lineWidth = hl ? 6 : 4;
+                    ctx.shadowBlur = hl ? 25 : 10; ctx.shadowColor = hl ? '#ffffff' : colorCode; 
+                    ctx.stroke(); ctx.restore();
+
+                    drawParticles(x1, y1, x2, y2, current);
+
+                    ctx.save(); ctx.translate(cx, cy);
+                    ctx.fillStyle = hl ? '#ffffff' : colorCode; ctx.font = 'bold 18px Inter'; ctx.textAlign = 'center';
+                    if (isVert) { ctx.fillText(label, 45, -5); ctx.fillStyle = '#94a3b8'; ctx.font = '16px Inter'; ctx.fillText(fmt(val)+'Ω', 45, 15); }
+                    else { ctx.fillText(label, 0, -25); ctx.fillStyle = '#94a3b8'; ctx.font = '16px Inter'; ctx.fillText(fmt(val)+'Ω', 0, 25); }
+                    ctx.restore(); ctx.globalAlpha = 1.0;
+                };
+
+                const drawNodeDot = (x, y, alpha, color='#e2e8f0', size=6) => {
+                    if(alpha<=0) return; ctx.globalAlpha=alpha;
+                    ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI*2); ctx.fillStyle=color; ctx.fill(); ctx.globalAlpha=1;
+                };
+
+                // ESTADOS VISUALES
+                const stateMap = [0, 0, 0, 1, 2, 3, 4, 4, 3, 2, 1, 0, 0, 0];
+                const vs = stateMap[step];
+
+                const v_req = vs === 4 ? 1 : 0; const v_r1 = vs < 4 ? 1 : 0; const v_rp = vs === 3 ? 1 : 0;
+                const v_r25 = vs < 3 ? 1 : 0; const v_rab = vs === 2 ? 1 : 0; const v_p1 = vs === 1 ? 1 : 0;
+                const v_orig = vs === 0 ? 1 : 0;
+
+                const hR1 = [7,8].includes(step); const hReq = [6,7].includes(step); const hRp = [5,8].includes(step);
+                const hR25 = [5,9].includes(step); const hRab = [4,5,9,10].includes(step); const hP1 = [3,4,10,11].includes(step);
+                const hOrig = [3,11,12].includes(step);
+
+                drawWire(N.S_Bot.x, N.S_Bot.y, N.S_Top.x, N.S_Top.y, 1.0, c.it);
+                ctx.beginPath(); ctx.arc(N.S_Top.x, 300, 32, 0, Math.PI*2); ctx.fillStyle='#020617'; ctx.fill(); ctx.strokeStyle='#38bdf8'; ctx.lineWidth=4; ctx.stroke();
+                ctx.fillStyle='#ef4444'; ctx.font='bold 24px Inter'; ctx.fillText('+', N.S_Top.x-7, 285); ctx.fillStyle='#38bdf8'; ctx.fillText('-', N.S_Top.x-5, 320);
+                ctx.fillStyle='#f8fafc'; ctx.fillText(fmt(v.volt)+'V', N.S_Top.x-75, 305);
+
+                drawWire(N.S_Top.x, N.S_Top.y, N.R1_L.x, N.R1_L.y, 1.0, c.it);
+                drawResistor(N.R1_L.x, N.R1_L.y, N.R1_R.x, N.R1_R.y, v.r1, 'R1', v_r1, C.r1, c.it, hR1);
+                drawWire(N.R1_L.x, N.R1_L.y, N.R1_R.x, N.R1_R.y, v_req, c.it); 
+                drawWire(N.R1_R.x, N.R1_R.y, N.N2_T.x, N.N2_T.y, 1.0, c.it);
+                drawWire(N.N2_B.x, N.N2_B.y, N.S_Bot.x, N.S_Bot.y, 1.0, c.it); 
+
+                drawResistor(N.N2_T.x, N.N2_T.y, N.N2_B.x, N.N2_B.y, c.rt, 'Req', v_req, C.req, c.it, hReq);
+                drawResistor(N.N2_T.x, N.N2_T.y, N.N2_B.x, N.N2_B.y, v.r2, 'R2', v_r25, C.r2, c.i2, hR25);
+
+                const currentToMid = vs === 3 ? c.it : (c.it - c.i2); const showWireMid = vs < 4 ? 1 : 0;
+                drawWire(N.N2_T.x, N.N2_T.y, N.N5_T.x, N.N5_T.y, showWireMid, currentToMid);
+                drawWire(N.N5_B.x, N.N5_B.y, N.N2_B.x, N.N2_B.y, showWireMid, currentToMid);
+                if(showWireMid) { drawNodeDot(N.N2_T.x, N.N2_T.y, 1); drawNodeDot(N.N2_B.x, N.N2_B.y, 1); }
+
+                drawResistor(N.N5_T.x, N.N5_T.y, N.N5_B.x, N.N5_B.y, c.rp, 'Rp', v_rp, C.req, c.it, hRp);
+                drawResistor(N.N5_T.x, N.N5_T.y, N.N5_B.x, N.N5_B.y, v.r5, 'R5', v_r25, C.r5, c.i5, hR25);
+
+                const showWireRight = vs < 3 ? 1 : 0;
+                const destRightT = v_orig ? N.R4_T : N.Rab_T; const destRightB = v_orig ? N.R6_B : N.Rab_B; 
+                
+                drawWire(N.N5_T.x, N.N5_T.y, destRightT.x, destRightT.y, showWireRight, c.iab);
+                drawWire(destRightB.x, destRightB.y, N.N5_B.x, N.N5_B.y, showWireRight, c.iab); 
+                if(showWireRight) { drawNodeDot(N.N5_T.x, N.N5_T.y, 1); drawNodeDot(N.N5_B.x, N.N5_B.y, 1); }
+
+                drawResistor(N.Rab_T.x, N.Rab_T.y, N.Rab_B.x, N.Rab_B.y, c.rab, 'Rab', v_rab, C.rab, c.iab, hRab);
+                drawResistor(N.Rab_T.x, N.Rab_T.y, N.Rab_M.x, N.Rab_M.y, c.r43, 'R43', v_p1, C.r43, c.iab, hP1);
+                drawResistor(N.Rab_M.x, N.Rab_M.y, N.Rab_B.x, N.Rab_B.y, c.r67, 'R67', v_p1, C.r67, c.iab, hP1);
+
+                drawWire(N.R4_T.x, N.R4_T.y, N.R3_T.x, N.R3_T.y, v_orig, c.i3);
+                drawResistor(N.R4_T.x, N.R4_T.y, N.R4_B.x, N.R4_B.y, v.r4, 'R4', v_orig, C.r43, c.i4, hOrig);
+                drawResistor(N.R3_T.x, N.R3_T.y, N.R3_B.x, N.R3_B.y, v.r3, 'R3', v_orig, C.r43, c.i3, hOrig);
+                
+                drawWire(N.R3_B.x, N.R3_B.y, N.R4_B.x, N.R4_B.y, v_orig, c.i_puente); 
+
+                drawResistor(N.R6_T.x, N.R6_T.y, N.R6_B.x, N.R6_B.y, v.r6, 'R6', v_orig, C.r67, c.i6, hOrig);
+                drawResistor(N.R7_T.x, N.R7_T.y, N.R7_B.x, N.R7_B.y, v.r7, 'R7', v_orig, C.r67, c.i7, hOrig);
+                drawWire(N.R7_B.x, N.R7_B.y, N.R6_B.x, N.R6_B.y, v_orig, c.i7); 
+                
+                if (v_orig) { 
+                    drawNodeDot(N.R4_T.x, N.R4_T.y, 1); drawNodeDot(N.R3_T.x, N.R3_T.y, 1); 
+                    drawNodeDot(N.R4_B.x, N.R4_B.y, 1); drawNodeDot(N.R3_B.x, N.R3_B.y, 1); 
+                    drawNodeDot(N.R6_B.x, N.R6_B.y, 1); drawNodeDot(N.R7_B.x, N.R7_B.y, 1); 
+                }
+
+                // LCK Nodos (PASO 13)
+                if (step === 13) {
+                    const drawTag = (x, y, text, color) => {
+                        ctx.save(); ctx.font = "bold 15px Inter"; const tw = ctx.measureText(text).width;
+                        ctx.fillStyle = "#020617E6"; ctx.beginPath(); ctx.roundRect(x - tw/2 - 8, y - 12, tw + 16, 24, 6); ctx.fill();
+                        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+                        ctx.fillStyle = color; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text, x, y); ctx.restore();
+                    };
+
+                    drawNodeDot(N.N2_T.x, N.N2_T.y, 1, '#ffffff', 10); drawNodeDot(N.N5_T.x, N.N5_T.y, 1, '#ffffff', 10);
+                    drawNodeDot(N.R4_T.x, N.R4_T.y, 1, '#ffffff', 10); drawNodeDot(N.R4_B.x, N.R4_B.y, 1, '#ffffff', 10);
+
+                    drawTag(N.N2_T.x - 55, N.N2_T.y - 20, `${fmt(c.it)}A →`, C.req); drawTag(N.N2_T.x + 40, N.N2_T.y + 35, `↓ ${fmt(c.i2)}A`, C.r2);
+                    drawTag(N.N2_T.x + 65, N.N2_T.y - 20, `${fmt(c.it - c.i2)}A →`, C.txt);
+
+                    drawTag(N.N5_T.x + 40, N.N5_T.y + 35, `↓ ${fmt(c.i5)}A`, C.r5); drawTag(N.N5_T.x + 65, N.N5_T.y - 20, `${fmt(c.iab)}A →`, C.rab);
+                    drawTag(N.R4_T.x + 35, N.R4_T.y + 35, `↓ ${fmt(c.i4)}A`, C.r43); drawTag(N.R4_T.x + 55, N.R4_T.y - 20, `${fmt(c.i3)}A →`, C.r43);
+
+                    let pDir = c.i_puente >= 0 ? '←' : '→';
+                    drawTag(N.R4_B.x + 50, N.R4_B.y - 20, `${pDir} ${fmt(Math.abs(c.i_puente))}A`, '#fbbf24');
+                    drawTag(N.R6_T.x + 35, N.R6_T.y + 35, `↓ ${fmt(c.i6)}A`, C.r67);
+                }
+
+                ctx.restore();
+            };
+
+            useEffect(() => {
+                let animationFrameId; let startTime = Date.now();
+                const render = () => {
+                    const t = (Date.now() - startTime) / 1000;
+                    if (canvasRef.current) {
+                        const ctx = canvasRef.current.getContext('2d');
+                        const { width, height } = canvasRef.current.getBoundingClientRect();
+                        canvasRef.current.width = width * window.devicePixelRatio;
+                        canvasRef.current.height = height * window.devicePixelRatio;
+                        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                        drawCircuit(ctx, t, width, height);
+                    }
+                    animationFrameId = requestAnimationFrame(render);
+                };
+                render();
+                return () => cancelAnimationFrame(animationFrameId);
+            }, [step, v, flowMode, c]);
+
+            const handleCanvasClick = () => { if (step < stepsData.length - 1) setStep(s => s + 1); };
+
+            // --- DATOS PEDAGÓGICOS EXPERTOS ---
+            const stepsData = [
+                {
+                    title: "Introducción y Glosario",
+                    desc: "Bienvenido. Aprenderemos a resolver la red mediante el modelo $CircuitReductionResistor10.easy$. Nuestro objetivo es colapsar la topología y validar las corrientes por la Ley de Ohm.",
+                    glossary: [
+                        { t: "Corriente Convencional (Rojo)", d: "Modelo teórico: la corriente viaja del polo Positivo (+) al Negativo (-)." },
+                        { t: "Flujo de Electrones (Amarillo)", d: "Física Real: los electrones viajan del polo Negativo (-) hacia el Positivo (+)." }
+                    ],
+                    tip: "Activa el Puntero Láser y la Pantalla Completa en la barra superior. Toca el circuito visual para avanzar rápidamente."
+                },
+                {
+                    title: "Topología Original",
+                    desc: "Iniciamos el análisis evaluando el circuito visualmente. Contamos con una resistencia $\\textcolor{"+C.r1+"}{R_1}$ que alimenta a una red paralela múltiple ramificada.",
+                },
+                {
+                    title: "CircuitReductionResistor10.easy: Ecuación Maestra",
+                    desc: "Para hallar la resistencia total equivalente $\\textcolor{"+C.req+"}{R_{eq}}$ en un solo modelo matemático, planteamos la Ecuación Maestra global con fracciones continuas. Esto nos permite ver todo el panorama:\n\nReemplazamos meticulosamente todos los valores iniciales dados ($R_1=${v.r1}, $R_2=${v.r2}$, $R_4=${v.r4}$, etc.) en la fórmula general:",
+                    math: `\\begin{aligned}
+                        \\textcolor{${C.req}}{R_{eq}} &= \\textcolor{${C.r1}}{R_1} + \\left[ \\frac{1}{\\textcolor{${C.r2}}{R_2}} + \\frac{1}{\\textcolor{${C.r5}}{R_5}} + \\frac{1}{ (R_4 \\parallel R_3) + (R_6 \\parallel R_7) } \\right]^{-1} \\\\
+                        &= ${v.r1} + \\left[ \\frac{1}{${v.r2}} + \\frac{1}{${v.r5}} + \\frac{1}{ (${v.r4} \\parallel ${v.r3}) + (${v.r6} \\parallel ${v.r7}) } \\right]^{-1} \\\\
+                        &= ${v.r1} + \\left[ \\frac{1}{${v.r2}} + \\frac{1}{${v.r5}} + \\frac{1}{ ${fmt(c.r43)} + ${fmt(c.r67)} } \\right]^{-1} \\\\
+                        &= ${v.r1} + ${fmt(c.rp)} = \\mathbf{\\textcolor{${C.req}}{${fmt(c.rt)} \\Omega}}
+                    \\end{aligned}`,
+                    tip: "Este método directo pre-calcula el resultado perfecto. En los siguientes pasos demostraremos cómo se desarrolla cada bloque internamente."
+                },
+                {
+                    title: "Paso 1: Bloques Paralelos Internos",
+                    desc: "La simplificación inicia desde la rama más alejada a la fuente. Observamos dos divisiones en paralelo. Para calcular su resistencia equivalente, aplicamos el inverso de la suma de sus inversos. Reemplazando $R_4=${v.r4} y $R_3=${v.r3}$ por un lado, y $R_6=${v.r6}$ y $R_7=${v.r7}$ por otro:",
+                    math: `\\begin{aligned}
+                        \\textcolor{${C.r43}}{R_{43}} &= \\left( \\frac{1}{R_4} + \\frac{1}{R_3} \\right)^{-1} = \\left( \\frac{1}{${v.r4}} + \\frac{1}{${v.r3}} \\right)^{-1} = \\mathbf{\\textcolor{${C.r43}}{${fmt(c.r43)} \\Omega}} \\\\
+                        \\textcolor{${C.r67}}{R_{67}} &= \\left( \\frac{1}{R_6} + \\frac{1}{R_7} \\right)^{-1} = \\left( \\frac{1}{${v.r6}} + \\frac{1}{${v.r7}} \\right)^{-1} = \\mathbf{\\textcolor{${C.r67}}{${fmt(c.r67)} \\Omega}}
+                    \\end{aligned}`
+                },
+                {
+                    title: "Paso 2: Serie de la Rama Derecha",
+                    desc: "Al haber colapsado los paralelos, las resistencias $\\textcolor{"+C.r43+"}{R_{43}}$ y $\\textcolor{"+C.r67+"}{R_{67}}$ quedaron dispuestas en el mismo conductor (sin ramificaciones intermedias). Como están en serie, la corriente tiene un solo camino, por lo que sumamos sus valores de forma directa:",
+                    math: `\\textcolor{${C.rab}}{R_{ab}} = \\textcolor{${C.r43}}{R_{43}} + \\textcolor{${C.r67}}{R_{67}} = ${fmt(c.r43)} + ${fmt(c.r67)} = \\mathbf{\\textcolor{${C.rab}}{${fmt(c.rab)} \\Omega}}`
+                },
+                {
+                    title: "Paso 3: El Gran Paralelo",
+                    desc: "La topología general se ha reducido exitosamente a tres ramas conectadas a los mismos dos nodos de tensión principales: $\\textcolor{"+C.r2+"}{R_2}$, $\\textcolor{"+C.r5+"}{R_5}$ y $\\textcolor{"+C.rab+"}{R_{ab}}$. Procedemos a aplicar la fórmula de conductancia en paralelo introduciendo sus respectivos valores:",
+                    math: `\\textcolor{${C.req}}{R_p} = \\left( \\frac{1}{\\textcolor{${C.r2}}{R_2}} + \\frac{1}{\\textcolor{${C.r5}}{R_5}} + \\frac{1}{\\textcolor{${C.rab}}{R_{ab}}} \\right)^{-1} = \\left( \\frac{1}{${v.r2}} + \\frac{1}{${v.r5}} + \\frac{1}{${fmt(c.rab)}} \\right)^{-1} = \\mathbf{\\textcolor{${C.req}}{${fmt(c.rp)} \\Omega}}`
+                },
+                {
+                    title: "Paso 4: Resistencia Equivalente Total",
+                    desc: "Hemos fusionado toda la red en $\\textcolor{"+C.req+"}{R_p}$, la cual ahora queda en serie directa con $\\textcolor{"+C.r1+"}{R_1}$. Sumamos estos dos elementos en serie y confirmamos el resultado adelantado en nuestra ecuación maestra:",
+                    math: `\\textcolor{${C.req}}{R_{eq}} = \\textcolor{${C.r1}}{R_1} + \\textcolor{${C.req}}{R_p} = ${v.r1} + ${fmt(c.rp)} = \\mathbf{\\textcolor{${C.req}}{${fmt(c.rt)} \\Omega}}`
+                },
+                {
+                    title: "Paso 5: Iniciando el Despliegue",
+                    desc: "¡Inicia la fase de retorno! Conocida la resistencia global, aplicamos la Ley de Ohm ($I = V/R$) para calcular la corriente máxima $\\textcolor{"+C.req+"}{I_T}$ que provee la fuente. Acto seguido, abrimos el circuito y multiplicamos esa corriente por $\\textcolor{"+C.r1+"}{R_1}$ para hallar la tensión que ésta disipa en forma de calor.",
+                    math: `\\begin{aligned}
+                        \\textcolor{${C.req}}{I_T} &= \\frac{V_{fuente}}{\\textcolor{${C.req}}{R_{eq}}} = \\frac{${v.volt}}{${fmt(c.rt)}} = \\mathbf{\\textcolor{${C.req}}{${fmt(c.it)} A}} \\\\
+                        \\textcolor{${C.r1}}{V_{R1}} &= \\textcolor{${C.req}}{I_T} \\cdot \\textcolor{${C.r1}}{R_1} = ${fmt(c.it)} \\cdot ${v.r1} = \\mathbf{\\textcolor{${C.r1}}{${fmt(c.vr1)} V}}
+                    \\end{aligned}`,
+                    tip: "Por la Ley de Conservación de Carga, toda la corriente del circuito atraviesa obligatoriamente a R1 por ser el punto de embudo."
+                },
+                {
+                    title: "Paso 6: Voltaje del Paralelo",
+                    desc: "Por la Segunda Ley de Kirchhoff (Ley de Voltajes LVK), la energía restante luego del paso por $\\textcolor{"+C.r1+"}{R_1}$ alimentará con voltaje constante e igual a cada una de las ramificaciones paralelas $V_p$.",
+                    math: `V_p = V_{fuente} - \\textcolor{${C.r1}}{V_{R1}} = ${v.volt} - ${fmt(c.vr1)} = \\mathbf{${fmt(c.vp)} V}`
+                },
+                {
+                    title: "Paso 7: Corrientes Divisionales",
+                    desc: "Conocido el voltaje de los rieles ($V_p$), lo reemplazamos en la Ley de Ohm rama por rama para determinar la cantidad de electrones por segundo (corriente) que viajarán por cada sendero individual:",
+                    math: `\\begin{aligned}
+                        \\textcolor{${C.r2}}{I_2} &= \\frac{V_p}{\\textcolor{${C.r2}}{R_2}} = \\frac{${fmt(c.vp)}}{${v.r2}} = \\mathbf{\\textcolor{${C.r2}}{${fmt(c.i2)} A}} \\\\
+                        \\textcolor{${C.r5}}{I_5} &= \\frac{V_p}{\\textcolor{${C.r5}}{R_5}} = \\frac{${fmt(c.vp)}}{${v.r5}} = \\mathbf{\\textcolor{${C.r5}}{${fmt(c.i5)} A}} \\\\
+                        \\textcolor{${C.rab}}{I_{ab}} &= \\frac{V_p}{\\textcolor{${C.rab}}{R_{ab}}} = \\frac{${fmt(c.vp)}}{${fmt(c.rab)}} = \\mathbf{\\textcolor{${C.rab}}{${fmt(c.iab)} A}}
+                    \\end{aligned}`
+                },
+                {
+                    title: "Paso 8: Despliegue Rama Derecha",
+                    desc: "La corriente $\\textcolor{"+C.rab+"}{I_{ab}}$ se introduce íntegra por la rama derecha e induce, de manera serial, dos fuertes caídas de voltaje en sus sub-módulos multiplicando $I \\cdot R$:",
+                    math: `\\begin{aligned}
+                        \\textcolor{${C.r43}}{V_{43}} &= \\textcolor{${C.rab}}{I_{ab}} \\cdot \\textcolor{${C.r43}}{R_{43}} = ${fmt(c.iab)} \\cdot ${fmt(c.r43)} = \\mathbf{\\textcolor{${C.r43}}{${fmt(c.v43)} V}} \\\\
+                        \\textcolor{${C.r67}}{V_{67}} &= \\textcolor{${C.rab}}{I_{ab}} \\cdot \\textcolor{${C.r67}}{R_{67}} = ${fmt(c.iab)} \\cdot ${fmt(c.r67)} = \\mathbf{\\textcolor{${C.r67}}{${fmt(c.v67)} V}}
+                    \\end{aligned}`
+                },
+                {
+                    title: "Paso 9: Corrientes Finales",
+                    desc: "Desplegamos la topología original en escalera. Reemplazando los voltajes locales ($V_{43}$ y $V_{67}$) sobre sus resistores individuales, obtenemos el espectro final de corrientes divisionales:",
+                    math: `\\begin{aligned}
+                        \\textcolor{${C.r43}}{I_4} &= \\frac{\\textcolor{${C.r43}}{V_{43}}}{R_4} = \\frac{${fmt(c.v43)}}{${v.r4}} = \\mathbf{${fmt(c.i4)} A} \\quad &\\textcolor{${C.r43}}{I_3} &= \\frac{\\textcolor{${C.r43}}{V_{43}}}{R_3} = \\frac{${fmt(c.v43)}}{${v.r3}} = \\mathbf{${fmt(c.i3)} A} \\\\
+                        \\textcolor{${C.r67}}{I_6} &= \\frac{\\textcolor{${C.r67}}{V_{67}}}{R_6} = \\frac{${fmt(c.v67)}}{${v.r6}} = \\mathbf{${fmt(c.i6)} A} \\quad &\\textcolor{${C.r67}}{I_7} &= \\frac{\\textcolor{${C.r67}}{V_{67}}}{R_7} = \\frac{${fmt(c.v67)}}{${v.r7}} = \\mathbf{${fmt(c.i7)} A}
+                    \\end{aligned}`
+                },
+                {
+                    title: "Paso 10: Resultados Validados",
+                    desc: "¡Análisis concluido con maestría! El cuadro adjunto incluye adicionalmente el cálculo del efecto Joule o Potencia disipada (W), hallada mediante la multiplicación $P = V \\cdot I$ para cada resistor.",
+                    isTable: true
+                },
+                {
+                    title: "Paso 11: Verificación de Nodos (LCK)",
+                    desc: "La Primera Ley de Kirchhoff establece: $\\sum I_{entran} = \\sum I_{salen}$. Reemplazamos los valores obtenidos para demostrar esta ley rigurosa en los nodos iluminados del diagrama:",
+                    math: `\\begin{aligned}
+                        \\text{Nodo } \\textcolor{${C.r2}}{R_2}:& \\quad \\textcolor{${C.req}}{I_T} = \\textcolor{${C.r2}}{I_2} + I_{resto} \\implies ${fmt(c.it)}\\text{A} = ${fmt(c.i2)}\\text{A} + ${fmt(c.it - c.i2)}\\text{A} \\quad \\textcolor{#10b981}{\\checkmark} \\\\
+                        \\text{Nodo } \\textcolor{${C.r5}}{R_5}:& \\quad I_{resto} = \\textcolor{${C.r5}}{I_5} + \\textcolor{${C.rab}}{I_{ab}} \\implies ${fmt(c.it - c.i2)}\\text{A} = ${fmt(c.i5)}\\text{A} + ${fmt(c.iab)}\\text{A} \\quad \\textcolor{#10b981}{\\checkmark} \\\\
+                        \\text{Nodo Sup}:& \\quad \\textcolor{${C.rab}}{I_{ab}} = \\textcolor{${C.r43}}{I_4 + I_3} \\implies ${fmt(c.iab)}\\text{A} = ${fmt(c.i4)}\\text{A} + ${fmt(c.i3)}\\text{A} \\quad \\textcolor{#10b981}{\\checkmark} \\\\
+                        \\text{Puente}:& \\quad \\textcolor{${C.r43}}{I_4} + \\textcolor{#fbbf24}{I_{pte}} = \\textcolor{${C.r67}}{I_6} \\implies ${fmt(c.i4)}\\text{A} + ${fmt(c.i_puente)}\\text{A} = ${fmt(c.i6)}\\text{A} \\quad \\textcolor{#10b981}{\\checkmark}
+                    \\end{aligned}`,
+                    tip: "¡El Puente Central Analizado! La corriente I4 es insuficiente por sí misma para sostener la demanda de I6 en la rama inferior. Esto provoca que la resistencia R3 se convierta en surtidora, transfiriendo el déficit de electrones transversalmente a través del puente medio. La física es perfecta."
+                }
+            ];
+
+            return (
+                <div className="flex flex-col lg:flex-row h-screen w-screen bg-[#020617] font-sans text-slate-200 overflow-hidden" 
+                     onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEndFunc}>
+                    
+                    {/* ZONA IZQUIERDA: LIENZO (CANVAS) */}
+                    <div className="flex-1 relative flex flex-col min-h-[45vh] lg:min-h-0 border-b lg:border-b-0 lg:border-r border-slate-800">
+                        
+                        {/* NAVBAR TOP */}
+                        <div className="h-14 md:h-16 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 md:px-6 flex items-center justify-between z-20 absolute top-0 w-full shadow-md">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <i data-lucide="zap" className="w-5 h-5 md:w-6 md:h-6 text-yellow-400"></i>
+                                <h1 className="font-black text-slate-100 tracking-wide text-[10px] sm:text-xs md:text-sm lg:text-lg">
+                                    <span className="text-yellow-400">CircuitReductionResistor10.easy</span>
+                                </h1>
+                            </div>
+
+                            <div className="flex items-center gap-2 md:gap-4">
+                                <button onClick={() => setShowParams(!showParams)} className={`px-2 md:px-4 py-1.5 md:py-2 rounded-lg font-bold transition-all border text-xs md:text-sm ${showParams ? 'bg-sky-500/20 text-sky-400 border-sky-500/50' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}>
+                                    <i data-lucide="sliders" className="w-3 h-3 md:w-4 md:h-4 inline mr-1 md:mr-2"></i>Lab
+                                </button>
+                                
+                                <div className="hidden md:flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                                    <button onClick={() => setFlowMode('electron')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${flowMode === 'electron' ? 'bg-slate-700 text-yellow-400' : 'text-slate-400'}`}>e⁻</button>
+                                    <button onClick={() => setFlowMode('conventional')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${flowMode === 'conventional' ? 'bg-slate-700 text-red-400' : 'text-slate-400'}`}>I (+)</button>
+                                </div>
+
+                                <button onClick={() => setIsLaser(!isLaser)} className={`hidden md:block p-1.5 md:p-2 rounded-lg border transition-colors ${isLaser ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`} title="Puntero Láser">
+                                    <i data-lucide="crosshair" className="w-4 h-4"></i>
+                                </button>
+
+                                <button onClick={toggleFullscreen} className="p-1.5 md:p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors" title="Pantalla Completa">
+                                    <i data-lucide="maximize" className="w-4 h-4 text-slate-300"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* CANVAS AREA (Tap to advance) */}
+                        <div className="flex-1 w-full relative grid-bg pt-14 md:pt-16 cursor-pointer" onClick={handleCanvasClick}>
+                            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full"></canvas>
+                            
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/60 backdrop-blur text-slate-300 px-4 py-2 rounded-full text-xs font-bold lg:hidden pointer-events-none border border-slate-700/50 shadow-lg">
+                                👆 Toca el circuito o desliza el texto para avanzar
+                            </div>
+                            
+                            {/* PANEL FLOTANTE DE PARÁMETROS */}
+                            <div className={`absolute top-16 md:top-20 left-2 md:left-6 glass-panel rounded-2xl p-4 md:p-6 w-64 md:w-80 shadow-2xl transition-all duration-300 z-30 ${showParams ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`} onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
+                                    <h3 className="font-bold text-sky-400"><i data-lucide="cpu" className="w-4 h-4 inline mr-2"></i>Edición en Vivo</h3>
+                                    <button onClick={() => setShowParams(false)} className="text-slate-400 hover:text-white"><i data-lucide="x" className="w-4 h-4"></i></button>
+                                </div>
+                                <div className="mb-4">
+                                    <label className="text-xs text-slate-400 mb-1 block">Voltaje de la Fuente (V)</label>
+                                    <input type="range" name="volt" min="1" max="100" value={v.volt} onChange={handleVChange} className="w-full accent-sky-500" />
+                                    <div className="text-right font-mono text-sm text-sky-300">{v.volt} V</div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 md:gap-3">
+                                    {['r1','r2','r3','r4','r5','r6','r7'].map(r => (
+                                        <div key={r}>
+                                            <label className="text-[10px] text-slate-400 uppercase font-bold">{r}</label>
+                                            <input type="number" name={r} value={v[r]} onChange={handleVChange} min="0.1" step="0.1" className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs md:text-sm font-mono text-slate-200 focus:outline-none focus:border-sky-500 transition-colors" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ZONA DERECHA: PANEL PEDAGÓGICO */}
+                    <div className="w-full lg:w-[500px] xl:w-[600px] bg-white text-slate-800 flex flex-col shadow-[-20px_0_40px_rgba(0,0,0,0.5)] z-20 relative">
+                        
+                        {/* Cabecera Progreso */}
+                        <div className="h-12 md:h-16 bg-slate-50 border-b border-slate-200 px-6 md:px-8 flex items-center justify-between shrink-0">
+                            <div className="font-extrabold text-xs md:text-sm tracking-widest text-sky-600">PASO A PASO: <span className="text-slate-800">{step} / {stepsData.length - 1}</span></div>
+                            <div className="text-[10px] text-slate-400 uppercase font-bold flex items-center gap-1 lg:hidden">
+                                <i data-lucide="move-horizontal" className="w-3 h-3"></i> Desliza
+                            </div>
+                        </div>
+
+                        {/* Contenido Deslizable */}
+                        <div className="flex-1 overflow-y-auto p-6 md:p-8 relative">
+                            <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-4 leading-tight">{stepsData[step].title}</h2>
+                            <DescText text={stepsData[step].desc} />
+                            
+                            {stepsData[step].glossary && (
+                                <div className="grid gap-3 mt-4 mb-6">
+                                    {stepsData[step].glossary.map((g, i) => (
+                                        <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                                            <h4 className="font-bold text-slate-800 text-sm">{g.t}</h4>
+                                            <p className="text-slate-500 text-sm mt-1">{g.d}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {stepsData[step].math && (
+                                <div className="bg-blue-50/40 p-4 md:p-6 rounded-2xl border border-blue-100 shadow-inner mb-6">
+                                    <LatexBlock math={stepsData[step].math} />
+                                </div>
+                            )}
+
+                            {stepsData[step].tip && (
+                                <div className="bg-amber-50 border-l-4 border-amber-500 p-4 md:p-5 rounded-r-xl mt-6 flex gap-3 md:gap-4 shadow-sm">
+                                    <i data-lucide="lightbulb" className="w-6 h-6 text-amber-500 shrink-0"></i>
+                                    <div>
+                                        <h4 className="font-bold text-amber-800 text-xs md:text-sm uppercase tracking-wide mb-1">Tip Experto 10.easy</h4>
+                                        <p className="text-amber-900/80 text-sm md:text-base">{stepsData[step].tip}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {stepsData[step].isTable && (
+                                <div className="overflow-x-auto rounded-xl border border-slate-200 mt-4 shadow-sm">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-slate-800 text-white font-mono text-[10px] md:text-xs uppercase tracking-wider">
+                                            <tr>
+                                                <th className="px-3 py-3">Res.</th>
+                                                <th className="px-3 py-3">R (Ω)</th>
+                                                <th className="px-3 py-3 text-emerald-300">Voltaje</th>
+                                                <th className="px-3 py-3 text-sky-300">Corriente</th>
+                                                <th className="px-3 py-3 text-amber-300">Pot. (W)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 bg-white font-mono text-slate-700">
+                                            {[ 
+                                                {id:'R1', r:v.r1, i:c.it, v:c.vr1, col: C.r1}, 
+                                                {id:'R2', r:v.r2, i:c.i2, v:c.vp, col: C.r2}, 
+                                                {id:'R3', r:v.r3, i:c.i3, v:c.v43, col: C.txt}, 
+                                                {id:'R4', r:v.r4, i:c.i4, v:c.v43, col: C.txt}, 
+                                                {id:'R5', r:v.r5, i:c.i5, v:c.vp, col: C.r5}, 
+                                                {id:'R6', r:v.r6, i:c.i6, v:c.v67, col: C.txt}, 
+                                                {id:'R7', r:v.r7, i:c.i7, v:c.v67, col: C.txt}
+                                            ].map(row => (
+                                                <tr key={row.id} className="hover:bg-slate-50 transition-colors">
+                                                    <td className="px-3 py-3 font-bold" style={{color: row.col}}>{row.id}</td>
+                                                    <td className="px-3 py-3">{fmt(row.r)}</td>
+                                                    <td className="px-3 py-3 font-bold text-emerald-700">{fmt(row.v)} V</td>
+                                                    <td className="px-3 py-3 font-bold text-sky-700">{fmt(row.i)} A</td>
+                                                    <td className="px-3 py-3 font-bold text-amber-600">{fmt(row.v * row.i)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Pie de Panel y Botonera */}
+                        <div className="bg-white border-t border-slate-200 shrink-0 flex flex-col z-50 relative">
+                            <div className="h-20 px-6 md:px-8 flex justify-between items-center">
+                                <button onClick={() => setStep(Math.max(0, step - 1))} disabled={step === 0} 
+                                        className="px-5 md:px-6 py-2.5 md:py-3 rounded-full font-bold transition-all flex items-center gap-2 bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40 text-sm md:text-base">
+                                    <i data-lucide="arrow-left" className="w-4 h-4"></i> Anterior
+                                </button>
+                                
+                                <button onClick={() => setStep(Math.min(stepsData.length - 1, step + 1))} disabled={step === stepsData.length - 1} 
+                                        className="px-5 md:px-6 py-2.5 md:py-3 rounded-full font-bold transition-all flex items-center gap-2 bg-sky-600 text-white hover:bg-sky-700 disabled:opacity-40 shadow-lg hover:shadow-sky-500/50 text-sm md:text-base">
+                                    Siguiente <i data-lucide="arrow-right" className="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            <div className="bg-slate-100 text-center py-2.5 text-[10px] text-slate-400 uppercase tracking-widest font-bold border-t border-slate-200">
+                                &copy; 2026 Derechos Reservados - <span className="text-yellow-600 font-black">CircuitReductionResistor10.easy</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        setTimeout(() => lucide.createIcons(), 500);
+    </script>
+</body>
+</html>

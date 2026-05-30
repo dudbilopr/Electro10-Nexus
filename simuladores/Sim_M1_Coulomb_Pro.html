@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Maestro: Ley de Coulomb Pro</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        
+        /* Glassmorphism & UI */
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .input-dark {
+            background: #1e293b; border: 1px solid #334155; color: white;
+            padding: 4px 8px; border-radius: 6px; width: 100%;
+            font-family: monospace; font-size: 0.9rem;
+        }
+        .input-dark:focus { outline: none; border-color: #3b82f6; }
+        
+        .select-dark {
+            background: #0f172a; border: 1px solid #334155; color: #94a3b8;
+            padding: 4px; border-radius: 6px; font-size: 0.8rem;
+            cursor: pointer;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        
+        canvas { touch-action: none; }
+        .math-step { border-left: 4px solid; padding-left: 1rem; margin-bottom: 1rem; background: rgba(30, 41, 59, 0.3); border-radius: 0 8px 8px 0; padding: 12px; }
+        
+        /* Vector Label Styles */
+        .vector-label {
+            position: absolute;
+            background: rgba(15, 23, 42, 0.6); /* Más transparente */
+            backdrop-filter: blur(2px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: white;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 10;
+            transition: left 0.05s linear, top 0.05s linear; /* Suavizar movimiento */
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Navbar -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/20">C</div>
+            <h1 class="text-lg font-bold tracking-tight text-white hidden md:block">Simulador <span class="text-blue-400">Coulomb Expert</span></h1>
+        </div>
+        <div class="flex items-center gap-4 text-xs md:text-sm text-slate-400">
+            <div class="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                <span class="w-2 h-2 rounded-full bg-red-500"></span> +Q
+                <span class="w-2 h-2 rounded-full bg-blue-500 ml-2"></span> -Q
+                <span class="w-2 h-2 rounded-full bg-green-500 ml-2"></span> Resultante
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- COL 1: Controls & Data (Left) -->
+        <aside class="w-72 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto z-10 scrollbar-thin">
+            
+            <!-- Panel de Control -->
+            <div class="p-4 border-b border-slate-800 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider">Propiedades</h2>
+                    <span id="selected-id-badge" class="text-xs px-2 py-0.5 bg-slate-800 rounded text-slate-400">Ninguna</span>
+                </div>
+
+                <div id="controls-area" class="space-y-3 opacity-50 pointer-events-none transition-opacity">
+                    <!-- Carga Control -->
+                    <div>
+                        <label class="flex justify-between text-xs font-medium mb-1 text-slate-400">
+                            Magnitud de Carga
+                        </label>
+                        <div class="flex gap-2 mb-2">
+                            <input type="number" id="input-q-val" step="0.1" class="input-dark w-2/3" placeholder="Valor">
+                            <select id="unit-q" class="select-dark w-1/3">
+                                <option value="1e-6" selected>µC</option>
+                                <option value="1e-9">nC</option>
+                                <option value="1e-3">mC</option>
+                                <option value="1">C</option>
+                            </select>
+                        </div>
+                        <input type="range" id="input-q-slider" min="-10" max="10" step="0.1" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                    </div>
+
+                    <!-- Coordenadas Manuales -->
+                    <div>
+                         <label class="flex justify-between text-xs font-medium mb-1 text-slate-400">
+                            Posición y Unidades
+                        </label>
+                         <div class="flex gap-2 mb-2">
+                            <span class="text-slate-500 text-xs self-center">Unidad:</span>
+                            <select id="unit-dist" class="select-dark flex-1">
+                                <option value="1" selected>Metros (m)</option>
+                                <option value="0.01">Centímetros (cm)</option>
+                                <option value="0.001">Milímetros (mm)</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 uppercase mb-1">X</label>
+                                <input type="number" id="input-x" step="0.1" class="input-dark">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 uppercase mb-1">Y</label>
+                                <input type="number" id="input-y" step="0.1" class="input-dark">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="toggleLock()" id="btn-lock" class="flex-1 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 text-xs transition-colors">
+                            Fijar
+                        </button>
+                        <button onclick="deleteSelected()" class="flex-1 py-1.5 bg-red-900/20 hover:bg-red-900/40 text-red-400 rounded border border-red-900/30 text-xs transition-colors">
+                            Borrar
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="addCharge(3)" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded shadow-lg shadow-blue-900/20 text-xs font-bold transition-all flex justify-center items-center gap-2">
+                    <span>+</span> Agregar Carga
+                </button>
+                <button onclick="resetSim()" class="w-full py-1.5 text-slate-500 hover:text-white text-xs transition-colors">
+                    Reiniciar Todo
+                </button>
+            </div>
+
+            <!-- Tabla de Datos -->
+            <div class="flex-1 flex flex-col min-h-0 bg-slate-900/50">
+                <div class="p-3 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">Tabla de Datos</h2>
+                    <button onclick="recordData()" class="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded">
+                        Capturar
+                    </button>
+                </div>
+                <div class="overflow-auto flex-1">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-800 text-slate-400 sticky top-0">
+                            <tr>
+                                <th class="p-2 font-medium w-1/2">Dist (<span id="table-unit-dist">m</span>)</th>
+                                <th class="p-2 font-medium w-1/2">Fuerza ($N$)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="data-table-body" class="divide-y divide-slate-800 text-slate-300 font-mono"></tbody>
+                    </table>
+                </div>
+            </div>
+        </aside>
+
+        <!-- COL 2: Visualization & Notebook (Center) -->
+        <div class="flex-1 flex flex-col min-w-0 bg-slate-950 relative">
+            
+            <!-- Canvas Container -->
+            <div class="relative h-[55%] w-full border-b border-slate-800">
+                <canvas id="simCanvas" class="w-full h-full cursor-crosshair block z-0"></canvas>
+                <!-- Labels Overlay Layer -->
+                <div id="labels-overlay" class="absolute inset-0 pointer-events-none overflow-hidden z-10"></div>
+                
+                <!-- Overlay Scale & Legend -->
+                <div class="absolute top-3 left-3 pointer-events-none flex flex-col gap-2 z-20">
+                    <div class="glass-panel px-3 py-1.5 rounded-lg text-slate-400 text-xs font-mono border-l-2 border-l-blue-500">
+                        Grid: <span id="grid-legend">0.1 m</span>
+                    </div>
+                </div>
+                
+                <!-- Vector Legend -->
+                <div class="absolute bottom-3 right-3 pointer-events-none z-20">
+                     <div class="glass-panel px-3 py-2 rounded-lg text-xs space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-slate-400 italic font-serif">Vectores de Fuerza</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lab Notebook (Bottom Panel) -->
+            <div class="flex-1 bg-slate-900 overflow-y-auto p-6 scrollbar-thin">
+                <div class="max-w-4xl mx-auto">
+                    <!-- Dynamic Statement -->
+                    <div id="problem-statement" class="mb-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                        <h3 class="text-orange-400 text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            Enunciado del Problema Generado
+                        </h3>
+                        <div id="statement-text" class="text-slate-300 text-sm leading-relaxed font-light">
+                            Seleccione una carga en el simulador para generar el planteamiento del problema físico automáticamente.
+                        </div>
+                    </div>
+
+                    <!-- Step-by-Step Math -->
+                    <div>
+                        <h3 class="text-blue-400 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                            Solución Analítica Paso a Paso
+                        </h3>
+                        <div id="math-steps" class="space-y-4 text-slate-300 text-sm">
+                            <p class="italic text-slate-600">Esperando selección de carga objeto...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COL 3: Analysis Tools (Right) -->
+        <aside class="w-72 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 z-10">
+            
+            <!-- DCL -->
+            <div class="p-4 border-b border-slate-800 h-1/2 flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">Diagrama Vectorial (DCL)</h2>
+                    <input type="range" id="vector-scale" min="0.1" max="5" step="0.1" value="1" class="w-20 h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500" title="Zoom Vectores">
+                </div>
+                <div class="flex-1 bg-slate-800 rounded-lg border border-slate-700 relative overflow-hidden flex items-center justify-center">
+                    <div class="absolute inset-0 opacity-10" style="background-image: linear-gradient(#94a3b8 1px, transparent 1px), linear-gradient(90deg, #94a3b8 1px, transparent 1px); background-size: 20px 20px;"></div>
+                    <!-- Axis -->
+                    <div class="absolute w-full h-[1px] bg-slate-600 top-1/2"></div>
+                    <div class="absolute h-full w-[1px] bg-slate-600 left-1/2"></div>
+                    
+                    <canvas id="dclCanvas" class="relative z-10 w-full h-full"></canvas>
+                    <!-- Overlay for Labels in DCL -->
+                    <div id="dcl-labels-overlay" class="absolute inset-0 pointer-events-none overflow-hidden z-20"></div>
+                </div>
+            </div>
+
+            <!-- Graph -->
+            <div class="p-4 flex-1 flex flex-col min-h-0 bg-slate-900">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-xs font-bold text-slate-500 uppercase">Fuerza vs Distancia</h2>
+                    <button onclick="clearGraph()" class="text-[10px] text-red-400 hover:text-red-300 transition-colors">Limpiar</button>
+                </div>
+                <div class="flex-1 bg-slate-800 rounded-lg p-2 border border-slate-700 relative">
+                    <canvas id="chartCanvas"></canvas>
+                </div>
+            </div>
+        </aside>
+
+    </main>
+
+    <script>
+        // --- CONSTANTS & STATE ---
+        const k = 8.99e9;
+        const GRID_SIZE = 50; // pixels
+        const PIXELS_TO_METERS = 0.002; // 50px = 0.1m default
+        const VECTOR_COLORS = ['#fbbf24', '#f472b6', '#a78bfa', '#22d3ee', '#fb923c', '#a3e635']; // Palette
+        
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const dclCanvas = document.getElementById('dclCanvas');
+        const dclCtx = dclCanvas.getContext('2d');
+        const labelsOverlay = document.getElementById('labels-overlay');
+        const dclLabelsOverlay = document.getElementById('dcl-labels-overlay');
+
+        // State
+        let charges = [
+            { id: 1, x: 0, y: 0, q: 5e-6, fixed: false },
+            { id: 2, x: 0, y: 0, q: -3e-6, fixed: false }
+        ];
+
+        let selectedIdx = -1;
+        let draggingIdx = -1;
+        let dragOffset = { x: 0, y: 0 };
+        let forceChart;
+        let activeLabels = {}; // Store references to label elements (Main)
+        let activeDCLLabels = {}; // Store references to label elements (DCL)
+
+        // --- INITIALIZATION ---
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Initial Positions
+            charges[0].x = canvas.width / 2 - 100;
+            charges[0].y = canvas.height / 2;
+            charges[1].x = canvas.width / 2 + 100;
+            charges[1].y = canvas.height / 2;
+
+            initChart();
+            requestAnimationFrame(animate);
+        }
+
+        function resizeCanvas() {
+            // Main Canvas
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            // DCL Canvas
+            const dclContainer = dclCanvas.parentElement;
+            dclCanvas.width = dclContainer.clientWidth;
+            dclCanvas.height = dclContainer.clientHeight;
+        }
+
+        function initChart() {
+            const ctxChart = document.getElementById('chartCanvas').getContext('2d');
+            forceChart = new Chart(ctxChart, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Mediciones',
+                        data: [],
+                        backgroundColor: '#10b981', // Emerald 500
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { type: 'linear', title: { display: true, text: 'r (m)', color: '#64748b', font: {size: 10} }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', font: {size: 10} } },
+                        y: { title: { display: true, text: 'F (N)', color: '#64748b', font: {size: 10} }, grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: val => val.toExponential(1), font: {size: 10} } }
+                    }
+                }
+            });
+        }
+
+        // --- HELPER: GET UNIT MULTIPLIERS ---
+        function getChargeMultiplier() { return parseFloat(document.getElementById('unit-q').value); }
+        function getDistMultiplier() { return parseFloat(document.getElementById('unit-dist').value); }
+        function getDistLabel() { 
+            const val = document.getElementById('unit-dist').value;
+            if(val == "1") return "m";
+            if(val == "0.01") return "cm";
+            if(val == "0.001") return "mm";
+            return "m";
+        }
+        function getChargeLabel() {
+            const val = document.getElementById('unit-q').value;
+            if(val == "1e-6") return "µC";
+            if(val == "1e-9") return "nC";
+            if(val == "1e-3") return "mC";
+            if(val == "1") return "C";
+            return "C";
+        }
+
+        // --- PHYSICS ENGINE ---
+        function calculateForces(targetIdx) {
+            let Fx_net = 0, Fy_net = 0;
+            let forces = [];
+            let nearestDist = Infinity;
+            const target = charges[targetIdx];
+
+            charges.forEach((source, i) => {
+                if (i === targetIdx) return;
+                
+                const dx_px = target.x - source.x;
+                const dy_px = target.y - source.y;
+                const r_px = Math.hypot(dx_px, dy_px);
+                
+                const r = r_px * PIXELS_TO_METERS;
+                if (r < 1e-9) return; 
+
+                if (r < nearestDist) nearestDist = r;
+
+                const F_mag = (k * Math.abs(target.q * source.q)) / (r * r);
+                const angle = Math.atan2(dy_px, dx_px);
+                
+                const isRepulsive = (target.q * source.q) > 0;
+                const forceAngle = isRepulsive ? angle : angle + Math.PI;
+
+                const Fx = F_mag * Math.cos(forceAngle);
+                const Fy = F_mag * Math.sin(forceAngle);
+
+                Fx_net += Fx;
+                Fy_net += Fy;
+
+                // Color cycling based on source index
+                const color = VECTOR_COLORS[i % VECTOR_COLORS.length];
+
+                forces.push({ 
+                    fx: Fx, fy: Fy, mag: F_mag, sourceId: i, r: r,
+                    angleRad: forceAngle,
+                    isRepulsive: isRepulsive,
+                    color: color
+                });
+            });
+
+            return { 
+                net: { fx: Fx_net, fy: Fy_net, mag: Math.hypot(Fx_net, Fy_net), color: '#10b981' }, 
+                components: forces,
+                nearestDist: nearestDist
+            };
+        }
+
+        // --- RENDER LOOP ---
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Grid
+            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += GRID_SIZE) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+            for (let y = 0; y < canvas.height; y += GRID_SIZE) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+
+            // Update Legend based on unit
+            const distUnit = getDistLabel();
+            const gridVal = (GRID_SIZE * PIXELS_TO_METERS) / getDistMultiplier();
+            document.getElementById('grid-legend').innerText = `${gridVal.toFixed(1)} ${distUnit}`;
+
+            // Connections
+            ctx.setLineDash([4, 4]); ctx.strokeStyle = '#475569';
+            for (let i=0; i<charges.length; i++) {
+                for (let j=i+1; j<charges.length; j++) {
+                    ctx.beginPath(); ctx.moveTo(charges[i].x, charges[i].y); ctx.lineTo(charges[j].x, charges[j].y); ctx.stroke();
+                    // Distance Text
+                    const mx = (charges[i].x+charges[j].x)/2, my = (charges[i].y+charges[j].y)/2;
+                    const rMeters = Math.hypot(charges[i].x-charges[j].x, charges[i].y-charges[j].y) * PIXELS_TO_METERS;
+                    const rDisplay = rMeters / getDistMultiplier();
+                    
+                    ctx.fillStyle = '#0f172a'; ctx.fillRect(mx-25, my-8, 50, 16);
+                    ctx.fillStyle = '#94a3b8'; ctx.font='10px monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                    ctx.fillText(rDisplay.toFixed(2)+distUnit, mx, my);
+                }
+            }
+            ctx.setLineDash([]);
+
+            // Charges
+            charges.forEach((c, i) => {
+                const isSel = i === selectedIdx;
+                ctx.beginPath(); ctx.arc(c.x, c.y, isSel ? 18 : 14, 0, Math.PI*2);
+                ctx.fillStyle = c.q >= 0 ? '#ef4444' : '#3b82f6';
+                ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = isSel ? 20 : 10;
+                ctx.fill(); ctx.shadowBlur = 0;
+                
+                ctx.strokeStyle = isSel ? '#fff' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2; ctx.stroke();
+                
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                ctx.fillText(c.q >= 0 ? '+' : '-', c.x, c.y);
+                
+                ctx.fillStyle = '#cbd5e1'; ctx.font = '10px sans-serif';
+                ctx.fillText(`q${c.id}`, c.x, c.y - 22);
+            });
+
+            // VECTORS ON MAIN CANVAS & LABELS
+            if (selectedIdx !== -1) {
+                const phys = calculateForces(selectedIdx);
+                const c = charges[selectedIdx];
+                const maxF = Math.max(phys.net.mag, ...phys.components.map(comp => comp.mag));
+                
+                // Scale factor for visibility on canvas
+                const visScale = (maxF > 0) ? (60 / maxF) : 0; 
+
+                // 1. Draw Components
+                phys.components.forEach(comp => {
+                    drawArrow(ctx, c.x, c.y, comp.fx * visScale, comp.fy * visScale, comp.color, 2);
+                });
+
+                // 2. Draw Resultant
+                if (phys.net.mag > 1e-12) {
+                    drawArrow(ctx, c.x, c.y, phys.net.fx * visScale, phys.net.fy * visScale, phys.net.color, 3);
+                }
+                
+                updateDCL(selectedIdx);
+                updateLabelsOverlay(phys, c, visScale, activeLabels, labelsOverlay);
+            } else {
+                clearDCL();
+                clearLabelsOverlay(activeLabels, labelsOverlay);
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        function drawArrow(ctx, x, y, dx, dy, color, w) {
+            const head = 8;
+            const angle = Math.atan2(dy, dx);
+            const len = Math.hypot(dx, dy);
+            if(len < 1) return;
+
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x+dx, y+dy);
+            ctx.strokeStyle = color; ctx.lineWidth = w; ctx.stroke();
+            
+            ctx.beginPath(); ctx.moveTo(x+dx, y+dy);
+            ctx.lineTo(x+dx - head*Math.cos(angle-Math.PI/6), y+dy - head*Math.sin(angle-Math.PI/6));
+            ctx.lineTo(x+dx - head*Math.cos(angle+Math.PI/6), y+dy - head*Math.sin(angle+Math.PI/6));
+            ctx.fillStyle = color; ctx.fill();
+        }
+
+        // --- LABELS OVERLAY LOGIC (Generic) ---
+        function updateLabelsOverlay(phys, center, scale, labelCache, container) {
+            const desiredKeys = new Set();
+
+            // Components
+            phys.components.forEach(comp => {
+                const key = `F_${comp.sourceId}`;
+                desiredKeys.add(key);
+                
+                const tx = center.x + comp.fx * scale;
+                const ty = center.y + comp.fy * scale;
+                
+                const len = Math.hypot(comp.fx, comp.fy);
+                const nx = len > 0 ? comp.fx / len : 0;
+                const ny = len > 0 ? comp.fy / len : 0;
+                
+                // Latex Label
+                const latex = `$\\vec{F}_{${charges[comp.sourceId].id} \\to ${charges[selectedIdx].id}}$`;
+                
+                // Increased offset (25px) to clear arrowhead
+                updateOrCreateLabel(key, latex, tx + nx * 25, ty + ny * 25, comp.color, labelCache, container);
+            });
+
+            // Resultant
+            if (phys.net.mag > 1e-12) {
+                const key = 'F_Net';
+                desiredKeys.add(key);
+                const tx = center.x + phys.net.fx * scale;
+                const ty = center.y + phys.net.fy * scale;
+                const len = Math.hypot(phys.net.fx, phys.net.fy);
+                const nx = len > 0 ? phys.net.fx / len : 0;
+                const ny = len > 0 ? phys.net.fy / len : 0;
+                
+                // Increased offset (25px) to clear arrowhead
+                updateOrCreateLabel(key, `$\\vec{F}_{R}$`, tx + nx * 25, ty + ny * 25, phys.net.color, labelCache, container);
+            }
+
+            // Clean up old labels
+            for (let key in labelCache) {
+                if (!desiredKeys.has(key)) {
+                    labelCache[key].remove();
+                    delete labelCache[key];
+                }
+            }
+        }
+
+        function updateOrCreateLabel(key, latex, x, y, color, labelCache, container) {
+            let el = labelCache[key];
+            if (!el) {
+                el = document.createElement('div');
+                el.className = 'vector-label';
+                el.style.borderLeft = `3px solid ${color}`;
+                el.innerHTML = latex;
+                container.appendChild(el);
+                labelCache[key] = el;
+                if (window.MathJax) MathJax.typesetPromise([el]);
+            }
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+        }
+
+        function clearLabelsOverlay(labelCache, container) {
+            container.innerHTML = '';
+            for (const key in labelCache) delete labelCache[key];
+        }
+
+        // --- UPDATES & LOGIC ---
+
+        function updateUI() {
+            // Update Table Header
+            document.getElementById('table-unit-dist').innerText = getDistLabel();
+
+            if (selectedIdx === -1) {
+                document.getElementById('controls-area').classList.add('opacity-50', 'pointer-events-none');
+                document.getElementById('selected-id-badge').textContent = "Ninguna";
+                document.getElementById('problem-statement').classList.add('opacity-50');
+                document.getElementById('statement-text').innerHTML = "Seleccione una carga para generar el problema.";
+                document.getElementById('math-steps').innerHTML = "<p class='italic text-slate-600'>Esperando selección...</p>";
+                return;
+            }
+
+            const c = charges[selectedIdx];
+            document.getElementById('controls-area').classList.remove('opacity-50', 'pointer-events-none');
+            document.getElementById('problem-statement').classList.remove('opacity-50');
+            document.getElementById('selected-id-badge').textContent = `Carga q${c.id}`;
+            document.getElementById('selected-id-badge').className = `text-xs px-2 py-0.5 rounded font-bold text-white ${c.q >=0 ? 'bg-red-500' : 'bg-blue-500'}`;
+
+            // Sync Inputs
+            const qMult = getChargeMultiplier();
+            const distMult = getDistMultiplier();
+
+            if (document.activeElement.id !== 'input-q-val' && document.activeElement.id !== 'input-q-slider') {
+                const qDisplay = c.q / qMult;
+                document.getElementById('input-q-val').value = qDisplay.toFixed(2);
+                document.getElementById('input-q-slider').value = qDisplay; 
+            }
+            
+            if (document.activeElement.id !== 'input-x') document.getElementById('input-x').value = ((c.x * PIXELS_TO_METERS) / distMult).toFixed(2);
+            if (document.activeElement.id !== 'input-y') document.getElementById('input-y').value = ((c.y * PIXELS_TO_METERS) / distMult).toFixed(2);
+
+            document.getElementById('btn-lock').textContent = c.fixed ? "Desbloquear" : "Fijar Posición";
+            document.getElementById('btn-lock').classList.toggle('text-blue-400', c.fixed);
+            document.getElementById('btn-lock').classList.toggle('border-blue-500', c.fixed);
+
+            generateTextAndMath(selectedIdx);
+        }
+
+        function generateTextAndMath(idx) {
+            const target = charges[idx];
+            const others = charges.filter((_, i) => i !== idx);
+            const phys = calculateForces(idx);
+            
+            const qUnit = getChargeLabel();
+            const qMult = getChargeMultiplier();
+            const dUnit = getDistLabel();
+            const dMult = getDistMultiplier();
+
+            // 1. ENUNCIADO
+            let text = `<p class="mb-2"><strong class="text-white">Problema:</strong> Se tiene una carga puntual <span class="${target.q>=0?'text-red-400':'text-blue-400'}">$q_{${target.id}} = ${(target.q/qMult).toFixed(2)} \\text{ ${qUnit}}$</span> ubicada en la posición $\\vec{r}_{${target.id}} = (${(target.x*PIXELS_TO_METERS/dMult).toFixed(2)} \\hat{i} - ${(target.y*PIXELS_TO_METERS/dMult).toFixed(2)} \\hat{j})$ ${dUnit}.</p>`;
+            
+            if (others.length > 0) {
+                text += `<p class="mb-2">Determine la fuerza eléctrica neta que ejercen sobre ella las siguientes cargas:</p><ul class="list-disc pl-5 space-y-1 mb-2">`;
+                others.forEach(c => {
+                    text += `<li>Carga <span class="${c.q>=0?'text-red-400':'text-blue-400'}">$q_{${c.id}} = ${(c.q/qMult).toFixed(2)} \\text{ ${qUnit}}$</span> en $\\vec{r}_{${c.id}} = (${(c.x*PIXELS_TO_METERS/dMult).toFixed(2)} \\hat{i} - ${(c.y*PIXELS_TO_METERS/dMult).toFixed(2)} \\hat{j})$ ${dUnit}.</li>`;
+                });
+                text += `</ul>`;
+            } else {
+                text += `<p class="italic text-yellow-500">Agregue más cargas para calcular fuerzas de interacción.</p>`;
+            }
+            document.getElementById('statement-text').innerHTML = text;
+
+            // 2. MATH STEPS
+            let mathHTML = "";
+            
+            if (others.length === 0) {
+                mathHTML = `<div class="p-4 bg-slate-800 rounded border border-slate-700 text-center text-slate-500">Sistema aislado. Fuerza neta nula.</div>`;
+            } else {
+                // Step 1: Individual Forces
+                others.forEach((source, i) => {
+                    const comp = phys.components.find(f => charges[f.sourceId] === source);
+                    if (!comp) return;
+
+                    const r = comp.r;
+                    const F_val = comp.mag;
+                    const angleDeg = (comp.angleRad * 180 / Math.PI).toFixed(1);
+                    const color = comp.color; 
+                    
+                    mathHTML += `
+                    <div class="math-step" style="border-left-color: ${color};">
+                        <div class="font-bold text-xs mb-1" style="color:${color}">Interacción $q_${source.id} \\to q_${target.id}$ (${comp.isRepulsive ? 'Repulsión' : 'Atracción'})</div>
+                        <div class="text-slate-400 mb-1">Distancia $r = ${r.toFixed(3)}$ m</div>
+                        <div class="overflow-x-auto pb-1">
+                             $$ |\\vec{F}_{${source.id}${target.id}}| = k \\frac{|q_${source.id} q_${target.id}|}{r^2} $$
+                            $$ |\\vec{F}_{${source.id}${target.id}}| = \\mathbf{${F_val.toExponential(2)} \\text{ N}} $$
+                            $$ \\vec{F}_{${source.id}${target.id}} = (${comp.fx.toExponential(2)} \\hat{i} ${comp.fy >= 0 ? '+' : ''} ${comp.fy.toExponential(2)} \\hat{j}) \\text{ N} $$
+                        </div>
+                    </div>`;
+                });
+
+                // Step 2: Summation
+                mathHTML += `
+                <div class="p-4 bg-slate-800/80 rounded border border-emerald-500 mt-4 shadow-lg shadow-emerald-900/10">
+                    <div class="font-bold text-emerald-400 text-sm mb-2 uppercase">Fuerza Resultante</div>
+                    <div class="overflow-x-auto">
+                        $$ \\vec{F}_{R} = (${phys.net.fx.toExponential(2)} \\hat{i} ${phys.net.fy >= 0 ? '+' : ''} ${phys.net.fy.toExponential(2)} \\hat{j}) \\text{ N} $$
+                        <div class="mt-2 pt-2 border-t border-slate-700">
+                            $$ |\\vec{F}_R| = \\mathbf{${phys.net.mag.toExponential(3)} \\text{ N}} $$
+                            $$ \\theta_R = ${(Math.atan2(phys.net.fy, phys.net.fx) * 180 / Math.PI).toFixed(1)}^\\circ $$
+                        </div>
+                    </div>
+                </div>`;
+            }
+            
+            document.getElementById('math-steps').innerHTML = mathHTML;
+            if (window.MathJax) MathJax.typesetPromise([document.getElementById('problem-statement'), document.getElementById('math-steps')]);
+        }
+
+        // --- DCL & CANVAS LOGIC ---
+        function updateDCL(idx) {
+            const w = dclCanvas.width, h = dclCanvas.height;
+            const cx = w/2, cy = h/2;
+            dclCtx.clearRect(0,0,w,h);
+            
+            const phys = calculateForces(idx);
+            const userScale = parseFloat(document.getElementById('vector-scale').value);
+            
+            // Auto-normalization
+            let maxMag = phys.net.mag;
+            phys.components.forEach(c => maxMag = Math.max(maxMag, c.mag));
+            const baseScale = (w*0.35) / (maxMag || 1);
+            const s = baseScale * userScale;
+
+            // Components (Colored)
+            phys.components.forEach(c => {
+                drawArrow(dclCtx, cx, cy, c.fx*s, c.fy*s, c.color, 2);
+            });
+            // Net (Emerald)
+            drawArrow(dclCtx, cx, cy, phys.net.fx*s, phys.net.fy*s, phys.net.color, 3); 
+
+            // Center
+            dclCtx.beginPath(); dclCtx.arc(cx, cy, 3, 0, Math.PI*2); dclCtx.fillStyle='#fff'; dclCtx.fill();
+            
+            // Update DCL Labels (New)
+            // Center is w/2, h/2. Scale is 's'
+            updateLabelsOverlay(phys, {x: cx, y: cy}, s, activeDCLLabels, dclLabelsOverlay);
+        }
+
+        function clearDCL() {
+            dclCtx.clearRect(0,0,dclCanvas.width, dclCanvas.height);
+            dclCtx.fillStyle = '#475569'; dclCtx.textAlign='center'; dclCtx.textBaseline='middle';
+            dclCtx.font='10px sans-serif';
+            dclCtx.fillText("Seleccione carga", dclCanvas.width/2, dclCanvas.height/2);
+            clearLabelsOverlay(activeDCLLabels, dclLabelsOverlay);
+        }
+
+        // --- INPUT HANDLERS ---
+        // Unit Changes
+        document.getElementById('unit-q').addEventListener('change', updateUI);
+        document.getElementById('unit-dist').addEventListener('change', () => {
+            updateUI();
+            forceChart.options.scales.x.title.text = `r (${getDistLabel()})`;
+            forceChart.update();
+        });
+
+        // Charge Inputs
+        document.getElementById('input-q-val').addEventListener('change', (e) => {
+            if (selectedIdx === -1) return;
+            charges[selectedIdx].q = parseFloat(e.target.value) * getChargeMultiplier();
+            updateUI();
+        });
+        document.getElementById('input-q-slider').addEventListener('input', (e) => {
+            if (selectedIdx === -1) return;
+            charges[selectedIdx].q = parseFloat(e.target.value) * getChargeMultiplier();
+            updateUI();
+        });
+
+        // Manual Coordinates
+        document.getElementById('input-x').addEventListener('change', (e) => {
+            if (selectedIdx === -1) return;
+            charges[selectedIdx].x = (parseFloat(e.target.value) * getDistMultiplier()) / PIXELS_TO_METERS;
+            updateUI();
+        });
+        document.getElementById('input-y').addEventListener('change', (e) => {
+            if (selectedIdx === -1) return;
+            charges[selectedIdx].y = (parseFloat(e.target.value) * getDistMultiplier()) / PIXELS_TO_METERS;
+            updateUI();
+        });
+
+        // --- GLOBAL ACTIONS ---
+        function addCharge(mag) {
+            const id = charges.length > 0 ? Math.max(...charges.map(c => c.id)) + 1 : 1;
+            charges.push({
+                id: id,
+                x: canvas.width/2 + (Math.random()*60 - 30),
+                y: canvas.height/2 + (Math.random()*60 - 30),
+                q: mag * 1e-6,
+                fixed: false
+            });
+            selectedIdx = charges.length - 1;
+            updateUI();
+        }
+
+        function deleteSelected() {
+            if (selectedIdx === -1) return;
+            charges.splice(selectedIdx, 1);
+            selectedIdx = -1;
+            updateUI();
+        }
+
+        function toggleLock() {
+            if (selectedIdx === -1) return;
+            charges[selectedIdx].fixed = !charges[selectedIdx].fixed;
+            updateUI();
+        }
+
+        function resetSim() {
+            charges = [
+                { id: 1, x: canvas.width / 2 - 100, y: canvas.height / 2, q: 5e-6, fixed: false },
+                { id: 2, x: canvas.width / 2 + 100, y: canvas.height / 2, q: -5e-6, fixed: false }
+            ];
+            selectedIdx = -1;
+            clearGraph();
+            document.getElementById('data-table-body').innerHTML = '';
+            updateUI();
+        }
+
+        function recordData() {
+            if (selectedIdx === -1) { alert("Seleccione una carga"); return; }
+            const phys = calculateForces(selectedIdx);
+            if (phys.nearestDist === Infinity) return;
+
+            const dMult = getDistMultiplier();
+            const r = (phys.nearestDist / dMult).toFixed(3);
+            const F = phys.net.mag.toExponential(2);
+            
+            const row = `<tr><td class="p-2 border-b border-slate-800 text-blue-400">${r}</td><td class="p-2 border-b border-slate-800 text-emerald-400">${F}</td></tr>`;
+            document.getElementById('data-table-body').innerHTML += row;
+
+            forceChart.data.datasets[0].data.push({x: parseFloat(r), y: phys.net.mag});
+            forceChart.data.datasets[0].data.sort((a,b) => a.x - b.x);
+            forceChart.update();
+        }
+
+        function clearGraph() {
+            forceChart.data.datasets[0].data = [];
+            forceChart.update();
+        }
+
+        // --- MOUSE DRAG ---
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('touchstart', (e) => startDrag(e.touches[0]), {passive: false});
+        window.addEventListener('mousemove', drag);
+        window.addEventListener('touchmove', (e) => drag(e.touches[0]), {passive: false});
+        window.addEventListener('mouseup', endDrag);
+        window.addEventListener('touchend', endDrag);
+
+        function startDrag(e) {
+            const r = canvas.getBoundingClientRect();
+            const x = e.clientX - r.left, y = e.clientY - r.top;
+            let hit = -1;
+            for(let i=charges.length-1; i>=0; i--) {
+                if (Math.hypot(x-charges[i].x, y-charges[i].y) < 20) { hit = i; break; }
+            }
+
+            if (hit !== -1) {
+                selectedIdx = hit;
+                if (!charges[hit].fixed) {
+                    draggingIdx = hit;
+                    dragOffset = {x: x-charges[hit].x, y: y-charges[hit].y};
+                }
+            } else {
+                selectedIdx = -1;
+            }
+            updateUI();
+        }
+
+        function drag(e) {
+            if (draggingIdx === -1) return;
+            e.preventDefault ? e.preventDefault() : null;
+            const r = canvas.getBoundingClientRect();
+            let x = e.clientX - r.left, y = e.clientY - r.top;
+            
+            x = Math.max(10, Math.min(canvas.width-10, x));
+            y = Math.max(10, Math.min(canvas.height-10, y));
+
+            charges[draggingIdx].x = x - dragOffset.x;
+            charges[draggingIdx].y = y - dragOffset.y;
+            updateUI(); 
+        }
+
+        function endDrag() { draggingIdx = -1; }
+
+        init();
+    </script>
+</body>
+</html>

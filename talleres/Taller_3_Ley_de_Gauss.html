@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Interactivo: Flujo Eléctrico y Ley de Gauss</title>
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls para interacción manual (Paneo, Zoom, Rotación) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .math-tex { font-size: 1.1em; color: #2563eb; }
+        .canvas-container { position: relative; width: 100%; height: 280px; background: #000; border-radius: 0.75rem; overflow: hidden; cursor: grab; }
+        .canvas-container:active { cursor: grabbing; }
+        .drawing-layer { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 30; width: 100vw; height: 100vh; }
+        .drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            body { background: white; padding: 0; }
+            .problem-card { border: 1px solid #e2e8f0; break-inside: avoid; box-shadow: none; margin-bottom: 1rem; }
+            main { display: block !important; }
+            .canvas-container { border: 1px solid #ccc; }
+        }
+        .toolbar-btn { transition: all 0.2s; }
+        .toolbar-btn:hover { transform: translateY(-1px); }
+        input[type="number"], input[type="range"] { border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 5px; width: 100%; accent-color: #2563eb; }
+        .hint-content { display: none; }
+        .hint-content.show { display: block; }
+        .compact-text { font-size: 0.85rem; line-height: 1.5; color: #334155; }
+        .problem-text { margin-bottom: 0.75rem; padding-left: 0.5rem; border-left: 3px solid #cbd5e1; }
+        /* Scrollbar styling for compact areas */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Capa de Dibujo Global -->
+    <canvas id="globalDrawingCanvas" class="drawing-layer"></canvas>
+
+    <!-- Toolbar Superior Fija -->
+    <nav class="no-print sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 mb-6 px-4 py-3 flex flex-wrap gap-3 items-center justify-between rounded-xl shadow-sm">
+        <div class="flex items-center gap-3">
+            <h1 class="font-bold text-slate-800 text-sm md:text-base">Physics.10easy Workshop</h1>
+            <div class="h-6 w-px bg-slate-300 hidden md:block"></div>
+            <button onclick="exportToPDF()" class="toolbar-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-blue-700">Exportar PDF</button>
+            <button onclick="toggleAllHints()" class="toolbar-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-200">Tips Didácticos</button>
+            <button onclick="toggleAllRotations()" class="toolbar-btn bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-amber-600">Pausar Vistas 3D</button>
+        </div>
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button id="penBtn" onclick="setDrawingMode('pen')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Lápiz">✏️</button>
+            <button id="eraserBtn" onclick="setDrawingMode('eraser')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Borrador">🧽</button>
+            <button onclick="clearCanvas()" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Limpiar todo">🗑️</button>
+            <button id="toggleDrawBtn" onclick="toggleDrawing()" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 border-l border-slate-300 ml-1">Dibujo OFF</button>
+        </div>
+    </nav>
+
+    <!-- Header Principal -->
+    <header class="text-center mb-8 border-b border-blue-100 pb-6">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Taller: Flujo Eléctrico y Ley de Gauss</h2>
+        <!-- Modificado para evitar nombre genérico institucional prohibido -->
+        <p class="text-slate-500 mt-2 text-sm">Física II • Electromagnetismo</p>
+        <div class="flex flex-wrap justify-center gap-4 md:gap-8 mt-4 text-[10px] md:text-xs font-mono text-slate-400 uppercase tracking-widest">
+            <span>Grupo: </span>
+            <span>Docente: Physics.10easy Builder</span>
+            <span>Unidad 5</span>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" id="taller-content">
+        
+        <!-- PROBLEMA 1 & 2: PRISMA TRIANGULAR -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 01 & 02</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold flex items-center gap-1">🖱️ Vista Dinámica</span>
+            </div>
+            <div class="problem-text compact-text">
+                <strong>1.</strong> Considere la superficie mostrada en la figura, que está inmersa en una región donde hay un campo eléctrico uniforme \( E=600 \, N/C \). Determine el flujo eléctrico para cada una de las 5 superficies.<br><br>
+                <strong>2.</strong> Considere la figura del ejercicio anterior con los mismos datos y halle el flujo neto \( \Phi_{neto} \) total para la superficie entera de la caja.
+                
+                <button onclick="toggleHint(this)" class="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">
+                    💡 Ver Pista Didáctica
+                </button>
+                <div class="hint-content mt-2 p-3 bg-blue-50 rounded text-xs text-slate-700 border border-blue-100">
+                    <strong>Estrategia:</strong> El flujo eléctrico se define como \( \Phi_E = \vec{E} \cdot \vec{A} = EA \cos(\theta) \). Analiza el ángulo \( \theta \) entre el vector de área (normal exterior) y las líneas de campo para cada cara. Si es una superficie cerrada sin carga en su interior, recuerda el resultado teórico del flujo neto.
+                </div>
+            </div>
+            
+            <div class="canvas-container group" id="container-prism">
+                <div class="absolute top-2 left-2 z-10 text-white/70 text-[10px] font-mono">Prisma (Volumen)</div>
+                <div class="absolute bottom-2 left-2 z-10 flex flex-wrap gap-1 no-print">
+                    <button onclick="setView('prism', 'xy')" class="bg-white/90 px-2 py-1 text-[10px] rounded shadow font-bold hover:bg-blue-50">XY</button>
+                    <button onclick="setView('prism', 'yz')" class="bg-white/90 px-2 py-1 text-[10px] rounded shadow font-bold hover:bg-blue-50">YZ</button>
+                    <button onclick="setView('prism', 'zx')" class="bg-white/90 px-2 py-1 text-[10px] rounded shadow font-bold hover:bg-blue-50">ZX</button>
+                    <button onclick="toggleRotation('prism')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause">Pausar Vista</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-600">Rotación del Objeto (Eje Y)</label>
+                    <input type="range" min="0" max="360" value="0" oninput="rotateObject('prism', this.value)">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-600">Densidad de Campo (Volumen)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="range" id="e1-density" min="2" max="6" step="1" value="3" oninput="updateVolumeField('prism', 'e1-density')">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROBLEMA 3 & 10: PLANOS Y VECTORES -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 03 & 10</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">Simulación 3D</span>
+            </div>
+            <div class="problem-text compact-text">
+                <strong>3.</strong> Determine el flujo eléctrico que pasa por un elemento de área \( A = 1.0 \, m^2 \) en el plano x-y, cuya normal está en la dirección del eje z positivo, si el campo eléctrico es uniforme: \( E = (1.0 \times 10^{-6} N/C) \frac{(\hat{i}-\hat{k})}{\sqrt{2}} \).<br><br>
+                <strong>10.</strong> Un campo eléctrico uniforme \( a\hat{i} + b\hat{j} \) intersecta a una superficie de área A. ¿Cuál es el flujo de ésta área si la superficie se ubica a) en el plano yz, b) en el plano xz, c) en el plano xy?
+                
+                <button onclick="toggleHint(this)" class="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">
+                    💡 Ver Pista Didáctica
+                </button>
+                <div class="hint-content mt-2 p-3 bg-blue-50 rounded text-xs text-slate-700 border border-blue-100">
+                    <strong>Estrategia:</strong> Usa el producto punto de vectores: \( \Phi_E = \vec{E} \cdot \vec{A} = (E_x\hat{i} + E_y\hat{j} + E_z\hat{k}) \cdot (A_x\hat{i} + A_y\hat{j} + A_z\hat{k}) \). Identifica el vector normal para cada plano (Ej: para el plano yz, la normal es \( \hat{i} \)).
+                </div>
+            </div>
+            
+            <div class="canvas-container" id="container-planes">
+                <div class="absolute bottom-2 left-2 z-10 flex gap-1 no-print">
+                    <button onclick="toggleRotation('planes')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause">Pausar Vista</button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 text-xs p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-600">Rotación del Sistema (Planos)</label>
+                    <input type="range" min="0" max="360" value="0" oninput="rotateObject('planes', this.value)">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-600">Densidad Vectorial</label>
+                    <input type="range" id="e3-density" min="2" max="5" step="1" value="3" oninput="updateVolumeField('planes', 'e3-density')">
+                </div>
+            </div>
+        </section>
+
+        <!-- PROBLEMA 4 & 5: PIRÁMIDE Y CONO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 04 & 05</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">Simulación 3D</span>
+            </div>
+            <div class="problem-text compact-text">
+                <strong>4.</strong> Una pirámide con una base cuadrada de 6.0 m y altura de 4.0 m se coloca en un campo eléctrico vertical de 52 N/C. Calcule el flujo eléctrico total a través de las cuatro superficies inclinadas de la pirámide.<br><br>
+                <strong>5.</strong> Un cono de radio r= 5m en la base y altura h=12m está sobre una mesa horizontal, y un campo eléctrico uniforme horizontal \( 3.5 \times 10^3 N/C \) penetra el cono, como se muestra en la figura. Calcule el flujo eléctrico que entra al cono.
+                
+                <button onclick="toggleHint(this)" class="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">
+                    💡 Ver Pista Didáctica
+                </button>
+                <div class="hint-content mt-2 p-3 bg-blue-50 rounded text-xs text-slate-700 border border-blue-100">
+                    <strong>Estrategia:</strong> El flujo a través de superficies inclinadas complejas es igual en magnitud al flujo que atraviesa su <em>proyección perpendicular</em> al campo. Para la pirámide, considera el flujo de la base. Para el cono (campo horizontal), proyecta su sección transversal (un triángulo).
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-2">
+                <div class="canvas-container h-[200px]" id="container-pyramid">
+                    <div class="absolute bottom-1 left-1 z-10 no-print">
+                        <button onclick="toggleRotation('pyramid')" class="bg-blue-600 text-white px-1.5 py-0.5 text-[9px] rounded btn-pause">Pausar</button>
+                    </div>
+                </div>
+                <div class="canvas-container h-[200px]" id="container-cone">
+                    <div class="absolute bottom-1 left-1 z-10 no-print">
+                        <button onclick="toggleRotation('cone')" class="bg-blue-600 text-white px-1.5 py-0.5 text-[9px] rounded btn-pause">Pausar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 text-xs p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-600">Rotar Pirámide</label>
+                    <input type="range" min="0" max="360" value="0" oninput="rotateObject('pyramid', this.value)">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 text-slate-600">Rotar Cono</label>
+                    <input type="range" min="0" max="360" value="0" oninput="rotateObject('cone', this.value)">
+                </div>
+            </div>
+        </section>
+
+        <!-- PROBLEMA 7 & 8: DISCO INCLINADO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 07 & 08</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">Interactivo</span>
+            </div>
+            <div class="problem-text compact-text">
+                <strong>7.</strong> Un disco cuyo radio mide 0.10 m está orientado con su vector unitario normal n formando un ángulo de \( 30^\circ \) respecto a un campo eléctrico uniforme E cuya magnitud es de \( 2.0 \times 10^3 N/C \). ¿Cuál es el flujo eléctrico a través del disco?<br><br>
+                <strong>8.</strong> Considere la figura del ejercicio anterior y calcule: a) ¿Cuál es el flujo a través del disco si éste se orienta de modo que su normal sea perpendicular a E? b) ¿Cuál es el flujo a través del disco si su normal es paralela a E?
+                
+                <button onclick="toggleHint(this)" class="mt-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">
+                    💡 Ver Pista Didáctica
+                </button>
+                <div class="hint-content mt-2 p-3 bg-blue-50 rounded text-xs text-slate-700 border border-blue-100">
+                    <strong>Ecuación de apoyo:</strong> \( \Phi_E = E \cdot (\pi r^2) \cdot \cos(\theta) \). Juega con el deslizador inferior para ver cómo cambia el flujo máximo y mínimo cuando los vectores son perpendiculares (\(90^\circ\)) o paralelos (\(0^\circ\)).
+                </div>
+            </div>
+
+            <div class="canvas-container h-[220px]" id="container-disk">
+                <div class="absolute bottom-2 left-2 z-10 flex gap-1 no-print">
+                     <button onclick="toggleRotation('disk')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow btn-pause">Pausar Vista</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 text-xs p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <div class="w-full">
+                    <label class="block font-semibold mb-1 text-slate-600">Ángulo de Inclinación Normal (\(\theta\)) - Control de Objeto</label>
+                    <div class="flex items-center gap-3">
+                        <input type="range" id="e7-angle" min="0" max="180" value="30" oninput="updateDiskAngle()">
+                        <span id="disk-angle-val" class="font-bold text-blue-600 w-12 text-right">30°</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-sm font-semibold text-center bg-blue-50 text-blue-800 p-2 rounded-lg border border-blue-100">
+                Cálculo en vivo \(\Phi_E = EA\cos\theta\): <span id="res-disk">54.38</span> \( Nm^2/C \)
+            </div>
+        </section>
+
+        <!-- PROBLEMAS 6, 9, 11, 12, 13, 15: LEY DE GAUSS - ESFERAS Y CUBOS -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">LEY DE GAUSS (EJ 6, 9, 11, 12, 13, 15)</span>
+            </div>
+            <div class="problem-text compact-text h-40 overflow-y-auto pr-2" style="border-left-color: #10b981;">
+                <strong>6.</strong> Calcular el flujo a través de una superficie esférica de radio R=8 m debido a una partícula \( q=12\mu C \) en su centro.<br>
+                <strong>9.</strong> Una carga puntual positiva \( q=3.0\mu C \) está rodeada por una esfera centrada en la carga y cuyo radio es de 0.20 m. Halle el flujo eléctrico a través de la esfera.<br>
+                <strong>11.</strong> Se sabe que una caja cúbica contiene una carga neta de \( 6 \mu C \). El flujo medido por una cara del cubo es \( 8 \times 10^5 Nm^2/C \). ¿Cuál es el flujo total que pasa por las otras cinco caras?<br>
+                <strong>12.</strong> Un volumen esférico rodea dos cargas puntuales, \( Q_1=5 \mu C \) y \( Q_2= -3 \mu C \). ¿Cuál es el flujo eléctrico a través de la superficie de la esfera?<br>
+                <strong>13.</strong> Una carga puntual de 12 µC se coloca en el centro de un cascarón esférico de 22cm de radio. Cuál es el flujo eléctrico total a través de: a) La superficie del cascarón. b) Cualquier superficie hemisférica del cascarón.<br>
+                <strong>15.</strong> Una caja cúbica contiene una carga neta de -8 µC. El flujo medido por una cara del cubo es \( -10 \times 10^5 Nm^2/C \). ¿Cuál es el flujo total que atraviesa las paredes de la caja cúbica?
+            </div>
+            
+            <button onclick="toggleHint(this)" class="mt-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 no-print">
+                💡 Ver Pista Didáctica
+            </button>
+            <div class="hint-content mt-1 p-3 bg-emerald-50 rounded text-xs text-slate-700 border border-emerald-100">
+                <strong>Clave de Gauss:</strong> La ley establece que \( \Phi_{neto} = \frac{Q_{enc}}{\epsilon_0} \). El radio, la forma de la superficie o el flujo por una sola cara no alteran el flujo <strong>total</strong> neto (que solo depende de la carga interior). Suma algebraicamente las cargas en el Ej. 12.
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <div class="canvas-container h-[200px]" id="container-sphere">
+                     <div class="absolute bottom-1 left-1 z-10 no-print">
+                        <button onclick="toggleRotation('sphere')" class="bg-blue-600 text-white px-1.5 py-0.5 text-[9px] rounded btn-pause">Pausar</button>
+                    </div>
+                </div>
+                <div class="canvas-container h-[200px]" id="container-cube">
+                     <div class="absolute bottom-1 left-1 z-10 no-print">
+                        <button onclick="toggleRotation('cube')" class="bg-blue-600 text-white px-1.5 py-0.5 text-[9px] rounded btn-pause">Pausar</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 text-xs p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                <div>
+                    <label class="block font-semibold mb-1 text-emerald-700">Densidad (Esfera)</label>
+                    <input type="range" id="e6-density" min="2" max="6" step="1" value="3" oninput="updateVolumeField('sphere', 'e6-density')">
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1 text-emerald-700">Densidad (Cubo)</label>
+                    <input type="range" id="e11-density" min="2" max="6" step="1" value="3" oninput="updateVolumeField('cube', 'e11-density')">
+                </div>
+            </div>
+        </section>
+
+        <!-- PROBLEMAS 14, 16: SUPERFICIES IRREGULARES Y CAVIDADES -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 14 & 16 (IRREGULARES)</span>
+            </div>
+            <div class="problem-text compact-text h-32 overflow-y-auto pr-2" style="border-left-color: #a855f7;">
+                <strong>14.</strong> Las siguientes cargas se localizan dentro de un submarino: 5.0µC, -9.0µC, 27µC, y -84µC. Calcule el flujo neto a través del submarino.<br>
+                <strong>16.</strong> Un conductor con una carga neta de 12µC presenta una cavidad como se ilustra en la figura. Dentro de la cavidad se encuentra una carga \( q = -3\mu C \). Calcular la carga \( q_1 \) en la superficie interior del conductor, y la carga \( q_2 \) en la superficie exterior.
+            </div>
+            
+            <button onclick="toggleHint(this)" class="mt-1 text-[10px] font-bold text-purple-600 hover:text-purple-800 flex items-center gap-1 no-print">
+                💡 Ver Pista Didáctica
+            </button>
+            <div class="hint-content mt-1 p-3 bg-purple-50 rounded text-xs text-slate-700 border border-purple-100">
+                <strong>Análisis conceptual:</strong> En un conductor en equilibrio electrostático, el campo interno es cero. Por Gauss, la carga neta en una superficie que rodee solo la cavidad debe ser cero, forzando una carga inducida \( q_1 = -q_{interna} \). La carga total se conserva.
+            </div>
+
+            <div class="canvas-container h-[220px]" id="container-submarine">
+                 <div class="absolute top-2 left-2 text-white/70 text-xs font-mono">Volumen Submarino/Conductor</div>
+                 <div class="absolute bottom-2 left-2 z-10 no-print">
+                    <button onclick="toggleRotation('submarine')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded btn-pause">Pausar Vista</button>
+                </div>
+            </div>
+            <div class="text-xs p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <label class="block font-semibold mb-1 text-slate-600">Rotación del Submarino (Objeto)</label>
+                <input type="range" min="0" max="360" value="0" oninput="rotateObject('submarine', this.value)">
+            </div>
+        </section>
+
+        <!-- PROBLEMAS 17-25: CAMPO Y POTENCIAL -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
+            <div class="flex justify-between items-start mb-4">
+                <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">CAMPO Y POTENCIAL (EJ 17 AL 25)</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">Generado Automáticamente</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="problem-text compact-text h-72 overflow-y-auto pr-2 text-xs" style="border-left-color: #f59e0b;">
+                    <strong>17 (1).</strong> Una carga de prueba \( 3 \times 10^{-7} C \) recibe una fuerza horizontal hacia la derecha de \( 2 \times 10^{-4} N \). ¿Cuál es el valor de la intensidad del campo eléctrico en el punto donde está colocada la carga de prueba?<br><br>
+                    <strong>17 (2).</strong> Una carga de prueba de 2µC se sitúa en un punto en el que la intensidad del campo eléctrico tiene un valor de \( 5 \times 10^2 N/C \). ¿Cuál es el valor de la fuerza que actúa sobre ella?<br><br>
+                    <strong>18.</strong> Calcular el valor de la intensidad del campo eléctrico a una distancia de 50 cm de una carga de 4µC.<br><br>
+                    <strong>19.</strong> La intensidad del campo eléctrico producido por una carga de 3µC en un punto determinado tiene un valor de \( 6 \times 10^6 N/C \). ¿A qué distancia del punto considerado se encuentra la caja?<br><br>
+                    <strong>20.</strong> Una esfera metálica, cuyo diámetro es de 20cm, está electrizada con una carga de \( 8 \times 10^{-6} C \) distribuida uniformemente en su superficie. ¿Cuál es el valor de la intensidad del campo eléctrico a 8cm de la superficie de la esfera?<br><br>
+                    <strong>21.</strong> Para transportar una carga de 5µC desde el suelo hasta la superficie de una esfera cargada se realiza un trabajo de \( 60 \times 10^{-6} J \). ¿Cuál es el valor del potencial eléctrico de la esfera?<br><br>
+                    <strong>22.</strong> Determine el valor de una carga transportada desde un punto a otro al realizarse un trabajo de \( 10 \times 10^{-4} J \), si la diferencia de potencial es \( 2 \times 10^2 V \).<br><br>
+                    <strong>23.</strong> Un conductor esférico de 20cm de diámetro tiene una carga de \( 3 \times 10^{-9} C \). Calcular: a) ¿Cuánto vale el potencial eléctrico en la superficie de la esfera? b) ¿Cuánto vale el potencial eléctrico a 30cm de su superficie?<br><br>
+                    <strong>24.</strong> Una carga de 7µC se coloca en un determinado punto de un campo eléctrico y adquiere una energía potencial de \( 63 \times 10^{-6} J \). ¿Cuál es el valor del potencial eléctrico en ese punto?<br><br>
+                    <strong>25.</strong> Determinar el valor del potencial eléctrico a una distancia de 10cm de una carga puntual de 8nC.
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-amber-600 hover:text-amber-800 flex items-center gap-1 no-print">
+                        💡 Ver Pista Didáctica
+                    </button>
+                    <div class="hint-content p-3 bg-amber-50 rounded text-xs text-slate-700 border border-amber-100 mb-2">
+                        <strong>Relaciones fundamentales:</strong> <br>
+                        Intensidad de Campo: \( E = \frac{F}{q} \) y \( E = k \frac{q}{r^2} \).<br>
+                        Potencial Eléctrico: \( V = \frac{W}{q} \) (o Energía Potencial / carga), y \( V = k \frac{q}{r} \). <br>
+                        Recuerda que para el caso de esferas conductoras, la distancia \( r \) se mide desde el centro de la esfera.
+                    </div>
+
+                    <div class="canvas-container h-full min-h-[250px]" id="container-charges">
+                        <div class="absolute top-2 left-2 text-white/70 text-[10px] font-mono">Líneas de Campo y Equipotenciales</div>
+                        <div class="absolute bottom-2 left-2 z-10 no-print">
+                            <button onclick="toggleRotation('charges')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded btn-pause">Pausar Vista</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs p-2 bg-amber-50 rounded-xl border border-amber-100">
+                        <div>
+                            <label class="block font-semibold mb-1 text-amber-800">Rotar Sistema (Objeto)</label>
+                            <input type="range" min="0" max="360" value="0" oninput="rotateObject('charges', this.value)">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-amber-800">Densidad (Campo Radial)</label>
+                            <input type="range" id="e17-density" min="2" max="6" step="1" value="3" oninput="updateVolumeField('charges', 'e17-density')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        
+    </main>
+
+    <!-- Scripts de Lógica y Visualización -->
+    <script>
+        const scenes = {};
+        let diskMesh, diskNormalArrow;
+
+        function init3D() {
+            createScene('prism', 'container-prism', createPrismGeometry, 'horizontal', 3);
+            createScene('planes', 'container-planes', createPlanesGeometry, 'diagonal', 3);
+            createScene('pyramid', 'container-pyramid', createPyramidGeometry, 'vertical', 3);
+            createScene('cone', 'container-cone', createConeGeometry, 'horizontal', 3);
+            createScene('disk', 'container-disk', createDiskGeometry, 'horizontal', 4);
+            createScene('sphere', 'container-sphere', createSphereGeometry, 'radial', 3);
+            createScene('cube', 'container-cube', createCubeGeometry, 'radial', 3);
+            createScene('submarine', 'container-submarine', createSubmarineGeometry, 'radial_multi', 4);
+            createScene('charges', 'container-charges', createChargesGeometry, 'radial', 3);
+            animate();
+        }
+
+        // --- Core ThreeJS Setup with OrbitControls AutoRotate ---
+        function createScene(id, containerId, geometryFunc, fieldType, defaultDensity) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(12, 10, 15);
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // OrbitControls - La rotación principal ahora es de la cámara (la vista)
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = true;
+            controls.enableZoom = true;
+            controls.autoRotate = true; // Activar rotación de vista por defecto
+            controls.autoRotateSpeed = 2.0;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambient);
+            const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+            directional.position.set(10, 20, 15);
+            scene.add(directional);
+
+            const axes = new THREE.AxesHelper(6);
+            scene.add(axes);
+
+            const meshes = geometryFunc();
+            const group = new THREE.Group();
+            if(Array.isArray(meshes)) { meshes.forEach(m => group.add(m)); } 
+            else { group.add(meshes); }
+            scene.add(group);
+
+            const field = createVolumeField(fieldType, defaultDensity, 6);
+            scene.add(field);
+
+            scenes[id] = { scene, camera, renderer, controls, meshGroup: group, field, fieldType, currentDensity: defaultDensity, fieldVisible: true };
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        // --- Volume Field Generation (Full 3D Grid) ---
+        function createVolumeField(type, densityParam, bounds) {
+            const group = new THREE.Group();
+            const density = parseInt(densityParam); // 2 to 6 steps
+            const step = (bounds * 2) / density;
+            const size = step * 0.6;
+            const arrowColor = 0xfacc15; // Yellow
+            
+            const addArrow = (dir, pos) => {
+                const arrow = new THREE.ArrowHelper(dir, pos, size, arrowColor, size*0.3, size*0.15);
+                if(arrow.line && arrow.line.material) {
+                    arrow.line.material.transparent = true;
+                    arrow.line.material.opacity = 0.6;
+                }
+                if(arrow.cone && arrow.cone.material) {
+                    arrow.cone.material.transparent = true;
+                    arrow.cone.material.opacity = 0.6;
+                }
+                group.add(arrow);
+            };
+
+            if (type === 'horizontal') {
+                for(let x=-bounds; x<=bounds; x+=step) {
+                    for(let y=-bounds; y<=bounds; y+=step) {
+                        for(let z=-bounds; z<=bounds; z+=step) {
+                            addArrow(new THREE.Vector3(1,0,0), new THREE.Vector3(x,y,z));
+                        }
+                    }
+                }
+            } else if (type === 'vertical') {
+                for(let x=-bounds; x<=bounds; x+=step) {
+                    for(let y=-bounds; y<=bounds; y+=step) {
+                        for(let z=-bounds; z<=bounds; z+=step) {
+                            addArrow(new THREE.Vector3(0,-1,0), new THREE.Vector3(x,y,z));
+                        }
+                    }
+                }
+            } else if (type === 'diagonal') {
+                for(let x=-bounds; x<=bounds; x+=step) {
+                    for(let y=-bounds; y<=bounds; y+=step) {
+                        for(let z=-bounds; z<=bounds; z+=step) {
+                            addArrow(new THREE.Vector3(1,0,-1).normalize(), new THREE.Vector3(x,y,z));
+                        }
+                    }
+                }
+            } else if (type === 'radial') {
+                for(let x=-bounds; x<=bounds; x+=step) {
+                    for(let y=-bounds; y<=bounds; y+=step) {
+                        for(let z=-bounds; z<=bounds; z+=step) {
+                            if(Math.abs(x)<1 && Math.abs(y)<1 && Math.abs(z)<1) continue;
+                            let pos = new THREE.Vector3(x,y,z);
+                            addArrow(pos.clone().normalize(), pos);
+                        }
+                    }
+                }
+            } else if (type === 'radial_multi') {
+                 for(let i=0; i<density*20; i++) {
+                    const dir = new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize();
+                    const r = Math.random()*bounds;
+                    addArrow(dir, dir.clone().multiplyScalar(r));
+                 }
+            }
+            return group;
+        }
+
+        function updateVolumeField(id, inputId) {
+            const config = scenes[id];
+            if (!config) return;
+            const densityInput = document.getElementById(inputId).value;
+            
+            config.scene.remove(config.field);
+            config.field = createVolumeField(config.fieldType, densityInput, 6);
+            if(config.fieldVisible) config.scene.add(config.field);
+        }
+
+        // --- Manual Object Rotation via Slider ---
+        function rotateObject(id, angleDeg) {
+            const config = scenes[id];
+            if (!config) return;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            // Rotar el meshGroup interno (el objeto en sí)
+            config.meshGroup.rotation.y = angleRad;
+            // Si el campo es radial o interno al objeto, rotarlo también
+            if(config.fieldType === 'radial' || config.fieldType === 'radial_multi') {
+                config.field.rotation.y = angleRad;
+            }
+        }
+
+        // --- Geometries ---
+        function createPrismGeometry() {
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0); shape.lineTo(4, 0); shape.lineTo(0, 3); shape.lineTo(0, 0);
+            const extrudeSettings = { depth: 3, bevelEnabled: false };
+            const mesh = new THREE.Mesh(
+                new THREE.ExtrudeGeometry(shape, extrudeSettings), 
+                new THREE.MeshPhongMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+            );
+            mesh.rotation.x = -Math.PI/2; mesh.position.set(-2, 0, 1.5);
+            return mesh;
+        }
+
+        function createPlanesGeometry() {
+            const matXY = new THREE.MeshBasicMaterial({color: 0xef4444, side: THREE.DoubleSide, transparent: true, opacity: 0.4});
+            const matYZ = new THREE.MeshBasicMaterial({color: 0x22c55e, side: THREE.DoubleSide, transparent: true, opacity: 0.4});
+            const matXZ = new THREE.MeshBasicMaterial({color: 0x3b82f6, side: THREE.DoubleSide, transparent: true, opacity: 0.4});
+            
+            const pXY = new THREE.Mesh(new THREE.PlaneGeometry(6,6), matXY);
+            const pYZ = new THREE.Mesh(new THREE.PlaneGeometry(6,6), matYZ); pYZ.rotation.y = Math.PI/2;
+            const pXZ = new THREE.Mesh(new THREE.PlaneGeometry(6,6), matXZ); pXZ.rotation.x = Math.PI/2;
+            return [pXY, pYZ, pXZ];
+        }
+
+        function createPyramidGeometry() {
+            const mesh = new THREE.Mesh(
+                new THREE.ConeGeometry(4, 4, 4), 
+                new THREE.MeshPhongMaterial({ color: 0x10b981, transparent: true, opacity: 0.7 })
+            );
+            mesh.rotation.y = Math.PI/4;
+            return mesh;
+        }
+
+        function createConeGeometry() {
+            return new THREE.Mesh(
+                new THREE.ConeGeometry(4, 8, 32), 
+                new THREE.MeshPhongMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.7 })
+            );
+        }
+
+        function createDiskGeometry() {
+            const group = new THREE.Group();
+            diskMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(3, 3, 0.1, 32),
+                new THREE.MeshPhongMaterial({ color: 0xec4899, transparent: true, opacity: 0.8 })
+            );
+            diskMesh.rotation.x = Math.PI/2;
+            group.add(diskMesh);
+            
+            diskNormalArrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 5, 0xffffff, 1, 0.5);
+            group.add(diskNormalArrow);
+            return group;
+        }
+
+        function updateDiskAngle() {
+            const angleDeg = document.getElementById('e7-angle').value;
+            document.getElementById('disk-angle-val').innerText = angleDeg + "°";
+            const angleRad = (angleDeg * Math.PI) / 180;
+            
+            if(diskMesh && scenes['disk']) {
+                scenes['disk'].meshGroup.rotation.y = angleRad;
+                const E = 2000;
+                const A = 0.0314; 
+                const flux = E * A * Math.cos(angleRad);
+                document.getElementById('res-disk').innerText = flux.toFixed(2);
+            }
+        }
+
+        function createSphereGeometry() {
+            const mesh = new THREE.Mesh(
+                new THREE.SphereGeometry(4, 32, 32), 
+                new THREE.MeshPhongMaterial({ color: 0xef4444, transparent: true, opacity: 0.3, wireframe: true })
+            );
+            const charge = new THREE.Mesh(new THREE.SphereGeometry(0.3), new THREE.MeshBasicMaterial({color: 0xff0000}));
+            mesh.add(charge);
+            return mesh;
+        }
+
+        function createCubeGeometry() {
+             const mesh = new THREE.Mesh(
+                new THREE.BoxGeometry(6, 6, 6), 
+                new THREE.MeshPhongMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.3, wireframe: true })
+            );
+            const charge = new THREE.Mesh(new THREE.SphereGeometry(0.3), new THREE.MeshBasicMaterial({color: 0x06b6d4}));
+            mesh.add(charge);
+            return mesh;
+        }
+
+        function createSubmarineGeometry() {
+            const group = new THREE.Group();
+            const hull = new THREE.Mesh(
+                new THREE.CylinderGeometry(2, 2, 8, 32),
+                new THREE.MeshPhongMaterial({ color: 0x64748b, transparent: true, opacity: 0.4 })
+            );
+            hull.rotation.z = Math.PI/2;
+            group.add(hull);
+
+            const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xff00ff];
+            const pos = [[-2,0,0], [2,0,0], [0,1,0], [0,-1,0]];
+            for(let i=0; i<4; i++) {
+                const q = new THREE.Mesh(new THREE.SphereGeometry(0.3), new THREE.MeshBasicMaterial({color: colors[i]}));
+                q.position.set(...pos[i]);
+                group.add(q);
+            }
+            return group;
+        }
+
+        function createChargesGeometry() {
+            const group = new THREE.Group();
+            // Carga central (positiva)
+            const mainCharge = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshBasicMaterial({color: 0xef4444}));
+            group.add(mainCharge);
+
+            // Carga de prueba orbitando
+            const testCharge = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), new THREE.MeshBasicMaterial({color: 0x3b82f6}));
+            testCharge.position.set(4, 0, 0);
+            group.add(testCharge);
+
+            // Superficies equipotenciales (esferas wireframe)
+            const equip1 = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 16), new THREE.MeshBasicMaterial({color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.2}));
+            const equip2 = new THREE.Mesh(new THREE.SphereGeometry(4, 16, 16), new THREE.MeshBasicMaterial({color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.2}));
+            group.add(equip1);
+            group.add(equip2);
+
+            return group;
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            Object.keys(scenes).forEach(id => {
+                const s = scenes[id];
+                // OrbitControls maneja la rotación de la cámara (la vista) automáticamente si autoRotate es true
+                s.controls.update(); 
+                s.renderer.render(s.scene, s.camera);
+            });
+        }
+
+        // --- Interaction ---
+        function setView(id, view) {
+            const cam = scenes[id].camera;
+            scenes[id].controls.autoRotate = false; // Pausar rotación al cambiar de vista manualmente
+            updatePauseButtons();
+            if (view === 'xy') cam.position.set(0, 0, 15);
+            if (view === 'yz') cam.position.set(15, 0, 0);
+            if (view === 'zx') cam.position.set(0, 15, 0);
+            cam.lookAt(0, 0, 0);
+            scenes[id].controls.target.set(0,0,0);
+        }
+
+        function toggleRotation(id) {
+            scenes[id].controls.autoRotate = !scenes[id].controls.autoRotate;
+            updatePauseButtons();
+        }
+
+        function toggleAllRotations() {
+            // Verifica si hay alguna rotación activa
+            let anyTrue = Object.values(scenes).some(s => s.controls.autoRotate);
+            Object.keys(scenes).forEach(k => scenes[k].controls.autoRotate = !anyTrue);
+            updatePauseButtons();
+        }
+
+        function updatePauseButtons() {
+            document.querySelectorAll('.btn-pause').forEach(btn => {
+                const match = btn.getAttribute('onclick').match(/'([^']+)'/);
+                if(match) {
+                    const id = match[1];
+                    const isRotating = scenes[id].controls.autoRotate;
+                    btn.innerText = isRotating ? "Pausar Vista" : "Reanudar Vista";
+                    btn.className = isRotating ? "bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print" : "bg-emerald-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print";
+                }
+            });
+        }
+
+        // --- Lógica de Dibujo Global ---
+        const canvas = document.getElementById('globalDrawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let drawMode = 'pen';
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function toggleDrawing() {
+            canvas.classList.toggle('active');
+            const btn = document.getElementById('toggleDrawBtn');
+            if (canvas.classList.contains('active')) {
+                btn.innerText = "Dibujo ON";
+                btn.classList.add('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                btn.innerText = "Dibujo OFF";
+                btn.classList.remove('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'auto';
+            }
+            resizeCanvas();
+        }
+
+        function setDrawingMode(mode) {
+            drawMode = mode;
+            document.getElementById('penBtn').classList.toggle('bg-white', mode === 'pen');
+            document.getElementById('eraserBtn').classList.toggle('bg-white', mode === 'eraser');
+        }
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+        canvas.addEventListener('touchend', endDraw);
+
+        function startDraw(e) {
+            if(!canvas.classList.contains('active')) return;
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.clientX, e.clientY);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.lineWidth = drawMode === 'pen' ? 3 : 40;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = drawMode === 'pen' ? '#dc2626' : '#f8fafc';
+            ctx.globalCompositeOperation = drawMode === 'pen' ? 'source-over' : 'destination-out';
+            ctx.lineTo(e.clientX, e.clientY);
+            ctx.stroke();
+        }
+
+        function endDraw() { isDrawing = false; }
+
+        function toggleHint(btn) { btn.nextElementSibling.classList.toggle('show'); }
+        function toggleAllHints() { document.querySelectorAll('.hint-content').forEach(h => h.classList.toggle('show')); }
+
+        function exportToPDF() {
+            const element = document.body;
+            const opt = {
+                margin: 0.2,
+                filename: 'Taller_Fisica_Flujo.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        window.onload = () => { init3D(); resizeCanvas(); updateDiskAngle(); };
+        window.onresize = () => { resizeCanvas(); };
+    </script>
+</body>
+</html>

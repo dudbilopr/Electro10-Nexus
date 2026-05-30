@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- Google tag (gtag.js) --> 
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ELECTROMAGNETISMO · LaTeX con MathJax</title>
+  
+  <!-- Configuración de MathJax (versión 2) -->
+  <script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+      tex2jax: {
+        inlineMath: [['$','$'], ["\\(","\\)"]],
+        processEscapes: true
+      },
+      "HTML-CSS": { availableFonts: ["TeX"] },
+      TeX: { extensions: ["AMSmath.js", "AMSsymbols.js"] }
+    });
+  </script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS_HTML"></script>
+
+  <style>
+    /* ===== RESET Y ESTILOS BASE ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #030712;
+      font-family: 'Segoe UI', 'Arial', sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      color: white;
+    }
+
+    /* ===== FONDO DE PARTÍCULAS (CANVAS) ===== */
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ===== CONTENEDOR PRINCIPAL DEL TÍTULO ===== */
+    .title-wrapper {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      text-align: center;
+      width: 100%;
+      pointer-events: none;
+      text-shadow: 0 0 30px #3b82f6, 0 0 60px #1e3a8a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ===== TÍTULO PRINCIPAL ANIMADO ===== */
+    .animated-title {
+      font-size: 5vw; /* Tamaño responsive */
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.75); /* Color base tenue */
+      background: linear-gradient(135deg, 
+        rgba(255, 255, 255, 0.3), 
+        rgba(122, 162, 247, 0.3), 
+        rgba(187, 154, 247, 0.3), 
+        rgba(255, 255, 255, 0.3));
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      display: inline-block;
+      animation: gradientMove 8s ease infinite;
+      filter: drop-shadow(0 0 30px #3b82f6);
+      line-height: 1;
+    }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .animated-title span {
+      display: inline-block;
+      opacity: 0;
+      transform: scale(0.5) translateY(50px);
+      animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.5) translateY(50px); }
+      70% { transform: scale(1.1) translateY(-5px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* ===== SUBTÍTULOS ===== */
+    .subtitle {
+      margin-top: 1rem;
+      font-size: 2rem;
+      color: #e2e8f0;
+      text-shadow: 0 0 20px #3b82f6;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(8px);
+      padding: 0.5rem 2rem;
+      border-radius: 60px;
+      display: inline-block;
+      border: 1px solid rgba(255,255,255,0.2);
+      opacity: 0;
+      animation: fadeInUp 1s ease 2.5s forwards;
+    }
+
+    .sub-subtitle {
+      margin-top: 0.8rem;
+      font-size: 1.3rem;
+      color: #cbd5e1;
+      text-shadow: 0 0 15px #3b82f6;
+      background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(4px);
+      padding: 0.3rem 1.5rem;
+      border-radius: 40px;
+      display: inline-block;
+      border: 1px solid rgba(255,255,255,0.15);
+      opacity: 0;
+      animation: fadeInUp 1s ease 3.2s forwards;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ===== CONTENEDOR DE ECUACIONES FLOTANTES ===== */
+    #latex-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10; /* Por debajo del título */
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* ===== ESTILO PARA CADA ECUACIÓN FLOTANTE ===== */
+    .floating-latex {
+      position: absolute;
+      font-size: 2rem;
+      background: transparent;
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      white-space: nowrap;
+      animation: float 25s infinite alternate ease-in-out;
+      text-shadow: 0 0 10px rgba(100, 150, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      transform-origin: center;
+      pointer-events: none;
+      font-family: MathJax_Math, serif;
+      line-height: 1.4;
+      filter: blur(0.3px); /* Efecto de integración */
+      /* El color se asigna dinámicamente con JS */
+    }
+
+    /* Variaciones en la duración de la animación para cada elemento */
+    .floating-latex:nth-child(odd) {
+      animation-duration: 30s;
+    }
+    .floating-latex:nth-child(3n) {
+      animation-duration: 35s;
+    }
+    .floating-latex:nth-child(5n+2) {
+      animation-duration: 22s;
+    }
+
+    @keyframes float {
+      0% { transform: translate(0, 0) rotate(0deg); }
+      25% { transform: translate(8vw, 10vh) rotate(3deg); }
+      50% { transform: translate(-5vw, 20vh) rotate(-2deg); }
+      75% { transform: translate(12vw, -8vh) rotate(4deg); }
+      100% { transform: translate(-3vw, 5vh) rotate(-1deg); }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 600px) {
+      .floating-latex { font-size: 1rem; }
+      .subtitle { font-size: 1.2rem; }
+      .sub-subtitle { font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bgCanvas"></canvas>
+
+  <div class="title-wrapper">
+    <div class="animated-title" id="animatedTitle">ELECTROMAGNETISMO</div>
+    <div class="subtitle">Circuitos de Corriente Continua</div>
+    <div class="sub-subtitle">Prof. Dudbil Olvasada Pabón Riaño</div>
+  </div>
+
+  <div id="latex-container"></div>
+
+  <script>
+    (function() {
+      // =========================================================================
+      // 1. TÍTULO ANIMADO LETRA POR LETRA (EFECTO POWERPOINT)
+      // =========================================================================
+      const titleElement = document.getElementById('animatedTitle');
+      const text = titleElement.innerText;
+      titleElement.innerHTML = ''; // Limpiamos el contenido
+
+      for (let i = 0; i < text.length; i++) {
+        const span = document.createElement('span');
+        span.innerText = text[i];
+        if (text[i] === ' ') {
+          span.style.width = '0.5em';
+          span.innerHTML = '&nbsp;'; // Mantener espacio
+        }
+        span.style.animationDelay = `${i * 0.08}s`; // Retardo progresivo
+        titleElement.appendChild(span);
+      }
+
+      // =========================================================================
+      // 2. LISTA DE ECUACIONES Y SÍMBOLOS (LaTeX + iconos)
+      // =========================================================================
+      const ecuaciones = [
+  "\\vec{\\nabla} \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}",
+  "\\vec{\\nabla} \\times \\vec{E} = -\\frac{\\partial \\vec{B}}{\\partial t}",
+  "\\vec{\\nabla} \\cdot \\vec{B} = 0",
+  "\\vec{\\nabla} \\times \\vec{B} = \\mu_0 \\vec{J} + \\mu_0\\varepsilon_0 \\frac{\\partial \\vec{E}}{\\partial t}",
+  "\\vec{F} = q(\\vec{E} + \\vec{v} \\times \\vec{B})",
+  "\\oint \\vec{E} \\cdot d\\vec{l} = -\\frac{d\\Phi_B}{dt}",
+  "\\oint \\vec{B} \\cdot d\\vec{l} = \\mu_0 I + \\mu_0\\varepsilon_0 \\frac{d\\Phi_E}{dt}",
+  "\\Phi_E = \\oint \\vec{E} \\cdot d\\vec{A}",
+  "\\Phi_B = \\oint \\vec{B} \\cdot d\\vec{A}",
+  "U = \\frac{1}{2}\\varepsilon_0 E^2 + \\frac{1}{2\\mu_0} B^2",
+  "\\vec{E} = -\\vec{\\nabla} \\phi - \\frac{\\partial \\vec{A}}{\\partial t}",
+  "\\vec{B} = \\vec{\\nabla} \\times \\vec{A}",
+  "\\Box A^\\mu = \\mu_0 J^\\mu",
+  "\\gamma = \\frac{1}{\\sqrt{1 - v^2/c^2}}",
+  "E^2 = (pc)^2 + (m_0 c^2)^2",
+  "\\nabla^2 \\phi - \\frac{1}{c^2}\\frac{\\partial^2 \\phi}{\\partial t^2} = -\\frac{\\rho}{\\varepsilon_0}",
+  "\\nabla^2 \\vec{A} - \\frac{1}{c^2}\\frac{\\partial^2 \\vec{A}}{\\partial t^2} = -\\mu_0 \\vec{J}",
+  "c = \\frac{1}{\\sqrt{\\varepsilon_0\\mu_0}}",
+  "\\vec{E} = \\vec{E}_0 \\cos(\\vec{k}\\cdot\\vec{r} - \\omega t)",
+  "\\vec{B} = \\vec{B}_0 \\cos(\\vec{k}\\cdot\\vec{r} - \\omega t)",
+  "\\frac{\\partial \\rho}{\\partial t} + \\vec{\\nabla} \\cdot \\vec{J} = 0",
+  "\\vec{P} = \\varepsilon_0 \\chi_e \\vec{E}",
+  "\\vec{M} = \\chi_m \\vec{H}",
+  "\\vec{D} = \\varepsilon_0 \\vec{E} + \\vec{P}",
+  "\\vec{H} = \\frac{1}{\\mu_0} \\vec{B} - \\vec{M}",
+  "\\vec{\\nabla} \\times \\vec{H} = \\vec{J} + \\frac{\\partial \\vec{D}}{\\partial t}",
+  "\\vec{\\nabla} \\cdot \\vec{D} = \\rho_f",
+  "\\vec{\\nabla} \\times \\vec{E} = -\\frac{\\partial \\vec{B}}{\\partial t}",
+  "\\vec{\\nabla} \\cdot \\vec{B} = 0",
+  "F_{\\mu\\nu} = \\partial_\\mu A_\\nu - \\partial_\\nu A_\\mu",
+  "\\partial_\\mu F^{\\mu\\nu} = \\mu_0 J^\\nu",
+  "\\partial_\\mu \\tilde{F}^{\\mu\\nu} = 0",
+  "\\mathcal{L} = -\\frac{1}{4} F_{\\mu\\nu} F^{\\mu\\nu} + J_\\mu A^\\mu",
+  "\\vec{\\nabla} \\cdot \\vec{j} + \\frac{\\partial \\rho}{\\partial t} = 0",
+  "\\vec{E} = -\\vec{\\nabla} \\phi - \\frac{\\partial \\vec{A}}{\\partial t}",
+  "\\vec{B} = \\vec{\\nabla} \\times \\vec{A}",
+  "\\Phi = \\int \\vec{B} \\cdot d\\vec{S}",
+  "\\varepsilon = -\\frac{d\\Phi}{dt}",
+  "L = \\frac{\\Phi}{I}",
+  "U = \\frac{1}{2} L I^2",
+  "U = \\frac{1}{2} C V^2",
+  "\\vec{F} = I \\vec{l} \\times \\vec{B}",
+  "\\tau = \\vec{m} \\times \\vec{B}",
+  "\\vec{m} = I \\vec{A}",
+  "\\vec{B} = \\frac{\\mu_0}{4\\pi} \\frac{3\\vec{r}(\\vec{m}\\cdot\\vec{r}) - \\vec{m} r^2}{r^5}",
+  "\\vec{E} = \\frac{1}{4\\pi\\varepsilon_0} \\frac{q}{r^2} \\hat{r}",
+  "\\vec{B} = \\frac{\\mu_0}{4\\pi} \\frac{I \\vec{l} \\times \\hat{r}}{r^2}",
+  "\\oint \\vec{H} \\cdot d\\vec{l} = I_{enc}",
+  "\\vec{B} = \\mu_0 (\\vec{H} + \\vec{M})",
+  "\\vec{P} = \\varepsilon_0 \\chi_e \\vec{E}",
+  "\\vec{M} = \\chi_m \\vec{H}",
+  "⚛️",
+  "➕+",
+  "➖",
+  "🧲",
+  "🔋",
+  "💡",
+  "⚡",
+  "🔌",
+  "🔄",
+  "🧲",
+  "⚡",
+  "📟",
+  "📡a",
+  "🔬",
+  "🧪",
+  "📏",
+  "🔧",
+  "⚙️",
+  "🛰️",
+  "🌈"
+];
+
+
+      // =========================================================================
+      // 3. CREAR ELEMENTOS FLOTANTES (ECUACIONES + ICONOS)
+      // =========================================================================
+      const container = document.getElementById('latex-container');
+      const numElementos = ecuaciones.length; // Usamos todas, una por una (sin repetición)
+
+      for (let i = 0; i < numElementos; i++) {
+        // Seleccionamos cada ecuación en orden (podría ser aleatorio, pero usamos i para variar)
+        // Para que sea más variado, podemos usar random, pero con length fijo, mejor recorrer todas
+        const eq = ecuaciones[i];
+        
+        const div = document.createElement('div');
+        div.className = 'floating-latex';
+        
+        // Posición aleatoria dentro de la pantalla (10% - 90%)
+        div.style.left = Math.random() * 80 + 10 + '%';
+        div.style.top = Math.random() * 80 + 10 + '%';
+        div.style.animationDelay = Math.random() * 10 + 's'; // Retardo aleatorio
+        div.style.transform = `rotate(${Math.random() * 20 - 10}deg)`; // Rotación inicial
+
+        // Color aleatorio con opacidad baja (entre 0.1 y 0.3)
+        const r = Math.floor(Math.random() * 256);
+        const g = Math.floor(Math.random() * 256);
+        const b = Math.floor(Math.random() * 256);
+        const a = Math.random() * 0.2 + 0.1; // 0.1 a 0.3
+        div.style.color = `rgba(${r}, ${g}, ${b}, ${a})`;
+        
+        // El contenido se envuelve en $ $ para que MathJax lo procese (incluso los iconos, que se muestran como texto)
+        div.textContent = '$' + eq + '$';
+        
+        container.appendChild(div);
+      }
+
+      // Forzar a MathJax a procesar los nuevos elementos
+      if (window.MathJax) {
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub, container]);
+      }
+
+      // =========================================================================
+      // 4. FONDO DE PARTÍCULAS (CANVAS)
+      // =========================================================================
+      const canvas = document.getElementById('bgCanvas');
+      const ctx = canvas.getContext('2d');
+      let width, height;
+
+      function resizeCanvas() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      // Crear partículas con propiedades aleatorias
+      const particles = [];
+      const particleCount = 300;
+
+      for (let i = 0; i < particleCount; i++) {
+        particles.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          radius: Math.random() * 12 + 1, // Tamaño variable
+          dx: (Math.random() - 0.5) * 0.3, // Velocidad X
+          dy: (Math.random() - 0.5) * 0.3, // Velocidad Y
+          // Color en tonos azules con opacidad muy baja
+          color: `rgba(${100 + Math.random() * 80}, ${150 + Math.random() * 80}, 255, ${Math.random() * 0.11 + 0.05})`
+        });
+      }
+
+      function drawParticles() {
+        ctx.clearRect(0, 0, width, height);
+        
+        particles.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = p.color;
+          ctx.fill();
+
+          // Mover partículas
+          p.x += p.dx;
+          p.y += p.dy;
+
+          // Rebotar en bordes
+          if (p.x < 0 || p.x > width) p.dx *= -1;
+          if (p.y < 0 || p.y > height) p.dy *= -1;
+        });
+
+        requestAnimationFrame(drawParticles);
+      }
+
+      drawParticles();
+    })();
+  </script>
+</body>
+</html>

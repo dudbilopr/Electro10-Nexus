@@ -1,0 +1,6 @@
+# Configuración sensible — NO subir a GitHub
+config/firebase.config.js
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db

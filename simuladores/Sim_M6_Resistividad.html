@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Resistividad (Ley de Pouillet)</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; padding: 6px; border-radius: 6px; width: 100%; font-size: 0.85rem; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        input[type="range"] { accent-color: #3b82f6; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center px-4 z-20 shrink-0 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-slate-900 font-bold shadow-lg shadow-amber-500/20">R</div>
+            <h1 class="text-lg font-bold text-white">Simulador <span class="text-amber-400">Resistividad Eléctrica</span></h1>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Controls Sidebar -->
+        <aside class="w-80 glass-panel border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto z-10 p-4 space-y-6">
+            
+            <div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Material y Geometría</h2>
+                
+                <div class="space-y-4">
+                    <!-- Material -->
+                    <div>
+                        <label class="text-xs font-medium text-slate-400 block mb-1">Material del Conductor</label>
+                        <select id="mat-select" class="input-dark cursor-pointer">
+                            <option value="1.68e-8" data-color="0xb87333">Cobre ($\rho = 1.68 \times 10^{-8} \Omega\cdot m$)</option>
+                            <option value="2.82e-8" data-color="0xd1d5db">Aluminio ($\rho = 2.82 \times 10^{-8} \Omega\cdot m$)</option>
+                            <option value="2.44e-8" data-color="0xfbbf24">Oro ($\rho = 2.44 \times 10^{-8} \Omega\cdot m$)</option>
+                            <option value="1.00e-7" data-color="0x64748b">Hierro ($\rho = 1.00 \times 10^{-7} \Omega\cdot m$)</option>
+                            <option value="1.00e13" data-color="0x1e293b">Caucho ($\rho = 10^{13} \Omega\cdot m$)</option>
+                        </select>
+                    </div>
+
+                    <!-- Longitud -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-amber-400 font-medium">Longitud ($L$)</span>
+                            <span id="L-val" class="font-mono text-slate-300">10.0 m</span>
+                        </div>
+                        <input type="range" id="L-slider" min="0.1" max="50" step="0.1" value="10" class="w-full">
+                    </div>
+
+                    <!-- Area -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-emerald-400 font-medium">Área Transversal ($A$)</span>
+                            <span id="A-val" class="font-mono text-slate-300">2.0 mm²</span>
+                        </div>
+                        <input type="range" id="A-slider" min="0.1" max="10" step="0.1" value="2" class="w-full">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto">
+                 <button onclick="resetSim()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-700">
+                    Restaurar Valores
+                </button>
+            </div>
+        </aside>
+
+        <!-- Center: 3D Visualization -->
+        <div class="flex-1 flex flex-col relative bg-slate-950">
+            <!-- 3D Canvas -->
+            <div id="canvas-container" class="w-full h-1/2 border-b border-slate-800 relative cursor-move">
+                <div class="absolute top-4 left-4 z-10 glass-panel px-3 py-2 rounded-lg pointer-events-none">
+                    <div class="text-xs font-bold text-slate-400 mb-1">Visualización del Conductor</div>
+                    <div class="text-[10px] text-slate-500">Gira para explorar. Las dimensiones 3D son a escala relativa.</div>
+                </div>
+            </div>
+
+            <!-- Theory and Math (Bottom) -->
+            <div class="w-full h-1/2 p-6 overflow-y-auto bg-slate-900 scrollbar-thin flex gap-6">
+                
+                <!-- Math Panel -->
+                <div class="flex-1">
+                    <h3 class="text-xs font-bold text-amber-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        Cálculo en Tiempo Real
+                    </h3>
+                    <div class="glass-panel p-5 rounded-xl border-amber-500/30 border">
+                        <div class="text-center mb-4">
+                            <span class="text-sm text-slate-400">Ley de Pouillet</span>
+                            <div class="mt-2 p-2 bg-slate-950 rounded-lg border border-slate-800">
+                                $$ R = \rho \frac{L}{A} $$
+                            </div>
+                        </div>
+                        <div id="math-steps" class="space-y-3 text-sm text-slate-300 font-light">
+                            <!-- Dynamic Math will be injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphic Panel -->
+                <div class="w-[45%] flex flex-col">
+                    <h3 class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path></svg>
+                        Resistencia vs Longitud
+                    </h3>
+                    <div class="flex-1 glass-panel rounded-xl p-3 relative">
+                        <canvas id="chartCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- State ---
+        let state = {
+            rho: 1.68e-8,
+            L: 10.0,
+            A: 2.0 * 1e-6, // mm2 to m2
+            color: 0xb87333
+        };
+
+        // --- Elements ---
+        const matSelect = document.getElementById('mat-select');
+        const lSlider = document.getElementById('L-slider');
+        const aSlider = document.getElementById('A-slider');
+        const lVal = document.getElementById('L-val');
+        const aVal = document.getElementById('A-val');
+        const mathSteps = document.getElementById('math-steps');
+
+        // --- Three.js Setup ---
+        let scene, camera, renderer, controls, cylinderMesh;
+        const container = document.getElementById('canvas-container');
+
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 3, 15);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            // Cylinder
+            const geometry = new THREE.CylinderGeometry(1, 1, 10, 32);
+            geometry.rotateZ(Math.PI / 2); // Horizontal
+            const material = new THREE.MeshStandardMaterial({ 
+                color: state.color, metalness: 0.8, roughness: 0.2 
+            });
+            cylinderMesh = new THREE.Mesh(geometry, material);
+            scene.add(cylinderMesh);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            animate3D();
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function update3D() {
+            // Visual scale mapping
+            const visL = (state.L / 50) * 15 + 2; // min 2, max 17 length
+            const radiusMm = Math.sqrt(state.A * 1e6 / Math.PI);
+            const visR = (radiusMm / Math.sqrt(10 / Math.PI)) * 1.5 + 0.1; // scale radius
+
+            cylinderMesh.scale.set(visR, visL, visR);
+            cylinderMesh.material.color.setHex(state.color);
+        }
+
+        // --- Chart Setup ---
+        let rChart;
+        function initChart() {
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            rChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Resistencia (Ω)',
+                        data: [],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        pointRadius: 0
+                    },
+                    {
+                        label: 'Valor Actual',
+                        data: [],
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b',
+                        pointRadius: 6,
+                        showLine: false
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'Longitud L (m)', color: '#64748b' }, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+                        y: { title: { display: true, text: 'Resistencia R (Ω)', color: '#64748b' }, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', format: { notation: "scientific" } } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            const lengths = Array.from({length: 20}, (_, i) => (i+1) * 2.5); // 2.5 to 50
+            const resistances = lengths.map(l => state.rho * l / state.A);
+            
+            rChart.data.labels = lengths;
+            rChart.data.datasets[0].data = resistances;
+            
+            // Current point
+            const currentR = state.rho * state.L / state.A;
+            rChart.data.datasets[1].data = lengths.map(l => l === Math.round(state.L/2.5)*2.5 ? currentR : null); 
+            // Better to just add a scatter point, but Chart.js mixed type is fine.
+            rChart.data.datasets[1].data = [{x: state.L, y: currentR}];
+            
+            rChart.update();
+        }
+
+        // --- Logic & Updates ---
+        function calculate() {
+            const R = state.rho * state.L / state.A;
+            return R;
+        }
+
+        function updateUI() {
+            lVal.innerText = `${state.L.toFixed(1)} m`;
+            aVal.innerText = `${(state.A * 1e6).toFixed(1)} mm²`;
+
+            const R = calculate();
+
+            let mathHtml = `
+                <div class="border-l-4 border-amber-500 pl-3">
+                    <div class="mb-2">Sustituyendo los valores:</div>
+                    <div class="overflow-x-auto">
+                        $$ R = (${state.rho.toExponential(2)}\\ \\Omega\\cdot m) \\frac{${state.L.toFixed(1)}\\ m}{${(state.A).toExponential(2)}\\ m^2} $$
+                    </div>
+                </div>
+                <div class="bg-amber-500/10 p-3 rounded mt-3 border border-amber-500/20 text-center">
+                    <span class="text-xs text-amber-400 uppercase tracking-wider font-bold">Resistencia Resultante</span><br>
+                    <span class="text-xl font-mono text-white">$$ R = ${R.toExponential(3)}\\ \\Omega $$</span>
+                </div>
+            `;
+            
+            if (state.rho >= 1e13) {
+                mathHtml += `<div class="mt-2 text-[10px] text-red-400 text-center">Nota: El caucho es un aislante excelente, su resistencia es colosal.</div>`;
+            }
+
+            mathSteps.innerHTML = mathHtml;
+            if (window.MathJax) MathJax.typesetPromise([mathSteps]);
+
+            update3D();
+            updateChart();
+        }
+
+        function handleInput() {
+            const opt = matSelect.options[matSelect.selectedIndex];
+            state.rho = parseFloat(opt.value);
+            state.color = parseInt(opt.getAttribute('data-color'));
+            state.L = parseFloat(lSlider.value);
+            state.A = parseFloat(aSlider.value) * 1e-6;
+            updateUI();
+        }
+
+        function resetSim() {
+            matSelect.selectedIndex = 0;
+            lSlider.value = 10;
+            aSlider.value = 2;
+            handleInput();
+        }
+
+        // Listeners
+        matSelect.addEventListener('change', handleInput);
+        lSlider.addEventListener('input', handleInput);
+        aSlider.addEventListener('input', handleInput);
+
+        // Init
+        init3D();
+        initChart();
+        handleInput();
+
+    </script>
+</body>
+</html>

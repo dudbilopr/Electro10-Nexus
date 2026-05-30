@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla Interactiva: Ley de Ampere</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .step-card { transition: all 0.3s ease; opacity: 0; transform: translateY(10px); }
+        .step-card.visible { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+
+    <header class="w-full max-w-5xl mb-6 flex justify-between items-center glass-panel p-4 rounded-2xl shadow-lg">
+        <div>
+            <h1 class="text-2xl font-bold text-white flex items-center gap-2">
+                <span class="bg-indigo-500 text-white px-2 py-1 rounded-lg text-sm">M9</span>
+                Tabla de la Ley de Ampere
+            </h1>
+            <p class="text-slate-400 text-sm mt-1">Deducción interactiva del campo magnético usando $\oint \vec{B} \cdot d\vec{s} = \mu_0 I_{enc}$</p>
+        </div>
+    </header>
+
+    <main class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Sidebar -->
+        <aside class="glass-panel p-5 rounded-2xl h-fit">
+            <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Selecciona la Geometría</h2>
+            
+            <div class="space-y-3">
+                <button onclick="loadGeometry('wire')" class="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-indigo-500 hover:bg-slate-800 transition-all group focus:border-indigo-500 focus:bg-slate-800">
+                    <div class="font-bold text-indigo-400">Hilo Infinito Recto</div>
+                    <div class="text-xs text-slate-500 mt-1">Bucle Amperiano: Circunferencia</div>
+                </button>
+                
+                <button onclick="loadGeometry('solenoid')" class="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-indigo-500 hover:bg-slate-800 transition-all group focus:border-indigo-500 focus:bg-slate-800">
+                    <div class="font-bold text-indigo-400">Solenoide Ideal</div>
+                    <div class="text-xs text-slate-500 mt-1">Bucle Amperiano: Rectángulo</div>
+                </button>
+
+                <button onclick="loadGeometry('toroid')" class="w-full text-left p-4 rounded-xl border border-slate-700 hover:border-indigo-500 hover:bg-slate-800 transition-all group focus:border-indigo-500 focus:bg-slate-800">
+                    <div class="font-bold text-indigo-400">Toroide</div>
+                    <div class="text-xs text-slate-500 mt-1">Bucle Amperiano: Círculo concéntrico</div>
+                </button>
+            </div>
+            
+            <div class="mt-8 p-4 bg-slate-800/50 rounded-lg text-sm text-slate-400">
+                <strong class="text-slate-300">Recuerda:</strong> La Ley de Ampere es útil solo cuando existe un alto grado de simetría, permitiendo sacar la magnitud de $\vec{B}$ fuera de la integral.
+            </div>
+        </aside>
+
+        <!-- Main Content (Steps) -->
+        <div id="steps-container" class="lg:col-span-2 space-y-4">
+            <div class="glass-panel p-10 rounded-2xl flex flex-col items-center justify-center text-center text-slate-500 min-h-[400px]">
+                <svg class="w-16 h-16 mb-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                <p>Selecciona una geometría en el menú lateral para ver la deducción paso a paso.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const data = {
+            wire: {
+                title: "Hilo Infinito Recto",
+                diagram: `<svg viewBox="0 0 200 150" class="w-full max-w-[200px] mx-auto drop-shadow-lg">
+                    <!-- Wire -->
+                    <rect x="95" y="10" width="10" height="130" fill="#cbd5e1"/>
+                    <path d="M 100 130 L 100 20" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow)"/>
+                    <text x="110" y="30" fill="#ef4444" font-size="14" font-family="sans-serif">I</text>
+                    <!-- Amperian Loop -->
+                    <ellipse cx="100" cy="75" rx="60" ry="25" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="5,5"/>
+                    <text x="165" y="70" fill="#6366f1" font-size="12" font-family="sans-serif">Bucle r</text>
+                    <path d="M 100 75 L 160 75" stroke="#94a3b8" stroke-width="1"/>
+                    <text x="125" y="70" fill="#94a3b8" font-size="12" font-family="sans-serif">r</text>
+                </svg>`,
+                steps: [
+                    { t: "1. Elegir Bucle Amperiano", m: "Circunferencia de radio $r$ centrada en el hilo. Por simetría, $\\vec{B}$ es constante y tangente al bucle en todo punto." },
+                    { t: "2. Evaluar la Integral", m: "$$ \\oint \\vec{B} \\cdot d\\vec{s} = B \\oint ds = B (2\\pi r) $$" },
+                    { t: "3. Corriente Encerrada", m: "El bucle encierra la corriente total $I$.<br>$$ I_{enc} = I $$" },
+                    { t: "4. Resultado Final", m: "$$ B (2\\pi r) = \\mu_0 I \\implies B = \\frac{\\mu_0 I}{2\\pi r} $$", result: true }
+                ]
+            },
+            solenoid: {
+                title: "Solenoide Ideal",
+                diagram: `<svg viewBox="0 0 250 150" class="w-full max-w-[250px] mx-auto drop-shadow-lg">
+                    <!-- Solenoid turns (cutaway) -->
+                    <line x1="20" y1="40" x2="230" y2="40" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,4"/>
+                    <line x1="20" y1="110" x2="230" y2="110" stroke="#94a3b8" stroke-width="2" stroke-dasharray="4,4"/>
+                    <!-- B field inside -->
+                    <path d="M 40 75 L 210 75" stroke="#ef4444" stroke-width="2" marker-end="url(#arrow)"/>
+                    <text x="120" y="70" fill="#ef4444" font-size="14" font-family="sans-serif">B</text>
+                    <!-- Amperian Loop (Rectangle) -->
+                    <rect x="80" y="20" width="90" height="70" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="4,4"/>
+                    <text x="110" y="15" fill="#6366f1" font-size="12" font-family="sans-serif">Bucle Rectangular (L)</text>
+                    <!-- Current dots/crosses -->
+                    <circle cx="90" cy="40" r="3" fill="#cbd5e1"/><circle cx="105" cy="40" r="3" fill="#cbd5e1"/><circle cx="120" cy="40" r="3" fill="#cbd5e1"/><circle cx="135" cy="40" r="3" fill="#cbd5e1"/><circle cx="150" cy="40" r="3" fill="#cbd5e1"/><circle cx="165" cy="40" r="3" fill="#cbd5e1"/>
+                </svg>`,
+                steps: [
+                    { t: "1. Elegir Bucle Amperiano", m: "Rectángulo de lado $L$ paralelo al eje. Una parte dentro, otra fuera." },
+                    { t: "2. Evaluar la Integral", m: "Solo contribuye el lado interno de longitud $L$ (ya que $\\vec{B}$ exterior es 0 y los lados perpendiculares tienen $\\vec{B} \\cdot d\\vec{s} = 0$).<br>$$ \\oint \\vec{B} \\cdot d\\vec{s} = B L $$" },
+                    { t: "3. Corriente Encerrada", m: "Si el solenoide tiene $N$ vueltas en una longitud total $l$ (densidad $n = N/l$), el bucle de lado $L$ encierra $n L$ vueltas, cada una con corriente $I$.<br>$$ I_{enc} = (n L) I $$" },
+                    { t: "4. Resultado Final", m: "$$ B L = \\mu_0 (n L) I \\implies B = \\mu_0 n I $$", result: true }
+                ]
+            },
+            toroid: {
+                title: "Toroide",
+                diagram: `<svg viewBox="0 0 200 200" class="w-full max-w-[200px] mx-auto drop-shadow-lg">
+                    <!-- Toroid rings -->
+                    <circle cx="100" cy="100" r="70" fill="none" stroke="#64748b" stroke-width="20" opacity="0.3"/>
+                    <circle cx="100" cy="100" r="60" fill="none" stroke="#94a3b8" stroke-width="1"/>
+                    <circle cx="100" cy="100" r="80" fill="none" stroke="#94a3b8" stroke-width="1"/>
+                    <!-- Amperian Loop -->
+                    <circle cx="100" cy="100" r="70" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="5,5"/>
+                    <!-- r line -->
+                    <line x1="100" y1="100" x2="160" y2="65" stroke="#cbd5e1" stroke-width="1"/>
+                    <text x="130" y="80" fill="#cbd5e1" font-size="12" font-family="sans-serif">r</text>
+                    <text x="40" y="40" fill="#6366f1" font-size="12" font-family="sans-serif">Bucle r</text>
+                </svg>`,
+                steps: [
+                    { t: "1. Elegir Bucle Amperiano", m: "Circunferencia de radio $r$ dentro del toroide ($a < r < b$). $\\vec{B}$ es constante y tangente." },
+                    { t: "2. Evaluar la Integral", m: "$$ \\oint \\vec{B} \\cdot d\\vec{s} = B (2\\pi r) $$" },
+                    { t: "3. Corriente Encerrada", m: "El bucle encierra las $N$ vueltas del toroide que pasan por el agujero central, cada una con corriente $I$.<br>$$ I_{enc} = N I $$" },
+                    { t: "4. Resultado Final", m: "$$ B (2\\pi r) = \\mu_0 N I \\implies B = \\frac{\\mu_0 N I}{2\\pi r} $$", result: true }
+                ]
+            }
+        };
+
+        async function loadGeometry(key) {
+            const container = document.getElementById('steps-container');
+            const geom = data[key];
+            
+            let html = `
+                <div class="glass-panel p-6 rounded-2xl mb-4 border-l-4 border-indigo-500">
+                    <h2 class="text-xl font-bold text-white mb-4">${geom.title}</h2>
+                    <div class="bg-slate-900 rounded-xl p-4 flex items-center justify-center relative">
+                        <defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444" /></marker></defs>
+                        ${geom.diagram}
+                    </div>
+                </div>
+            `;
+
+            geom.steps.forEach((step, index) => {
+                const color = step.result ? 'bg-indigo-500/20 border-indigo-500' : 'bg-slate-800/50 border-slate-700';
+                const textCol = step.result ? 'text-indigo-300' : 'text-slate-400';
+                html += `
+                    <div class="step-card glass-panel p-5 rounded-xl border ${color}" id="step-${index}">
+                        <h3 class="text-sm font-bold text-white mb-2">${step.t}</h3>
+                        <div class="${textCol} text-sm">${step.m}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            
+            // Typeset MathJax
+            if (window.MathJax) await MathJax.typesetPromise();
+
+            // Animate steps
+            geom.steps.forEach((_, i) => {
+                setTimeout(() => {
+                    document.getElementById(`step-${i}`).classList.add('visible');
+                }, i * 250);
+            });
+        }
+    </script>
+</body>
+</html>

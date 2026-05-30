@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Interacciones Electrostáticas</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 4px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #475569; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        .angle-label {
+            position: absolute; transform: translate(-50%, -50%);
+            font-weight: bold; font-family: monospace; color: #dc2626;
+            background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 6px;
+            pointer-events: none; z-index: 20; border: 1px solid #fca5a5;
+            font-size: clamp(11px, 0.9vw, 15px); display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-red-600">
+                <h1 class="font-bold tracking-wide" style="font-size: clamp(20px, 2vw, 36px);">Laboratorio: Dinámica de Interacciones Electrostáticas</h1>
+                <p class="text-red-300" style="font-size: clamp(12px, 1vw, 18px);">Análisis Físico del Electroscopio, Péndulo y Balanza de Torsión</p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍAS DINÁMICAS -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BASE COMÚN -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span>La fuerza eléctrica entre dos cargas puntuales en reposo es dictada por la <strong>Ley de Coulomb</strong>. Su magnitud es inversamente proporcional al cuadrado de la distancia $d$ que las separa:</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Constante de Coulomb:</strong> $k = 1/(4\pi\varepsilon_0) \approx 9\times 10^9 \text{ N m}^2/\text{C}^2$. Define la intensidad del acoplamiento eléctrico en el vacío.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$ |\vec{F}_e| = k \frac{|q_1 q_2|}{d^2} $$</div>
+                    </div>
+
+                    <!-- CASO 1: ELECTROSCOPIO -->
+                    <div id="teoria-c1" class="flex flex-col gap-[1vmin] flex-1">
+                        <div class="bg-amber-50 p-[1.5vmin] border border-amber-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-amber-800 flex items-center">
+                                1. Electroscopio de Láminas (Repulsión)
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Redistribución:</strong> Al acercar una carga, los electrones libres del metal se desplazan. Ambas láminas adquieren carga del mismo signo y, por tanto, se repelen vigorosamente.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm">Al inducir carga al electroscopio, las láminas de masa $m$ se separan. El equilibrio ocurre cuando el torque eléctrico iguala al gravitacional.</p>
+                            <hr class="border-amber-200 my-2">
+                            <p class="font-bold text-sm">Ecuación de Equilibrio Angular ($\theta$)</p>
+                            <p class="text-xs text-slate-600">Considerando que la fuerza de repulsión inducida decae muy fuertemente con la distancia:</p>
+                            <div class="math-display">
+                                \begin{aligned}
+                                \tau_{grav} &= \tau_{elec} \\
+                                mg L \sin\theta &= F_e L \cos\theta \quad \Rightarrow \quad \tan\theta = \frac{F_e}{mg}
+                                \end{aligned}
+                            </div>
+                            <p class="text-xs text-red-600 font-bold mt-1">⚠️ Cuidado: La humedad del aire actúa como vía de escape, causando la descarga progresiva de las láminas en la vida real.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 2: PÉNDULO ELECTROSTÁTICO -->
+                    <div id="teoria-c2" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-indigo-800 flex items-center">
+                                2. Péndulo Electrostático (Atracción y Contacto)
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Polarización:</strong> Incluso si la esfera es neutra, la carga externa atrae a los electrones hacia un lado. Al haber cargas opuestas más cerca, predomina la fuerza de atracción.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm">Fase 1: Atracción por polarización ($F \propto 1/d^3$).<br>Fase 2: Contacto físico ($d \le 1.8$), transferencia de carga.<br>Fase 3: Repulsión inmediata al adquirir el mismo signo.</p>
+                            <hr class="border-indigo-200 my-2">
+                            <p class="font-bold text-sm">Dinámica de Transferencia</p>
+                            <p class="text-xs text-slate-600">Al ocurrir el contacto, el potencial eléctrico de los conductores busca igualarse, compartiendo la carga total neta.</p>
+                            <div class="math-display">$$ Q_{final} \approx \frac{Q_{inicial}}{2} \quad \Rightarrow \quad F_{repulsi\acute{o}n} = k\frac{Q^2}{4d^2} $$</div>
+                        </div>
+                    </div>
+
+                    <!-- CASO 3: BALANZA DE TORSIÓN -->
+                    <div id="teoria-c3" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-slate-50 p-[1.5vmin] border border-slate-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-slate-800 flex items-center">
+                                3. Balanza de Torsión (Medición Cuantitativa)
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Torsión $\kappa$:</strong> Todo hilo opone resistencia a ser retorcido. La fuerza restauradora es proporcional al ángulo girado, permitiendo medir fuerzas minúsculas con alta precisión.</span>
+                                </span>
+                            </p>
+                            <p class="mt-1 text-sm">Diseñada por Charles de Coulomb. Mide fuerzas eléctricas balanceando la rotación de un brazo horizontal sujeto a una fibra de torsión elástica.</p>
+                            <hr class="border-slate-300 my-2">
+                            <p class="font-bold text-sm">Equilibrio de Torques Múltiples</p>
+                            <p class="text-xs text-slate-600">El ángulo de rotación $\theta$ proporciona una medida directa y lineal de la fuerza electromagnética aplicada a distancia $d$.</p>
+                            <div class="math-display">
+                                \begin{aligned}
+                                \tau_{hilo} &= \kappa \theta \\
+                                F_e R &= \kappa \theta \quad \Rightarrow \quad \theta = \frac{k Q_1 Q_2}{d^2} \left(\frac{R}{\kappa}\right)
+                                \end{aligned}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE COMÚN CONCLUSIÓN -->
+                    <div class="bg-red-50 p-[1.5vmin] shadow-sm rounded-lg border border-red-200 mt-[1vmin]">
+                        <p class="text-sm"><strong>Trabajo Electrostático Externo</strong> ($\Delta W = \int F_e \cdot dd$):</p>
+                        <p class="text-xs mt-1 text-slate-700">El área bajo la curva representa el trabajo requerido para acercar la carga desde el infinito contra las fuerzas de repulsión eléctrica.</p>
+                        <div class="text-center font-bold text-red-700 mt-2" style="font-size: clamp(16px, 1.5vw, 24px);">
+                            <span id="ui-potential-text">\( \Delta W = 0\text{ J} \)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL -->
+                    <div class="control-panel shadow-sm">
+                        
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-slate-800">Experimento:</label>
+                            <select id="select-material" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500">
+                                <option value="c1">1. Electroscopio</option>
+                                <option value="c2">2. Péndulo Electrostático</option>
+                                <option value="c3">3. Balanza de Torsión</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-red-700">Distancia $d$ (cm):</label>
+                            <input type="range" id="slider-r" min="1.5" max="15" step="0.1" value="5.0" class="w-[5vw]">
+                            <span id="val-r" class="font-mono font-bold w-[2vw] text-right">5.0</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3" id="rho-group">
+                            <label class="font-bold text-blue-700">Carga Externa $Q$:</label>
+                            <input type="range" id="slider-rho" min="-10" max="10" step="0.5" value="5" class="w-[4vw]">
+                            <span id="val-rho" class="font-mono font-bold w-[2vw] text-right">5.0</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-amber-600">Inercia $m$ (g):</label>
+                            <input type="range" id="slider-theta" min="1" max="10" step="1" value="4" class="w-[3.5vw]">
+                            <span id="val-m" class="font-mono font-bold w-[1.5vw] text-right">4</span>
+                        </div>
+
+                        <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-sm font-semibold text-slate-700">
+                            <label><input type="checkbox" id="toggle-field" checked> Perturbación</label>
+                            <label><input type="checkbox" id="toggle-rotate"> Cámara Auto</label>
+                            <button id="btn-descarga" class="bg-slate-700 text-white px-2 py-0.5 rounded hover:bg-slate-600 active:bg-slate-800">Tierra ⚡</button>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper" id="canvas-3d">
+                            <div class="hint-overlay">⟲ Rotar 3D | ⚲ Zoom | <strong>Acerca la esfera para inducir/transferir carga</strong></div>
+                            <div id="lbl-angle" class="angle-label">0°</div>
+                        </div>
+
+                        <!-- 2D Graph & Stats -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Gráfica -->
+                            <div class="flex-1 graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 16px);">Fuerza $F_e$ vs Distancia $d$</div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Stats Flujo -->
+                            <div class="bg-white border border-slate-200 rounded-lg p-[1.5vmin] text-center shadow-sm">
+                                <div class="text-slate-600 font-serif italic mb-1" style="font-size: clamp(12px, 1vw, 16px);">Estado Dinámico del Sistema</div>
+                                <div class="font-mono font-bold text-slate-800" id="ui-region" style="font-size: clamp(14px, 1.2vw, 20px);">
+                                    Analizando cinemática...
+                                </div>
+                                <div class="mt-2 text-slate-600 font-semibold bg-slate-100 py-1 rounded border border-slate-200" style="font-size: clamp(12px, 1.1vw, 16px);">
+                                    Fuerza Eléctrica $|\vec{F}_e|$: <span id="val-e-local" class="text-red-600 font-bold font-mono text-lg">0.0</span> mN
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS Y FÍSICA -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(40, cont3D.clientWidth / cont3D.clientHeight, 0.1, 100);
+        cam.position.set(15, 8, 15);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.localClippingEnabled = true;
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true; ctrl.autoRotate = false; ctrl.autoRotateSpeed = 1.0;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const light = new THREE.DirectionalLight(0xffffff, 0.6);
+        light.position.set(10, 20, 10); scene.add(light);
+
+        // ==========================================
+        // 2. CONSTANTES FÍSICAS Y ESTADO
+        // ==========================================
+        let params = { r: 5.0, rho: 5.0, theta: 4.0, material: 'c1' };
+        
+        // Estado del motor físico
+        let phys = {
+            theta: 0,         // Ángulo actual (radianes)
+            omega: 0,         // Velocidad angular
+            hasTouched: false,// ¿Hubo contacto en el péndulo?
+            internalQ: 0      // Carga residual del objeto
+        };
+
+        // ==========================================
+        // 3. GENERADORES DE GEOMETRÍA 3D
+        // ==========================================
+        // Materiales
+        const matGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2, side: THREE.DoubleSide });
+        const matMetal = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.3 });
+        const matGlass = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 1, transparent: true, roughness: 0.1 });
+        const matWire = new THREE.MeshBasicMaterial({ color: 0x475569 });
+
+        // Grupos
+        const groupElectro = new THREE.Group(); scene.add(groupElectro);
+        const groupPendulo = new THREE.Group(); scene.add(groupPendulo);
+        const groupBalanza = new THREE.Group(); scene.add(groupBalanza);
+        
+        // Objeto Externo Cargado
+        const geoExtSphere = new THREE.SphereGeometry(0.8, 32, 32);
+        const matExtSphere = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, emissive: 0x450000, transparent: true, opacity: 0.9 });
+        const extObj = new THREE.Mesh(geoExtSphere, matExtSphere);
+        scene.add(extObj);
+
+        // --- ELECTROSCOPIO (c1) ---
+        const eSphere = new THREE.Mesh(new THREE.SphereGeometry(1.2, 32, 32), matMetal);
+        eSphere.position.y = 5; groupElectro.add(eSphere);
+        const eRod = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 6, 16), matMetal);
+        eRod.position.y = 2; groupElectro.add(eRod);
+        const eGlass = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 7, 32, 1, true), matGlass);
+        eGlass.position.y = -0.5; groupElectro.add(eGlass);
+        // Hojas de oro
+        const eLeaf1 = new THREE.Group(); eLeaf1.position.y = -1; groupElectro.add(eLeaf1);
+        const eLeaf2 = new THREE.Group(); eLeaf2.position.y = -1; groupElectro.add(eLeaf2);
+        const meshLeaf1 = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 4), matGold);
+        meshLeaf1.position.y = -2; meshLeaf1.rotation.y = Math.PI/2; eLeaf1.add(meshLeaf1);
+        const meshLeaf2 = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 4), matGold);
+        meshLeaf2.position.y = -2; meshLeaf2.rotation.y = Math.PI/2; eLeaf2.add(meshLeaf2);
+
+        // --- PÉNDULO (c2) ---
+        const pSupport = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 1), matMetal);
+        pSupport.position.set(0, 6, 0); groupPendulo.add(pSupport);
+        const pPivot = new THREE.Group(); pPivot.position.set(0, 6, 0); groupPendulo.add(pPivot);
+        const pString = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 8, 8), matWire);
+        pString.position.y = -4; pPivot.add(pString);
+        const pSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), matMetal);
+        pSphere.position.y = -8; pPivot.add(pSphere);
+
+        // --- BALANZA (c3) ---
+        const bSupport = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 16), matMetal);
+        bSupport.position.set(0, 6, 0); groupBalanza.add(bSupport);
+        const bWire = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 6, 8), matWire);
+        bWire.position.y = 3; groupBalanza.add(bWire);
+        const bPivot = new THREE.Group(); bPivot.position.set(0, 0, 0); groupBalanza.add(bPivot);
+        const bRod = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 8, 16), matGlass);
+        bRod.rotation.z = Math.PI/2; bPivot.add(bRod);
+        const bSphere1 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), matMetal);
+        bSphere1.position.x = 4; bPivot.add(bSphere1);
+        const bSphere2 = new THREE.Mesh(new THREE.SphereGeometry(0.8, 32, 32), matMetal);
+        bSphere2.position.x = -4; bPivot.add(bSphere2);
+
+
+        // --- SISTEMA DE PARTÍCULAS (CARGAS VISUALES) ---
+        const particleGeo = new THREE.SphereGeometry(0.08, 8, 8);
+        const numParticles = 200;
+        const particlesMesh = new THREE.InstancedMesh(particleGeo, new THREE.MeshBasicMaterial(), numParticles);
+        scene.add(particlesMesh);
+
+        const colorPos = new THREE.Color(0xffffff); // Blanca +
+        const colorNeg = new THREE.Color(0x3b82f6); // Azul -
+
+        function updateChargeDistribution() {
+            const dummy = new THREE.Object3D();
+            const qSign = Math.sign(params.rho) >= 0 ? 1 : -1;
+            const cExt = qSign > 0 ? colorPos : colorNeg;
+            matExtSphere.color.setHex(qSign > 0 ? 0xdc2626 : 0x1d4ed8);
+            matExtSphere.emissive.setHex(qSign > 0 ? 0x450000 : 0x001040);
+
+            // Determinar carga interna visual
+            let intSign = 0;
+            if (params.material === 'c1') intSign = qSign; // Inducción o contacto empuja del mismo signo a hojas
+            else if (params.material === 'c2') intSign = phys.hasTouched ? qSign : -qSign; // Polarización atrae opuestos, contacto repela
+            else if (params.material === 'c3') intSign = Math.sign(phys.internalQ) || qSign;
+
+            const cInt = intSign > 0 ? colorPos : colorNeg;
+            const showCharges = document.getElementById('toggle-field').checked;
+
+            if (!showCharges || Math.abs(params.rho) < 0.1) {
+                particlesMesh.count = 0;
+                return;
+            }
+            
+            particlesMesh.count = numParticles;
+
+            for(let i=0; i<numParticles; i++) {
+                let isExternal = i < numParticles / 2;
+                let rad, theta, phi, r_val, y_val;
+
+                if (isExternal) {
+                    // En la esfera externa
+                    theta = Math.random() * Math.PI * 2;
+                    phi = Math.acos((Math.random() * 2) - 1);
+                    r_val = 0.85;
+                    dummy.position.set(
+                        extObj.position.x + r_val * Math.sin(phi) * Math.cos(theta),
+                        extObj.position.y + r_val * Math.cos(phi),
+                        extObj.position.z + r_val * Math.sin(phi) * Math.sin(theta)
+                    );
+                    particlesMesh.setColorAt(i, cExt);
+                } else {
+                    // En el elemento responsivo
+                    if (params.material === 'c1') {
+                        // En las hojas del electroscopio
+                        let leaf = (i % 2 === 0) ? eLeaf1 : eLeaf2;
+                        let localY = -1 - Math.random() * 3;
+                        let localZ = (Math.random() - 0.5) * 1.4;
+                        let localPos = new THREE.Vector3(0, localY, localZ);
+                        localPos.applyMatrix4(leaf.matrixWorld);
+                        dummy.position.copy(localPos);
+                    } else if (params.material === 'c2') {
+                        // Esfera péndulo
+                        theta = Math.random() * Math.PI * 2;
+                        phi = Math.acos((Math.random() * 2) - 1);
+                        r_val = 1.05;
+                        let localPos = new THREE.Vector3(r_val * Math.sin(phi) * Math.cos(theta), -8 + r_val * Math.cos(phi), r_val * Math.sin(phi) * Math.sin(theta));
+                        localPos.applyMatrix4(pPivot.matrixWorld);
+                        dummy.position.copy(localPos);
+                    } else {
+                        // Esfera balanza 1
+                        theta = Math.random() * Math.PI * 2;
+                        phi = Math.acos((Math.random() * 2) - 1);
+                        r_val = 0.85;
+                        let localPos = new THREE.Vector3(4 + r_val * Math.sin(phi) * Math.cos(theta), r_val * Math.cos(phi), r_val * Math.sin(phi) * Math.sin(theta));
+                        localPos.applyMatrix4(bPivot.matrixWorld);
+                        dummy.position.copy(localPos);
+                    }
+                    particlesMesh.setColorAt(i, cInt);
+                }
+                dummy.updateMatrix();
+                particlesMesh.setMatrixAt(i, dummy.matrix);
+            }
+            particlesMesh.instanceMatrix.needsUpdate = true;
+            if(particlesMesh.instanceColor) particlesMesh.instanceColor.needsUpdate = true;
+        }
+
+        // ==========================================
+        // 4. MOTOR MATEMÁTICO FÍSICO REALISTA
+        // ==========================================
+        // Se han corregido las dinámicas con leyes inversas fuertes
+        
+        function calculateForce(d_cm) {
+            const d = Math.max(d_cm, 1.5); // Limitar colisión profunda
+            const Q = params.rho;
+            let F = 0;
+
+            if (params.material === 'c1') {
+                // Electroscopio: Fuerza interna dependiente fuertemente de cercanía (1/d^2 aprox local)
+                F = 2.0 * (Q * Q) / (d * d);
+            } else if (params.material === 'c2') {
+                // Péndulo
+                if (!phys.hasTouched) {
+                    // Atracción por polarización (Cae fuertemente con 1/d^3)
+                    F = -1.5 * (Q * Q) / (d * d * d);
+                } else {
+                    // Repulsión por contacto
+                    F = 0.8 * (Q * Q) / (d * d); 
+                }
+            } else if (params.material === 'c3') {
+                // Balanza de torsión pura Ley de Coulomb
+                if (phys.internalQ === 0) phys.internalQ = params.rho > 0 ? 5 : -5; 
+                F = 1.0 * (Q * phys.internalQ) / (d * d);
+            }
+            return F;
+        }
+
+        function calculateWork(d_target) {
+            // Integración para el Trabajo Dinámico
+            const steps = 100;
+            let dr = (15 - Math.max(d_target, 1.5)) / steps;
+            let W = 0;
+            for(let i=0; i<steps; i++) {
+                let d_mid = 15 - (i + 0.5) * dr;
+                W += Math.abs(calculateForce(d_mid)) * dr;
+            }
+            return W;
+        }
+
+        // ==========================================
+        // 5. ACTUALIZACIÓN VISUAL 3D Y UI
+        // ==========================================
+        function updateVisibility() {
+            groupElectro.visible = (params.material === 'c1');
+            groupPendulo.visible = (params.material === 'c2');
+            groupBalanza.visible = (params.material === 'c3');
+        }
+
+        function updateUI(F_real) {
+            document.getElementById('val-e-local').textContent = Math.abs(F_real).toLocaleString('es-ES', {maximumFractionDigits: 1});
+            
+            // Trabajo
+            const wDelta = calculateWork(params.r);
+            const uiPotText = document.getElementById('ui-potential-text');
+            const newPotText = `\\( \\Delta W = ${wDelta.toFixed(1)} \\text{ mJ} \\)`;
+            
+            if (uiPotText.getAttribute('data-val') !== newPotText) {
+                uiPotText.innerHTML = newPotText;
+                uiPotText.setAttribute('data-val', newPotText);
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([uiPotText]).catch((e) => console.log(e));
+                }
+            }
+
+            const uiRegion = document.getElementById('ui-region');
+            let txt = "", cls = "";
+            if (params.material === 'c1') {
+                txt = "Estado: " + (Math.abs(params.rho)>0.1 ? "Hojas Inducidas (Repulsión)" : "Neutro (Descargado)");
+                cls = "text-amber-700";
+            } else if (params.material === 'c2') {
+                txt = "Estado: " + (phys.hasTouched ? "Repulsión por Contacto" : "Atracción por Polarización");
+                cls = phys.hasTouched ? "text-red-700" : "text-blue-700";
+            } else {
+                txt = "Estado: Equilibrio Torsional " + (Math.sign(F_real)>0 ? "(Repulsión)" : "(Atracción)");
+                cls = "text-slate-700";
+            }
+            if (Math.abs(params.rho) < 0.1) txt = "Estado: Neutro (Sin perturbación)";
+            uiRegion.innerHTML = `<span class='${cls}'>${txt}</span>`;
+            
+            // Label 3D del ángulo
+            const lbl = document.getElementById('lbl-angle');
+            let deg = Math.abs(phys.theta * 180 / Math.PI);
+            if (deg > 1 && Math.abs(params.rho) > 0.1) {
+                lbl.style.display = 'block';
+                lbl.innerHTML = deg.toFixed(1) + "°";
+                
+                // Track object position
+                let trackObj = (params.material === 'c1') ? eLeaf1 : (params.material === 'c2' ? pSphere : bSphere1);
+                let worldPos = new THREE.Vector3();
+                trackObj.getWorldPosition(worldPos);
+                
+                worldPos.project(cam);
+                lbl.style.left = ((worldPos.x * 0.5 + 0.5) * cont3D.clientWidth) + 'px';
+                lbl.style.top = (-(worldPos.y * 0.5 - 0.5) * cont3D.clientHeight) + 'px';
+            } else {
+                lbl.style.display = 'none';
+            }
+        }
+
+        // ==========================================
+        // 6. GRÁFICA 2D DINÁMICA
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const canvas2D = document.getElementById('graph-2d');
+        const ctx = canvas2D.getContext('2d');
+
+        function resizeGraph() {
+            canvas2D.width = graphCont.clientWidth;
+            canvas2D.height = graphCont.clientHeight;
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const w = canvas2D.width; const h = canvas2D.height;
+            const padX = 40; const padY = 30;
+            ctx.clearRect(0, 0, w, h);
+
+            // Ejes
+            ctx.beginPath(); ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 2;
+            ctx.moveTo(padX, padY/2); ctx.lineTo(padX, h - padY); // Eje Y
+            ctx.lineTo(w - padX/2, h - padY); ctx.stroke(); // Eje X
+            // Eje central si hay fuerzas negativas
+            if (params.material === 'c2' || params.material === 'c3') {
+                ctx.beginPath(); ctx.strokeStyle = "#cbd5e1"; ctx.setLineDash([2,2]);
+                ctx.moveTo(padX, (h-padY)/2 + padY/2); ctx.lineTo(w - padX/2, (h-padY)/2 + padY/2); ctx.stroke();
+                ctx.setLineDash([]);
+            }
+
+            ctx.fillStyle = "#475569"; ctx.font = "14px serif";
+            ctx.fillText("Fe", padX - 25, padY); ctx.fillText("d", w - padX + 5, h - padY + 15);
+
+            const maxD_graph = 15;
+            
+            // Establecer un límite máximo fijo para la gráfica basado en el escenario para evitar saltos locos
+            let maxF = 10;
+            if (params.material === 'c1') maxF = 2.0 * 100 / 2.25;
+            else if (params.material === 'c2') maxF = 1.5 * 100 / 3.375;
+            else if (params.material === 'c3') maxF = 1.0 * 50 / 2.25;
+            maxF = Math.max(maxF * 1.2, 5);
+
+            const mapX = (d) => padX + (d / maxD_graph) * (w - padX * 1.5);
+            const mapY = (fVal) => {
+                let range = (params.material === 'c2' || params.material === 'c3') ? maxF * 2 : maxF;
+                let baseH = (params.material === 'c2' || params.material === 'c3') ? (h-padY)/2 + padY/2 : h - padY;
+                return baseH - (fVal / maxF) * ( (h - padY*1.5) / (params.material === 'c2' || params.material === 'c3' ? 2 : 1) );
+            };
+
+            // Área Integral Sombreada (Trabajo)
+            ctx.beginPath();
+            let startedArea = false;
+            for(let d = 15; d >= Math.max(params.r, 1.5); d -= 0.1) {
+                const x = mapX(d); const y = mapY(Math.abs(calculateForce(d)));
+                let baseY = (params.material === 'c2' || params.material === 'c3') ? (h-padY)/2 + padY/2 : h - padY;
+                if(!startedArea) { ctx.moveTo(x, baseY); ctx.lineTo(x, y); startedArea = true; }
+                else ctx.lineTo(x, y);
+            }
+            if (startedArea) {
+                ctx.lineTo(mapX(Math.max(params.r, 1.5)), (params.material === 'c2' || params.material === 'c3') ? (h-padY)/2 + padY/2 : h - padY);
+                ctx.fillStyle = "rgba(220, 38, 38, 0.2)"; ctx.fill();
+            }
+
+            // Dibujar Segmento de Función F(d)
+            ctx.beginPath(); ctx.strokeStyle = "#2563eb"; ctx.lineWidth = 3;
+            let started = false;
+            for(let d = 1.5; d <= 15; d += 0.1) {
+                if(!started) { ctx.moveTo(mapX(d), mapY(calculateForce(d))); started = true; }
+                else ctx.lineTo(mapX(d), mapY(calculateForce(d)));
+            }
+            ctx.stroke();
+
+            // Marcador d actual
+            const currX = mapX(params.r); const currY = mapY(calculateForce(params.r));
+            ctx.beginPath(); ctx.setLineDash([5, 5]); ctx.strokeStyle = "#1e40af"; ctx.lineWidth = 2;
+            let baseY = (params.material === 'c2' || params.material === 'c3') ? (h-padY)/2 + padY/2 : h - padY;
+            ctx.moveTo(currX, baseY); ctx.lineTo(currX, currY); ctx.stroke(); ctx.setLineDash([]);
+            ctx.beginPath(); ctx.arc(currX, currY, 5, 0, Math.PI*2); ctx.fillStyle = "#1e40af"; ctx.fill();
+        }
+
+        // ==========================================
+        // 7. EVENTOS Y BUCLE PRINCIPAL
+        // ==========================================
+        document.getElementById('select-material').addEventListener('change', (e) => {
+            params.material = e.target.value;
+            phys.theta = 0; phys.omega = 0; phys.hasTouched = false;
+            
+            // Cambiar Teorías
+            const cases = ['c1', 'c2', 'c3'];
+            cases.forEach(c => {
+                const el = document.getElementById('teoria-' + c);
+                if (c === params.material) { el.classList.remove('hidden'); el.classList.add('flex'); } 
+                else { el.classList.add('hidden'); el.classList.remove('flex'); }
+            });
+            
+            updateVisibility(); drawGraph();
+        });
+
+        const rSlider = document.getElementById('slider-r');
+        rSlider.addEventListener('input', (e) => {
+            params.r = parseFloat(e.target.value);
+            document.getElementById('val-r').textContent = params.r.toFixed(1);
+            
+            // Chequeo de contacto exacto (Radios de la esfera = 1.0 + 0.8)
+            if (params.material === 'c2' && params.r <= 1.8 && !phys.hasTouched) {
+                phys.hasTouched = true; // El péndulo tocó y adquirió carga
+            }
+            drawGraph();
+        });
+
+        const rhoSlider = document.getElementById('slider-rho');
+        rhoSlider.addEventListener('input', (e) => {
+            let oldSign = Math.sign(params.rho);
+            params.rho = parseFloat(e.target.value);
+            document.getElementById('val-rho').textContent = params.rho.toFixed(1);
+            
+            if (Math.sign(params.rho) !== oldSign && params.material === 'c2') phys.hasTouched = false;
+            if (params.material === 'c3') phys.internalQ = params.rho; 
+            
+            drawGraph();
+        });
+
+        const thetaSlider = document.getElementById('slider-theta');
+        thetaSlider.addEventListener('input', (e) => {
+            params.theta = parseInt(e.target.value);
+            document.getElementById('val-m').textContent = params.theta;
+        });
+
+        document.getElementById('btn-descarga').addEventListener('click', () => {
+            phys.theta = 0; phys.omega = 0; phys.hasTouched = false; phys.internalQ = 0;
+            params.rho = 0; rhoSlider.value = 0;
+            document.getElementById('val-rho').textContent = "0.0";
+            drawGraph();
+        });
+
+        const toggleRotate = document.getElementById('toggle-rotate');
+        toggleRotate.addEventListener('change', (e) => { ctrl.autoRotate = e.target.checked; });
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height);
+                } else if(entry.target.id === 'graph-container') {
+                    resizeGraph();
+                }
+            }
+        });
+        resizeObserver.observe(cont3D); resizeObserver.observe(graphCont);
+
+        // Init
+        updateVisibility(); drawGraph();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // --- POSICIONAR ESFERA EN TIEMPO REAL ---
+            if (params.material === 'c1') {
+                extObj.position.set(params.r, 5, 0); // Electroscopio
+            } else if (params.material === 'c2') {
+                extObj.position.set(params.r, -2, 0); // Péndulo
+            } else {
+                extObj.position.set(4, 0, params.r); // Balanza
+            }
+
+            // --- FÍSICA Y DINÁMICA ---
+            const m = params.theta; // Masa o Rigidez
+            let F_real = calculateForce(params.r);
+            let targetTheta = 0;
+
+            if (params.material === 'c1') {
+                targetTheta = Math.atan(Math.abs(F_real) / m); // Ángulo simétrico para hojas
+            } else if (params.material === 'c2') {
+                targetTheta = Math.atan(F_real / m); // Péndulo
+            } else if (params.material === 'c3') {
+                targetTheta = F_real / m; // Torque torsional lineal
+            }
+
+            // Perturbación / Ruido Térmico si está activado
+            if (document.getElementById('toggle-field').checked && Math.abs(params.rho) > 0.1) {
+                targetTheta += (Math.random() - 0.5) * 0.01;
+            }
+
+            // Sistema Amortiguador Resorte (Movimiento armónico realista)
+            let stiffness = 0.15;
+            let damping = 0.1;
+            phys.omega += (targetTheta - phys.theta) * stiffness - phys.omega * damping;
+            phys.theta += phys.omega;
+
+            // --- APLICAR TRANSFORMACIONES VISUALES ---
+            if (params.material === 'c1') {
+                eLeaf1.rotation.z = phys.theta;
+                eLeaf2.rotation.z = -phys.theta;
+            } else if (params.material === 'c2') {
+                pPivot.rotation.z = -phys.theta; 
+            } else if (params.material === 'c3') {
+                bPivot.rotation.y = phys.theta;
+            }
+
+            updateChargeDistribution();
+            updateUI(F_real);
+
+            ctrl.update();
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tip encima de todo 
+      (function () {
+          let globalTip = document.createElement("div");
+          globalTip.className = "tip-content";
+          globalTip.style.position = "fixed";
+          globalTip.style.zIndex = "999999";
+          globalTip.style.pointerEvents = "none";
+          globalTip.style.opacity = "0";
+          globalTip.style.visibility = "hidden";
+        
+          document.body.appendChild(globalTip);
+        
+          document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+            const localTip = wrapper.querySelector(".tip-content");
+        
+            wrapper.addEventListener("mouseenter", () => {
+              const rect = wrapper.getBoundingClientRect();
+        
+              globalTip.innerHTML = localTip.innerHTML;
+        
+              globalTip.style.top = rect.top + "px";
+              globalTip.style.left = (rect.right + 10) + "px";
+        
+              globalTip.style.opacity = "1";
+              globalTip.style.visibility = "visible";
+            });
+        
+            wrapper.addEventListener("mouseleave", () => {
+              globalTip.style.opacity = "0";
+              globalTip.style.visibility = "hidden";
+            });
+          });
+        })();
+    </script>
+</body>
+</html>

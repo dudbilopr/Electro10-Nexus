@@ -1,0 +1,827 @@
+<!DOCTYPE html><html lang="es"><head>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script><script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-EXGD1GSLLB');</script>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>CoulombLab10.easy - IA Physics</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css"><script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script><script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+:root{--accent:#4ecca3;--danger:#ff6b6b;--panel-w:380px}
+body.light-mode{--bg:#eef2f5;--glass:rgba(255,255,255,0.6);--glass-border:rgba(255,255,255,0.5);--text:#2c3e50;--panel-bg:rgba(255,255,255,0.85);--card-bg:rgba(255,255,255,0.7);--shadow:rgba(0,0,0,0.1)}
+body.dark-mode{--bg:#0b0e14;--glass:rgba(15,17,26,0.6);--glass-border:rgba(255,255,255,0.1);--text:#e2e8f0;--panel-bg:rgba(15,17,26,0.9);--card-bg:rgba(255,255,255,0.05);--shadow:rgba(0,0,0,0.5)}
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;transition:background .3s, color .3s}
+.glass{background:var(--glass);backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);border:1px solid var(--glass-border);box-shadow:0 8px 32px var(--shadow)}
+header{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;z-index:100;border-bottom:1px solid var(--glass-border)}
+.h-menu{display:flex;gap:10px;overflow-x:auto;padding:10px 20px;background:var(--panel-bg);z-index:90;border-bottom:1px solid var(--glass-border);align-items:center}
+.h-menu::-webkit-scrollbar{height:4px}.h-menu::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid transparent;border-radius:8px;background:rgba(128,128,128,0.15);color:var(--text);cursor:pointer;transition:all .2s;font-size:.9rem;white-space:nowrap}
+.btn:hover{background:rgba(128,128,128,0.25)}.btn.active{background:var(--accent);color:#000;font-weight:bold;box-shadow:0 0 10px rgba(78,204,163,0.4)}.btn-primary{background:var(--accent);color:#000}.btn-danger{background:rgba(255,107,107,0.2);color:var(--danger)}
+.workspace{position:relative;flex:1;display:flex;overflow:hidden}
+.canvas-area{flex:1;position:relative;background:var(--bg);background-image:linear-gradient(rgba(128,128,128,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(128,128,128,0.1) 1px,transparent 1px);background-size:20px 20px;overflow:hidden;transition:background .3s}
+canvas{position:absolute;top:0;left:0;z-index:1;cursor:crosshair;touch-action:none}
+#labels-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.canvas-label{position:absolute;background:var(--glass);padding:2px 6px;border-radius:4px;border:1px solid var(--accent);font-size:.85rem;color:var(--text);transform:translate(-50%,-100%);backdrop-filter:blur(4px);font-weight:bold}
+.slide-panel{position:absolute;right:0;top:0;height:100%;width:var(--panel-w);transform:translateX(100%);transition:transform .3s cubic-bezier(0.4,0,0.2,1);z-index:80;padding:20px;overflow-y:auto;background:var(--panel-bg);border-left:1px solid var(--glass-border);box-shadow:-5px 0 15px var(--shadow)}
+.slide-panel.open{transform:translateX(0)}
+.fab{position:absolute;right:20px;top:20px;width:48px;height:48px;border-radius:50%;background:var(--accent);color:#000;display:flex;justify-content:center;align-items:center;cursor:pointer;z-index:85;box-shadow:0 4px 15px rgba(78,204,163,0.4);font-size:24px;transition:all .2s}
+.fab:hover{transform:scale(1.05)}
+.card{background:var(--card-bg);border:1px solid var(--glass-border);border-radius:8px;padding:12px;margin-bottom:12px;box-shadow:0 2px 8px var(--shadow)}
+.section-title{font-size:.8rem;text-transform:uppercase;color:#888;margin-bottom:10px;font-weight:bold;letter-spacing:1px;border-bottom:1px solid var(--glass-border);padding-bottom:5px}
+select,input[type="number"],input[type="text"],input[type="password"],input[type="email"],textarea{background:var(--card-bg);border:1px solid rgba(128,128,128,0.5);color:var(--text);padding:8px;border-radius:6px;width:100%;font-size:.9rem;outline:none;transition:border .2s;font-family:inherit}
+select:focus,input:focus,textarea:focus{border-color:var(--accent)}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;justify-content:center;align-items:center;backdrop-filter:blur(8px)}
+.modal-content{background:var(--panel-bg);padding:25px;border-radius:12px;width:90%;max-width:450px;border:1px solid var(--glass-border);position:relative;color:var(--text);box-shadow:0 15px 40px rgba(0,0,0,0.3);max-height:90vh;overflow-y:auto}
+.close-btn{position:absolute;top:15px;right:15px;cursor:pointer;font-size:20px;color:#888;transition:color .2s}.close-btn:hover{color:var(--accent)}
+#solution-overlay{position:absolute;bottom:20px;left:20px;width:450px;max-height:70vh;overflow-y:auto;display:none;z-index:75;resize:both;min-width:350px;background:var(--panel-bg)}
+#solution-overlay.maximized{width:85vw;height:85vh;top:7vh;left:7vw;max-height:none}
+.window-controls{display:flex;gap:8px;position:absolute;top:10px;right:10px;z-index:10}
+.win-btn{width:16px;height:16px;border-radius:50%;cursor:pointer;display:flex;justify-content:center;align-items:center;font-size:10px;color:transparent;border:none}
+.win-btn:hover{color:black}.win-close{background:#ff5f56}.win-min{background:#ffbd2e}.win-max{background:#27c93f}
+#context-menu{position:absolute;display:none;z-index:150;width:220px;padding:15px;background:var(--panel-bg)}
+footer{background:var(--panel-bg);border-top:1px solid var(--glass-border);padding:10px 20px;font-size:.85rem;color:#888;display:flex;justify-content:space-between;align-items:center;z-index:100;box-shadow:0 -2px 10px var(--shadow)}
+.footer-links a{color:var(--accent);text-decoration:none;margin-left:15px;display:inline-flex;align-items:center;gap:5px;font-weight:bold}
+.resize-handle{position:absolute;width:10px;height:10px;background:var(--accent);border:1px solid #000;z-index:10;pointer-events:none}
+table{width:100%;text-align:left;border-collapse:collapse;font-size:0.9rem} th,td{padding:8px;border-bottom:1px solid var(--glass-border)} th{color:var(--accent)}
+.avt{transition:transform .2s, border .2s;display:inline-block;border:2px solid transparent;border-radius:50%;padding:4px;user-select:none} .avt:hover{background:var(--glass-border)}
+.case-tabs{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:5px;z-index:10;background:var(--glass);padding:5px;border-radius:10px;border:1px solid var(--glass-border)}
+.case-tab{padding:6px 15px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.85rem;color:var(--text);transition:0.2s}
+.case-tab.active{background:var(--accent);color:#000}
+.star-rating i{font-size:24px;color:#888;cursor:pointer;transition:0.2s} .star-rating i:hover, .star-rating i.active{color:#f1c40f}
+</style>
+</head>
+<body class="light-mode">
+<header class="glass">
+    <div style="display:flex;align-items:center;gap:15px">
+        <h2 style="color:var(--accent);font-size:1.2rem;margin:0"><i class="ph ph-lightning"></i> CoulombLab10.easy</h2>
+        <span id="room-info" style="font-size:.85rem;color:#888;background:var(--card-bg);padding:4px 8px;border-radius:4px">🌐 Caso Local</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:15px">
+        <button class="btn" onclick="toggleTheme()" title="Modo Día/Noche"><i class="ph ph-moon"></i></button>
+        <button id="btn-chat" class="btn" style="display:none;background:#3498db;color:#fff" onclick="document.getElementById('room-chat-panel').style.display='flex'"><i class="ph ph-chat-centered-dots"></i> Chat Sala</button>
+        <button id="btn-admin" class="btn" style="display:none;background:#ffbd2e;color:#000;font-weight:bold" onclick="showAdminDashboard()"><i class="ph ph-shield-star"></i> Panel Admin</button>
+        <span id="user-stats" class="btn" style="display:none;border-color:#f1c40f;color:#f1c40f" onclick="showModal('profile-setup-modal')"><i class="ph ph-trophy"></i> Nivel 1 | 0 pts</span>
+        <button id="user-info" class="btn" style="font-weight:bold;border:1px solid var(--accent)" onclick="editProfile()">Cargando...</button>
+        <button id="btn-rooms" class="btn" style="display:none" onclick="openRooms()"><i class="ph ph-users-three"></i> Salas</button>
+        <button id="btn-logout" class="btn btn-danger" style="display:none" onclick="cerrarSesion()"><i class="ph ph-sign-out"></i> Salir</button>
+    </div>
+</header>
+<div class="h-menu glass">
+    <button class="btn active" onclick="setTool('draw',this)"><i class="ph ph-pencil-simple"></i> IA (Cargas)</button>
+    <button class="btn" onclick="setTool('draw_free',this)"><i class="ph ph-highlighter"></i> Dibujo</button>
+    <button class="btn" onclick="setTool('rect',this)"><i class="ph ph-rectangle"></i> Rect</button>
+    <button class="btn" onclick="setTool('circle',this)"><i class="ph ph-circle"></i> Círculo</button>
+    <button class="btn" onclick="setTool('line',this)"><i class="ph ph-line-segment"></i> Vector</button>
+    <button class="btn" onclick="setTool('laser',this)"><i class="ph ph-magic-wand"></i> Láser</button>
+    <button class="btn" onclick="setTool('text',this)"><i class="ph ph-text-t"></i> Texto</button>
+    <button class="btn" onclick="setTool('move',this)"><i class="ph ph-hand-grabbing"></i> Mover</button>
+    <div style="width:1px;background:var(--glass-border);margin:0 5px;height:20px"></div>
+    <input type="color" id="pencil-color" value="#3498db" style="width:30px;height:30px;padding:0;border:none;background:transparent;cursor:pointer" onchange="state.currentColor=this.value" title="Color">
+    <button class="btn" onclick="undo()" title="Deshacer"><i class="ph ph-arrow-u-up-left"></i></button>
+    <button class="btn" onclick="limpiarTodo()" title="Limpiar"><i class="ph ph-trash"></i></button>
+    <button class="btn btn-primary" onclick="analizarFisica()"><i class="ph ph-calculator"></i> Validar & Resolver</button>
+</div>
+<div class="workspace" id="main-workspace">
+    <div class="case-tabs">
+        <div class="case-tab active" id="tab-1" onclick="switchCase(1)">Caso 1 (Principal)</div>
+        <div class="case-tab" id="tab-2" onclick="switchCase(2)">Caso 2 (Comparación)</div>
+    </div>
+    <div class="canvas-area" id="canvas-wrapper">
+        <canvas id="main-canvas"></canvas>
+        <button id="float-delete" class="btn btn-danger" style="position:absolute;display:none;z-index:10;box-shadow:0 4px 10px rgba(0,0,0,0.3);transform:translate(-50%,-100%);margin-top:-10px" onclick="deleteSelected()"><i class="ph ph-trash"></i> Eliminar</button>
+        <input type="text" id="text-input-overlay" style="position:absolute;display:none;z-index:100;background:rgba(0,0,0,0.8);border:1px dashed var(--accent);color:white;font-size:18px;padding:4px;transform:translateY(-50%)" placeholder="Escribe y presiona Enter...">
+        <div id="labels-overlay"></div>
+        <div id="coords-indicator" class="glass" style="position:absolute;bottom:10px;right:10px;padding:4px 8px;border-radius:4px;font-family:monospace;font-size:.8rem;color:var(--accent);pointer-events:none;z-index:5;font-weight:bold">X:0 Y:0</div>
+        
+        <div id="solution-overlay" class="glass card">
+            <div class="window-controls">
+                <button class="win-btn win-min" onclick="toggleWin('solution-overlay','min')"></button>
+                <button class="win-btn win-max" onclick="toggleWin('solution-overlay','max')"></button>
+                <button class="win-btn win-close" onclick="document.getElementById('solution-overlay').style.display='none'"></button>
+            </div>
+            <div class="section-title" style="margin-top:10px"><i class="ph ph-math-operations"></i> Solución Matemática</div>
+            <div id="latex-result" style="background:var(--card-bg);color:var(--text);padding:15px;border-radius:6px;font-size:.9rem;overflow-x:auto;min-height:100px;border:1px solid var(--glass-border)">---</div>
+            <div id="solution-conclusion" style="margin-top:10px;padding:12px;background:rgba(78,204,163,0.1);border-left:4px solid var(--accent);font-size:.85rem;border-radius:0 6px 6px 0;line-height:1.5"></div>
+            <div id="theory-questions" style="margin-top:10px;padding:12px;background:rgba(241,196,15,0.1);border-left:4px solid #f1c40f;font-size:.85rem;border-radius:0 6px 6px 0;line-height:1.5"></div>
+        </div>
+        
+        <div id="context-menu" class="glass card">
+            <span class="close-btn" style="top:5px;right:10px;font-size:16px" onclick="closeCtx()">&times;</span>
+            <div class="section-title" style="margin-top:0"><i class="ph ph-sliders"></i> Propiedades Carga</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                <label style="font-size:.8rem">Magnitud (Q): <input type="number" id="ctx-q" step="0.1" onchange="ctxUpdate()"></label>
+                <label style="font-size:.8rem">Posición X: <input type="number" id="ctx-x" onchange="ctxUpdate()"></label>
+                <label style="font-size:.8rem">Posición Y: <input type="number" id="ctx-y" onchange="ctxUpdate()"></label>
+            </div>
+        </div>
+
+        <!-- Chat de Sala -->
+        <div id="room-chat-panel" class="glass card" style="display:none; position:absolute; bottom:20px; right:20px; width:300px; height:350px; z-index:200; flex-direction:column;">
+            <div class="section-title" style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+                <span><i class="ph ph-chats"></i> Chat de Sala</span>
+                <i class="ph ph-x" style="cursor:pointer; font-size:16px;" onclick="document.getElementById('room-chat-panel').style.display='none'"></i>
+            </div>
+            <div id="chat-messages" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:10px; padding-right:5px; font-size:0.85rem;"></div>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="chat-input" placeholder="Mensaje..." style="flex:1" onkeypress="if(event.key==='Enter') window.sendMsg()">
+                <button class="btn btn-primary" onclick="window.sendMsg()"><i class="ph ph-paper-plane-right"></i></button>
+            </div>
+        </div>
+
+    </div>
+    
+    <div class="fab" onclick="togglePanel()"><i class="ph ph-list-dashes"></i></div>
+    <div class="slide-panel glass" id="right-panel">
+        <div class="window-controls" style="position:relative;top:0;right:0;justify-content:flex-end;margin-bottom:10px">
+            <button class="win-btn win-close" onclick="togglePanel()"></button>
+        </div>
+        <div class="section-title"><i class="ph ph-book-bookmark"></i> Enunciado Dinámico</div>
+        <div class="card" id="problem-statement" style="font-size:.85rem;font-style:italic;line-height:1.5;color:var(--text)">Dibuja dos o más cargas en el lienzo para autogenerar un problema.</div>
+        
+        <div class="section-title" style="margin-top:15px"><i class="ph ph-gear"></i> Parámetros Globales</div>
+        <div class="card" style="display:flex;flex-direction:column;gap:10px">
+            <label style="font-size:.8rem">U. Carga: <select id="charge-unit" onchange="analizarFisica()"><option value="1e-6">Microcoulombs (µC)</option><option value="1e-9">Nanocoulombs (nC)</option><option value="1e-3">MiliCoulombs (mC)</option><option value="1">Coulombs (C)</option></select></label>
+            <label style="font-size:.8rem">U. Distancia: <select id="dist-unit" onchange="analizarFisica()"><option value="1">Metros (m)</option><option value="0.01">Centímetros (cm)</option><option value="1e-3">Milímetros (mm)</option></select></label>
+            <label style="font-size:.8rem">Escala Gráfica: <input type="number" id="scale-input" value="100" onchange="analizarFisica()"> px=1 unid.</label>
+        </div>
+        
+        <div class="section-title" style="margin-top:15px"><i class="ph ph-check-circle"></i> Validación Visual</div>
+        <div class="card" id="validation-box" style="font-size:.85rem;min-height:60px;line-height:1.4">...</div>
+        <div id="dcl-buttons-container" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:10px"></div>
+        
+        <button id="btn-toggle-dcl" class="btn btn-primary" style="width:100%;justify-content:center;margin-bottom:10px;margin-top:15px;" onclick="toggleInCanvasDCL()"><i class="ph ph-eye"></i> Visualizar DCL en Lienzo</button>
+        <button class="btn" style="width:100%;justify-content:center;background:#9b59b6;color:#fff" onclick="document.getElementById('solution-overlay').style.display='block'"><i class="ph ph-chalkboard-teacher"></i> Ver Solución Completa</button>
+    </div>
+</div>
+
+<footer>
+    <div>&copy; 2026 CoulombLab10.easy. Entorno Educativo Avanzado.</div>
+    <div class="footer-links">
+        <a href="#" onclick="showModal('review-modal'); return false;"><i class="ph ph-star"></i> Calíficame</a>
+        <a href="https://wa.me/1234567890" target="_blank"><i class="ph ph-whatsapp-logo"></i> Soporte Oficial</a>
+        <a href="https://paypal.me/" target="_blank"><i class="ph ph-coffee"></i> Invítame un café</a>
+    </div>
+</footer>
+
+<!-- Modals -->
+<div class="modal" id="auth-modal"><div class="modal-content glass"><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-lock-key"></i> Acceso Seguro</h3><p style="font-size:.85rem;color:#888;margin-bottom:15px">Inicia sesión para guardar progreso, enviar regalos y participar.</p><input type="email" id="auth-email" placeholder="Correo electrónico" style="margin-bottom:10px"><input type="password" id="auth-pass" placeholder="Contraseña" style="margin-bottom:15px"><div style="display:flex;gap:10px"><button class="btn btn-primary" style="flex:1;justify-content:center" onclick="iniciarSesion()">Entrar</button><button class="btn" style="flex:1;justify-content:center;background:var(--card-bg)" onclick="registrarUsuario()">Registro</button></div><button class="btn" style="width:100%;justify-content:center;margin-top:10px;background:#fff;color:#000;font-weight:bold" onclick="iniciarSesionConGoogle()"><img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px"> Google</button></div></div>
+
+<div class="modal" id="profile-setup-modal"><div class="modal-content glass"><span class="close-btn" onclick="hideModal('profile-setup-modal')">&times;</span><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-user-circle"></i> Mi Perfil</h3><p style="font-size:.85rem;color:var(--text);margin-bottom:10px">Elige un avatar y actualiza tus datos.</p>
+<div style="display:flex;justify-content:space-around;background:rgba(78,204,163,0.1);padding:10px;border-radius:8px;margin-bottom:15px;border:1px solid var(--accent)"><div style="text-align:center"><b>Nivel</b><br><span id="prof-nivel-disp" style="font-size:1.5rem;color:var(--accent)">1</span></div><div style="text-align:center"><b>Puntos</b><br><span id="prof-puntos-disp" style="font-size:1.5rem;color:#f1c40f">0</span></div></div>
+<div id="prof-avatars" style="display:flex;justify-content:center;gap:15px;font-size:2rem;margin-bottom:15px;cursor:pointer"><span class="avt" onclick="selAvt(this)" style="border-color:var(--accent);transform:scale(1.2)">👨‍🔬</span><span class="avt" onclick="selAvt(this)">👩‍🔬</span><span class="avt" onclick="selAvt(this)">🤖</span><span class="avt" onclick="selAvt(this)">👽</span><span class="avt" onclick="selAvt(this)">🦸</span></div><input type="text" id="prof-name" placeholder="Nombre completo" style="margin-bottom:10px"><input type="text" id="prof-alias" placeholder="Alias (Ej: ElectroMaster)" style="margin-bottom:10px"><input type="number" id="prof-age" placeholder="Edad" style="margin-bottom:10px"><select id="prof-gender" style="margin-bottom:10px"><option value="">Género...</option><option value="M">Masculino</option><option value="F">Femenino</option><option value="O">Otro</option></select><input type="text" id="prof-major" placeholder="Carrera / Institución" style="margin-bottom:15px"><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="saveProfile()">Guardar Perfil</button></div></div>
+
+<div class="modal" id="admin-modal"><div class="modal-content glass" style="max-width:900px;width:95%"><span class="close-btn" onclick="hideModal('admin-modal')">&times;</span><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-shield-star"></i> Control General (Admin)</h3><div id="admin-stats" style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap"><div class="card" style="flex:1;text-align:center;min-width:120px"><h4>Usuarios</h4><div id="adm-users-count" style="font-size:24px;color:var(--accent);font-weight:bold">0</div></div><div class="card" style="flex:1;text-align:center;min-width:120px"><h4>Rating Gral.</h4><div id="adm-rating-avg" style="font-size:24px;color:#f1c40f;font-weight:bold">0.0 ⭐</div></div></div><div class="section-title">Gestión de Usuarios, Roles y Grupos</div><div style="overflow-x:auto;max-height:400px;background:var(--card-bg);border-radius:6px;padding:5px"><table style="width:100%;min-width:700px"><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol (Permiso)</th><th>Asignar Grupo</th><th>Acción</th></tr></thead><tbody id="adm-users-list"></tbody></table></div></div></div>
+
+<div class="modal" id="rooms-modal"><div class="modal-content glass" style="max-width:800px; width:95%;"><span class="close-btn" onclick="hideModal('rooms-modal')">&times;</span><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-users"></i> Comunidad y Salas</h3><p style="font-size:0.85rem;color:var(--text);margin-bottom:10px">Interactúa con otros estudiantes. Únete a sesiones conjuntas o envía regalos.</p>
+<div style="display:flex; flex-wrap:wrap; gap:20px;">
+    <div style="flex:1; min-width:250px;">
+        <div style="background:var(--card-bg);padding:12px;border-radius:8px;margin-bottom:15px;border:1px solid var(--accent)"><h4 style="font-size:0.9rem;margin-bottom:8px;color:var(--accent)"><i class="ph ph-door-open"></i> Unirse a Sala Compartida</h4><input type="text" id="new-room-name" placeholder="Nombre de la sala" style="margin-bottom:8px"><input type="password" id="new-room-pass" placeholder="Contraseña (opcional)" style="margin-bottom:8px"><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="crearUnirseSala()">Entrar / Crear Sala</button></div>
+        <div class="section-title">Directorio</div><div id="rooms-list" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-right:5px"></div>
+    </div>
+    <div style="flex:1; min-width:250px;">
+        <div class="section-title" style="margin-top:0"><i class="ph ph-trophy"></i> Top Ranking Global</div>
+        <div id="ranking-list" style="max-height:350px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;padding-right:5px"></div>
+    </div>
+</div>
+<hr style="border-color:var(--glass-border);margin:10px 0"><p style="font-size:0.8rem;color:#888;text-align:center">Respeta las normas de la comunidad.</p></div></div>
+
+<div class="modal" id="review-modal"><div class="modal-content glass"><span class="close-btn" onclick="hideModal('review-modal')">&times;</span><h3 style="color:var(--accent);margin-bottom:10px"><i class="ph ph-star"></i> Calificar Simulador</h3><div style="text-align:center;margin-bottom:15px"><div class="star-rating" id="app-rating-stars"><i class="ph ph-star" onclick="setAppRating(1)"></i><i class="ph ph-star" onclick="setAppRating(2)"></i><i class="ph ph-star" onclick="setAppRating(3)"></i><i class="ph ph-star" onclick="setAppRating(4)"></i><i class="ph ph-star" onclick="setAppRating(5)"></i></div></div><label style="font-size:0.85rem;display:block;margin-bottom:5px">¿Qué tan fácil fue usarlo?</label><select id="rev-q1" style="margin-bottom:10px"><option value="Muy Fácil">Muy Fácil</option><option value="Fácil">Fácil</option><option value="Regular">Regular</option><option value="Difícil">Difícil</option></select><label style="font-size:0.85rem;display:block;margin-bottom:5px">¿Te ayudó a comprender mejor?</label><select id="rev-q2" style="margin-bottom:15px"><option value="Sí, mucho">Sí, mucho</option><option value="Algo">Algo</option><option value="No mucho">No mucho</option></select><textarea id="rev-comment" rows="3" placeholder="Deja un comentario o sugerencia..." style="margin-bottom:15px;resize:none"></textarea><button class="btn btn-primary" style="width:100%;justify-content:center" onclick="submitAppReview()">Enviar Calificación</button></div></div>
+
+<div class="modal" id="tour-modal"><div class="modal-content glass" style="text-align:center"><h3 style="color:var(--accent);margin-bottom:10px">¡Bienvenido a CoulombLab10!</h3><p style="font-size:.9rem;color:var(--text);margin-bottom:15px">1. <b>IA:</b> Dibuja círculos y el sistema los volverá cargas.<br>2. <b>Vectores:</b> Dibuja líneas desde las cargas.<br>3. <b>Propiedades:</b> Usa la herramienta Mover y haz clic en una carga para editar su magnitud y ver cómo cambia de tamaño.<br>4. <b>Copiar/Pegar:</b> Usa <kbd>Ctrl+C</kbd> y <kbd>Ctrl+V</kbd> para copiar objetos entre casos.</p><button class="btn btn-primary" onclick="hideModal('tour-modal');localStorage.setItem('tourDone','1')">¡Entendido!</button></div></div>
+
+<div class="modal" id="fbd-modal"><div class="modal-content glass" style="text-align:center;max-width:450px"><div class="window-controls"><button class="win-btn win-min" onclick="hideModal('fbd-modal')"></button><button class="win-btn win-max" onclick="document.getElementById('fbd-canvas').style.transform='scale(1.5)'"></button><button class="win-btn win-close" onclick="hideModal('fbd-modal')"></button></div><h3 style="margin-bottom:10px;color:var(--accent)"><i class="ph ph-crosshair"></i> Diagrama Cuerpo Libre</h3><div style="background:#fff;border-radius:8px;padding:10px;overflow:hidden"><canvas id="fbd-canvas" width="400" height="400" style="position:relative;background:#fff;max-width:100%;height:auto;transition:transform .3s"></canvas></div></div></div>
+
+<script>
+// --- CORE LOGIC, AI ENGINE, PHYSICS, COPY-PASTE & MULTI-CASE ---
+let lastSyncTime=0;window.reqSync=function(imm=!1){if(!window.sendData)return;const n=Date.now();if(imm||n-lastSyncTime>200){window.sendData();lastSyncTime=n;}};
+
+const cvs=document.getElementById('main-canvas'),ctx=cvs.getContext('2d'),wrap=document.getElementById('canvas-wrapper'),lbls=document.getElementById('labels-overlay'),fd=document.getElementById('float-delete'),txtIn=document.getElementById('text-input-overlay'),cMenu=document.getElementById('context-menu');
+
+let casesData = {
+    1: { objects:[], rawStrokes:[], origin:{x:null,y:null} },
+    2: { objects:[], rawStrokes:[], origin:{x:null,y:null} }
+};
+let activeCase = 1;
+let clipboard = [];
+
+let state={tool:'draw',currentColor:'#3498db',isDrawing:!1,showInCanvasDCL:!1,isDrawingFree:!1,isDrawingLine:!1,isDrawingShape:!1,isDragging:!1,isResizing:!1,resizeHandle:null,dragLastX:0,dragLastY:0,selectedObjects:[],selectionBox:null,isDraggingOrigin:!1,origin:{x:null,y:null},recognitionTimer:null,rawStrokes:[],currentStroke:[],currentFreeStroke:null,currentLine:null,currentShape:null,objects:[],calculatedForces:[],ctxTarget:null,laserPoints:[]};
+window.appState=state;let textPos={x:0,y:0};ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=3;
+
+// COPY-PASTE SYSTEM
+window.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+        if (state.selectedObjects.length > 0) { clipboard = JSON.parse(JSON.stringify(state.selectedObjects)); }
+    }
+    if (e.ctrlKey && e.key.toLowerCase() === 'v') {
+        if (clipboard.length > 0) {
+            let newObjs = JSON.parse(JSON.stringify(clipboard));
+            newObjs.forEach(o => {
+                o.id = Date.now() + Math.random();
+                if(o.type.startsWith('charge') || o.type === 'text') { o.x += 30; o.y += 30; o.physX = getPhysX(o.x); o.physY = getPhysY(o.y); }
+                else if(o.type === 'vector' || o.type === 'line' || o.type === 'rect' || o.type === 'circle') { o.start.x += 30; o.start.y += 30; o.end.x += 30; o.end.y += 30; }
+                else if(o.type === 'free_stroke') { o.points.forEach(p => { p.x += 30; p.y += 30; }); }
+                state.objects.push(o);
+            });
+            state.selectedObjects = newObjs; updFD(); redraw(); analizarFisica(); window.reqSync(true);
+        }
+    }
+});
+
+window.switchCase = (c) => {
+    casesData[activeCase].objects = [...state.objects];
+    casesData[activeCase].rawStrokes = [...state.rawStrokes];
+    casesData[activeCase].origin = {...state.origin};
+    activeCase = c;
+    document.querySelectorAll('.case-tab').forEach(el=>el.classList.remove('active'));
+    document.getElementById('tab-'+c).classList.add('active');
+    state.objects = casesData[c].objects;
+    state.rawStrokes = casesData[c].rawStrokes;
+    state.origin = casesData[c].origin.x!==null ? casesData[c].origin : {x:cvs.width/2,y:cvs.height/2};
+    state.selectedObjects = []; fd.style.display='none'; closeCtx();
+    analizarFisica(); updateGrid(); redraw(); window.reqSync(true);
+};
+
+function resizeCvs(){cvs.width=wrap.clientWidth;cvs.height=wrap.clientHeight;if(state.origin.x===null)state.origin={x:cvs.width/2,y:cvs.height/2};updateGrid();redraw();}
+window.addEventListener('resize',resizeCvs);setTimeout(resizeCvs,100);
+function getPhysX(cx){return cx-state.origin.x;}function getPhysY(cy){return state.origin.y-cy;}
+function getCoords(e){const r=cvs.getBoundingClientRect(),x=e.touches?e.touches[0].clientX:e.clientX,y=e.touches?e.touches[0].clientY:e.clientY;return{x:x-r.left,y:y-r.top};}
+function dist2Seg(p,v,w){let l2=Math.pow(w.x-v.x,2)+Math.pow(w.y-v.y,2);if(l2===0)return Math.hypot(p.x-v.x,p.y-v.y);let t=Math.max(0,Math.min(1,((p.x-v.x)*(w.x-v.x)+(p.y-v.y)*(w.y-v.y))/l2));return Math.hypot(p.x-(v.x+t*(w.x-v.x)),p.y-(v.y+t*(w.y-v.y)));}
+function updateGrid(){wrap.style.backgroundPosition=`${state.origin.x}px ${state.origin.y}px`;}
+function finalizeText(){if(txtIn.style.display!=='none'&&txtIn.value.trim()!==''){state.objects.push({type:'text',id:Date.now(),text:txtIn.value,x:textPos.x,y:textPos.y,color:state.currentColor,scale:1});txtIn.value='';txtIn.style.display='none';redraw();window.reqSync(true);}else txtIn.style.display='none';}
+txtIn.addEventListener('keydown',e=>{if(e.key==='Enter')finalizeText();});txtIn.addEventListener('blur',finalizeText);
+cvs.addEventListener('mousedown',hStart);cvs.addEventListener('touchstart',hStart,{passive:!1});
+cvs.addEventListener('mousemove',hMove);cvs.addEventListener('touchmove',hMove,{passive:!1});
+cvs.addEventListener('mouseup',hEnd);cvs.addEventListener('touchend',hEnd);
+
+function findHandleAt(c){
+    if(state.selectedObjects.length!==1)return null; const o=state.selectedObjects[0]; const pad=8;
+    if(o.type==='line'||o.type==='vector'){if(Math.hypot(c.x-o.start.x,c.y-o.start.y)<pad)return{obj:o,type:'start'};if(Math.hypot(c.x-o.end.x,c.y-o.end.y)<pad)return{obj:o,type:'end'};}
+    else if(o.type==='free_stroke'){const b=getBounds(o.points);if(Math.hypot(c.x-b.minX,c.y-b.minY)<pad)return{obj:o,type:'tl'};if(Math.hypot(c.x-b.maxX,c.y-b.minY)<pad)return{obj:o,type:'tr'};if(Math.hypot(c.x-b.minX,c.y-b.maxY)<pad)return{obj:o,type:'bl'};if(Math.hypot(c.x-b.maxX,c.y-b.maxY)<pad)return{obj:o,type:'br'};}
+    else if(o.type.startsWith('charge')){if(Math.hypot(c.x-(o.x+o.radius),c.y-(o.y+o.radius))<pad)return{obj:o,type:'scale'};}
+    return null;
+}
+function hStart(e){
+    if(e.touches&&e.touches.length>1)return;if(e.touches)e.preventDefault();const c=getCoords(e);closeCtx();
+    if(state.tool!=='text')finalizeText();
+    if(state.tool==='text'){textPos={x:c.x,y:c.y};txtIn.style.left=c.x+'px';txtIn.style.top=c.y+'px';txtIn.style.display='block';txtIn.style.color=state.currentColor;setTimeout(()=>txtIn.focus(),50);return;}
+    if(state.tool==='line'){selectObj(null);state.isDrawingLine=!0;state.currentLine={type:'line',id:Date.now(),start:{x:c.x,y:c.y},end:{x:c.x,y:c.y},color:state.currentColor};return;}
+    if(state.tool==='rect'||state.tool==='circle'){selectObj(null);state.isDrawingShape=!0;state.currentShape={type:state.tool,id:Date.now(),start:{x:c.x,y:c.y},end:{x:c.x,y:c.y},color:state.currentColor};return;}
+    if(state.tool==='visibility'){const hit=findObjAt(c);if(hit){hit.hidden=!hit.hidden;redraw();window.reqSync(true);}return;}
+    if(state.tool==='move'){
+        const hHit=findHandleAt(c);if(hHit){state.isResizing=!0;state.resizeHandle=hHit;state.dragLastX=c.x;state.dragLastY=c.y;return;}
+        if(Math.hypot(c.x-state.origin.x,c.y-state.origin.y)<30){state.isDraggingOrigin=!0;state.dragLastX=c.x;state.dragLastY=c.y;selectObj(null);return;}
+        const hit=findObjAt(c);if(hit){state.isDragging=!0;state.dragLastX=c.x;state.dragLastY=c.y;if(e.shiftKey){if(state.selectedObjects.includes(hit))state.selectedObjects=state.selectedObjects.filter(o=>o!==hit);else state.selectedObjects.push(hit);}else{if(!state.selectedObjects.includes(hit))selectObj(hit);} state.possibleClick=hit;}
+        else{selectObj(null);state.selectionBox={startX:c.x,startY:c.y,x:c.x,y:c.y,w:0,h:0};} redraw();return;
+    }
+    if(state.tool==='draw_free'){selectObj(null);state.isDrawingFree=!0;state.currentFreeStroke={type:'free_stroke',id:Date.now(),points:[c],color:state.currentColor};return;}
+    if(state.recognitionTimer){clearTimeout(state.recognitionTimer);state.recognitionTimer=null;}
+    state.isDrawing=!0;state.currentStroke=[c];selectObj(null);
+}
+function hMove(e){
+    if(e.touches)e.preventDefault();const c=getCoords(e);document.getElementById('coords-indicator').innerText=`X:${Math.round(getPhysX(c.x))} Y:${Math.round(getPhysY(c.y))}`;
+    if(state.tool==='laser'){state.laserPoints.push({x:c.x,y:c.y,t:Date.now()});redraw();window.reqSync(false);return;}
+    if(state.isResizing&&state.resizeHandle){
+        state.possibleClick=null; const dx=c.x-state.dragLastX,dy=c.y-state.dragLastY,h=state.resizeHandle;
+        if(h.type==='start'){h.obj.start.x+=dx;h.obj.start.y+=dy;}else if(h.type==='end'){h.obj.end.x+=dx;h.obj.end.y+=dy;}
+        else if(h.obj.type==='free_stroke'){const b=getBounds(h.obj.points);let scX=1,scY=1,ox=0,oy=0;if(h.type==='br'){ox=b.minX;oy=b.minY;scX=(b.w+dx)/b.w;scY=(b.h+dy)/b.h;}if(h.type==='tl'){ox=b.maxX;oy=b.maxY;scX=(b.w-dx)/b.w;scY=(b.h-dy)/b.h;}h.obj.points.forEach(p=>{p.x=ox+(p.x-ox)*scX;p.y=oy+(p.y-oy)*scY;});}
+        else if(h.type==='scale'){h.obj.radius=(h.obj.radius||20)+dx;}
+        state.dragLastX=c.x;state.dragLastY=c.y;redraw();window.reqSync(false);return;
+    }
+    if(state.isDraggingOrigin){const dx=c.x-state.dragLastX,dy=c.y-state.dragLastY;state.origin.x+=dx;state.origin.y+=dy;state.dragLastX=c.x;state.dragLastY=c.y;state.objects.forEach(o=>{if(o.type.startsWith('charge')){o.physX=getPhysX(o.x);o.physY=getPhysY(o.y);}});updateGrid();analizarFisica();redraw();window.reqSync(false);return;}
+    if(state.selectionBox){state.selectionBox.x=Math.min(state.selectionBox.startX,c.x);state.selectionBox.y=Math.min(state.selectionBox.startY,c.y);state.selectionBox.w=Math.abs(c.x-state.selectionBox.startX);state.selectionBox.h=Math.abs(c.y-state.selectionBox.startY);redraw();return;}
+    if(state.isDragging&&state.selectedObjects.length>0){
+        if(Math.hypot(c.x-state.dragLastX,c.y-state.dragLastY)>2) state.possibleClick=null;
+        const dx=c.x-state.dragLastX,dy=c.y-state.dragLastY;
+        state.selectedObjects.forEach(obj=>{if(obj.type.startsWith('charge')){obj.x+=dx;obj.y+=dy;obj.physX=getPhysX(obj.x);obj.physY=getPhysY(obj.y);}else if(obj.type==='vector'||obj.type==='line'||obj.type==='rect'||obj.type==='circle'){obj.start.x+=dx;obj.start.y+=dy;obj.end.x+=dx;obj.end.y+=dy;}else if(obj.type==='free_stroke'){obj.points.forEach(p=>{p.x+=dx;p.y+=dy;});}else if(obj.type==='text'){obj.x+=dx;obj.y+=dy;}});
+        state.dragLastX=c.x;state.dragLastY=c.y;updFD();redraw();window.reqSync(false);return;
+    }
+    if(state.isDrawingLine&&state.currentLine){state.currentLine.end={x:c.x,y:c.y};redraw();return;}
+    if(state.isDrawingShape&&state.currentShape){state.currentShape.end={x:c.x,y:c.y};redraw();return;}
+    if(state.isDrawingFree&&state.currentFreeStroke){const lp=state.currentFreeStroke.points[state.currentFreeStroke.points.length-1];if(Math.hypot(lp.x-c.x,lp.y-c.y)>2){state.currentFreeStroke.points.push(c);redraw();}return;}
+    if(state.isDrawing){state.currentStroke.push(c);redraw();}
+}
+function hEnd(e){
+    if(state.isResizing){state.isResizing=!1;state.resizeHandle=null;analizarFisica();window.reqSync(true);return;}
+    if(state.isDraggingOrigin){state.isDraggingOrigin=!1;window.reqSync(true);return;}
+    if(state.selectionBox){const b=state.selectionBox,mx=b.x,Mx=b.x+b.w,my=b.y,My=b.y+b.h;state.selectedObjects=state.objects.filter(o=>{if(o.hidden&&state.tool!=='visibility')return!1;if(o.type.startsWith('charge')||o.type==='text')return o.x>=mx&&o.x<=Mx&&o.y>=my&&o.y<=My;else if(o.type==='vector'||o.type==='line')return Math.min(o.start.x,o.end.x)>=mx&&Math.max(o.start.x,o.end.x)<=Mx&&Math.min(o.start.y,o.end.y)>=my&&Math.max(o.start.y,o.end.y)<=My;else if(o.type==='rect'||o.type==='circle')return Math.min(o.start.x,o.end.x)>=mx&&Math.max(o.start.x,o.end.x)<=Mx&&Math.min(o.start.y,o.end.y)>=my&&Math.max(o.start.y,o.end.y)<=My;else if(o.type==='free_stroke')return o.points.some(p=>p.x>=mx&&p.x<=Mx&&p.y>=my&&p.y<=My);return!1;});state.selectionBox=null;updFD();redraw();return;}
+    if(state.isDragging){state.isDragging=!1;if(state.possibleClick&&state.possibleClick.type.startsWith('charge')){openCtx(state.possibleClick,getCoords(e));} analizarFisica();window.reqSync(true);return;}
+    if(state.isDrawingLine&&state.currentLine){state.isDrawingLine=!1;if(Math.hypot(state.currentLine.end.x-state.currentLine.start.x,state.currentLine.end.y-state.currentLine.start.y)>5)state.objects.push(state.currentLine);state.currentLine=null;redraw();window.reqSync(true);return;}
+    if(state.isDrawingShape&&state.currentShape){state.isDrawingShape=!1;if(Math.hypot(state.currentShape.end.x-state.currentShape.start.x,state.currentShape.end.y-state.currentShape.start.y)>5)state.objects.push(state.currentShape);state.currentShape=null;redraw();window.reqSync(true);return;}
+    if(state.isDrawingFree&&state.currentFreeStroke){state.isDrawingFree=!1;if(state.currentFreeStroke.points.length>2)state.objects.push(state.currentFreeStroke);state.currentFreeStroke=null;redraw();window.reqSync(true);return;}
+    if(state.isDrawing){state.isDrawing=!1;if(state.currentStroke.length>3)state.rawStrokes.push([...state.currentStroke]);state.currentStroke=[];state.recognitionTimer=setTimeout(()=>{detConv();state.recognitionTimer=null;},1200);redraw();window.reqSync(true);}
+}
+function findObjAt(c){const vs=state.objects.filter(o=>state.tool==='visibility'||!o.hidden);
+    const t=vs.find(o=>o.type==='text'&&c.x>=o.x&&c.x<=o.x+ctx.measureText(o.text).width&&c.y>=o.y&&c.y<=o.y+24);if(t)return t;
+    const q=vs.find(o=>o.type.startsWith('charge')&&Math.hypot(o.x-c.x,o.y-c.y)<(o.radius||25));if(q)return q;
+    const v=vs.find(o=>o.type==='vector'&&(Math.hypot(o.start.x-c.x,o.start.y-c.y)<25||Math.hypot(o.end.x-c.x,o.end.y-c.y)<25));if(v)return v;
+    const l=vs.find(o=>o.type==='line'&&dist2Seg(c,o.start,o.end)<15);if(l)return l;
+    const sh=vs.find(o=>{if(o.type==='rect')return c.x>=Math.min(o.start.x,o.end.x)&&c.x<=Math.max(o.start.x,o.end.x)&&c.y>=Math.min(o.start.y,o.end.y)&&c.y<=Math.max(o.start.y,o.end.y);if(o.type==='circle'){const cx=(o.start.x+o.end.x)/2,cy=(o.start.y+o.end.y)/2,r=Math.hypot(o.end.x-o.start.x,o.end.y-o.start.y)/2;return Math.hypot(c.x-cx,c.y-cy)<=r;}return!1;});if(sh)return sh;
+    return vs.find(o=>o.type==='free_stroke'&&o.points.some(p=>Math.hypot(p.x-c.x,p.y-c.y)<15));}
+function selectObj(o){state.selectedObjects=o?[o]:[];updFD();redraw();}
+function updFD(){if(!state.selectedObjects.length){fd.style.display='none';return;}let mx=Infinity,my=Infinity,Mx=-Infinity;state.selectedObjects.forEach(o=>{let bx,by;if(o.type.startsWith('charge')){bx=o.x;by=o.y-o.radius-15;}else if(o.type==='vector'||o.type==='line'||o.type==='rect'||o.type==='circle'){bx=(o.start.x+o.end.x)/2;by=Math.min(o.start.y,o.end.y)-20;}else if(o.type==='text'){bx=o.x+20;by=o.y-30;}else if(o.type==='free_stroke'){const p=o.points.reduce((p,c)=>c.y<p.y?c:p);bx=p.x;by=p.y-30;}if(bx<mx)mx=bx;if(bx>Mx)Mx=bx;if(by<my)my=by;});fd.style.left=((mx+Mx)/2)+'px';fd.style.top=my+'px';fd.style.display='block';}
+function deleteSelected(){if(state.selectedObjects.length){state.objects=state.objects.filter(o=>!state.selectedObjects.includes(o));state.selectedObjects=[];fd.style.display='none';analizarFisica();redraw();window.reqSync(true);}}window.deleteSelected=deleteSelected;
+function detConv(){const gs=groupStrokes(state.rawStrokes);const nOs=[];const used=new Set();gs.forEach(g=>{const b=getGBounds(g);const t=classGroup(g,b);if(t!=='unknown'){if(t.startsWith('charge')){const id=state.objects.filter(o=>o.type.startsWith('charge')).length+1;nOs.push({id:id,type:t,label:`q_${id}`,x:b.cx,y:b.cy,physX:getPhysX(b.cx),physY:getPhysY(b.cy),q:t==='charge_pos'?5:-5,hasVectors:!1,radius:25});}else if(t==='vector'){const e=getVecEps(g);nOs.push({type:'vector',start:e.start,end:e.end,validation:null,label:'?'});}g.forEach(i=>used.add(i));}});if(nOs.length){state.rawStrokes=state.rawStrokes.filter((_,i)=>!used.has(i));state.objects.push(...nOs);analizarFisica();}redraw();window.reqSync(true);}
+function getGBounds(ids){let all=[];ids.forEach(i=>{if(state.rawStrokes[i])state.rawStrokes[i].forEach(p=>all.push(p));});if(!all.length)return{minX:0,maxX:0,minY:0,maxY:0,w:0,h:0,cx:0,cy:0};return getBounds(all);}
+function groupStrokes(ss){const gs=[];const v=new Set();for(let i=0;i<ss.length;i++){if(v.has(i))continue;const g=[i];v.add(i);for(let j=i+1;j<ss.length;j++){if(v.has(j))continue;if(stClose(ss[i],ss[j])){g.push(j);v.add(j);}}gs.push(g);}return gs;}
+function stClose(s1,s2){const b1=getBounds(s1),b2=getBounds(s2),p=30;return!(b2.minX>b1.maxX+p||b2.maxX<b1.minX-p||b2.minY>b1.maxY+p||b2.maxY<b1.minY-p);}
+function classGroup(ids,b){const ss=ids.map(i=>state.rawStrokes[i]);const r=b.w/b.h;if(r>.5&&r<2&&b.w>20&&b.h>20){let mL=0,bI=-1;ss.forEach((s,i)=>{let l=0;for(let k=0;k<s.length-1;k++)l+=Math.hypot(s[k+1].x-s[k].x,s[k+1].y-s[k].y);if(l>mL){mL=l;bI=i;}});const bd=ss[bI];if(Math.hypot(bd[0].x-bd[bd.length-1].x,bd[0].y-bd[bd.length-1].y)<mL*.4){const inn=ss.filter((_,i)=>i!==bI);if(!inn.length)return'charge_pos';if(inn.length===1){const ib=getBounds(inn[0]);if(ib.w>ib.h*1.5)return'charge_neg';return'charge_pos';}return'charge_pos';}}if(Math.hypot(b.w,b.h)>30)return'vector';return'unknown';}
+function getVecEps(ids){let mL=0,m=null;const ss=ids.map(i=>state.rawStrokes[i]);ss.forEach(s=>{const l=Math.hypot(s[0].x-s[s.length-1].x,s[0].y-s[s.length-1].y);if(l>mL){mL=l;m=s;}});if(!m)return{start:{x:0,y:0},end:{x:0,y:0}};const p1=m[0],p2=m[m.length-1];let d1=0,d2=0;ss.forEach(s=>{if(s===m)return;s.forEach(p=>{if(Math.hypot(p.x-p1.x,p.y-p1.y)<30)d1++;if(Math.hypot(p.x-p2.x,p.y-p2.y)<30)d2++;});});return d1>d2?{start:p2,end:p1}:{start:p1,end:p2};}
+function getBounds(ps){const xs=ps.map(p=>p.x),ys=ps.map(p=>p.y);return{minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys),cx:(Math.min(...xs)+Math.max(...xs))/2,cy:(Math.min(...ys)+Math.max(...ys))/2};}
+
+// PHYSICS, VALIDATION, DYNAMIC INSIGHTS
+function formatExp(n){if(n===0)return"0";let s=n.toExponential(2),p=s.split('e'),exp=parseInt(p[1]);if(exp===0)return p[0];return`${p[0]}\\times 10^{${exp}}`;}
+function formatExpHTML(n){if(n===0)return"0";let s=n.toExponential(2),p=s.split('e'),exp=parseInt(p[1]);if(exp===0)return p[0];return`${p[0]} &times; 10<sup>${exp}</sup>`;}
+
+function analizarFisica(){
+    const chs=state.objects.filter(o=>o.type.startsWith('charge')),vs=state.objects.filter(o=>o.type==='vector'),Ke=8.987e9,sc=parseFloat(document.getElementById('scale-input').value||100),dU=parseFloat(document.getElementById('dist-unit').value||1),qU=parseFloat(document.getElementById('charge-unit').value||1e-6);
+    chs.forEach(c=>c.hasVectors=!1); const ints=[];
+    chs.forEach(t=>{chs.forEach(s=>{if(t.id===s.id)return;const dx=s.physX-t.physX,dy=s.physY-t.physY;let ang=Math.atan2(dy,dx);if(t.q*s.q>0)ang+=Math.PI;ang=(ang+4*Math.PI)%(2*Math.PI);const r=Math.hypot(dx,dy)/sc*dU,mag=r>0?(Ke*Math.abs(t.q*qU*s.q*qU))/(r*r):0;ints.push({target:t.id,source:s.id,label:`F_{${s.id}${t.id}}`,mag:mag,angleDeg:(ang*180/Math.PI)%360,Fx:mag*Math.cos(ang),Fy:mag*Math.sin(ang),r:r,t:t,s:s,ang:ang,isAttract:(t.q*s.q<0)});});});
+    state.calculatedForces=ints; const vb=document.getElementById('validation-box'); vb.innerHTML='';
+    if(!vs.length)vb.innerHTML='<i>Dibuja vectores sobre las cargas.</i>';
+    vs.forEach(v=>{const o=chs.find(c=>Math.hypot(c.x-v.start.x,c.y-v.start.y)<60);if(!o){v.validation='warn';v.label='?';v.isAttract=!1;vb.innerHTML+=`<div style="color:var(--danger)">⚠️ Vector suelto</div>`;return;}o.hasVectors=!0;const vA=(Math.atan2(getPhysY(v.end.y)-getPhysY(v.start.y),v.end.x-v.start.x)+4*Math.PI)%(2*Math.PI);let b=null,mD=100;ints.filter(i=>i.t.id===o.id).forEach(c=>{let d=Math.abs(c.ang-vA);if(d>Math.PI)d=2*Math.PI-d;if(d<mD){mD=d;b=c;}});if(b&&mD<0.6){v.validation='correct';v.label=b.label;v.isAttract=b.isAttract;vb.innerHTML+=`<div style="color:var(--accent)">✅ $${b.label}$ en $${o.label}$</div>`;}else{v.validation='error';v.label='?';v.isAttract=!1;vb.innerHTML+=`<div style="color:var(--danger)">❌ Dir. Errada en $${o.label}$</div>`;}});
+    
+    updateStatement(chs, qU);
+    renderLatex();
+    generateInsights(chs, ints);
+    
+    // Auto-renderizar etiquetas en el cuadro de validación
+    renderMathInElement(document.getElementById('validation-box'), {delimiters: [{left: "$", right: "$", display: false}], throwOnError: false, strict: "ignore"});
+    
+    // Generar botones DCL
+    const dclBtnBox = document.getElementById('dcl-buttons-container');
+    if (dclBtnBox) {
+        dclBtnBox.innerHTML = '';
+        const tIds = new Set(ints.map(i => i.target));
+        tIds.forEach(tid => {
+            const q = chs.find(c=>c.id===tid);
+            dclBtnBox.innerHTML += `<button class="btn btn-primary" style="padding:4px 8px;font-size:0.75rem" onclick="openDCL(${tid})">DCL ${q.label.replace(/[{}_]/g,'')}</button>`;
+        });
+    }
+    
+    // Premiar por validación si está conectado (10 puntos)
+    if(window.addPoints && ints.length > 0) window.addPoints(5);
+    
+    redraw();
+} window.analizarFisica=analizarFisica;
+
+window.openDCL = function(id) {
+    showModal('fbd-modal');
+    const cx = document.getElementById('fbd-canvas').getContext('2d');
+    cx.clearRect(0,0,400,400);
+    const ch = state.objects.find(o=>o.id===id);
+    if(!ch) return;
+    const fs = state.calculatedForces.filter(f=>f.target===id);
+    cx.strokeStyle='#ccc'; cx.lineWidth=1;
+    cx.beginPath(); cx.moveTo(200,0); cx.lineTo(200,400); cx.moveTo(0,200); cx.lineTo(400,200); cx.stroke();
+    cx.beginPath(); cx.arc(200,200,15,0,2*Math.PI);
+    cx.fillStyle=ch.type==='charge_pos'?'#3498db':'#e74c3c'; cx.fill();
+    cx.fillStyle='white'; cx.font='bold 16px sans-serif'; cx.textAlign='center'; cx.textBaseline='middle';
+    cx.fillText(ch.type==='charge_pos'?'+':'-', 200, 202);
+    
+    let sumFx = 0, sumFy = 0;
+    fs.forEach(f => { sumFx += f.Fx; sumFy += f.Fy; });
+    const Rmag = Math.hypot(sumFx, sumFy);
+    const max = Math.max(...fs.map(f=>f.mag), Rmag, 1e-9);
+    const s = 130/max;
+    
+    const drawArr = (x1,y1,x2,y2) => {
+        const h=15, a=Math.atan2(y2-y1,x2-x1);
+        cx.beginPath(); cx.moveTo(x1,y1); cx.lineTo(x2,y2); cx.stroke();
+        cx.beginPath(); cx.moveTo(x2,y2);
+        cx.lineTo(x2-h*Math.cos(a-Math.PI/6), y2-h*Math.sin(a-Math.PI/6));
+        cx.lineTo(x2-h*Math.cos(a+Math.PI/6), y2-h*Math.sin(a+Math.PI/6));
+        cx.fill();
+    };
+
+    fs.forEach(f=>{
+        const dx=f.Fx*s, dy=-f.Fy*s, x2=200+dx, y2=200+dy, col='#f1c40f';
+        cx.strokeStyle='rgba(241, 196, 15, 0.4)'; cx.lineWidth=1.5; cx.setLineDash([4, 4]);
+        cx.beginPath(); cx.moveTo(x2, y2); cx.lineTo(x2, 200); cx.stroke();
+        cx.beginPath(); cx.moveTo(x2, y2); cx.lineTo(200, y2); cx.stroke();
+        cx.setLineDash([]);
+        cx.strokeStyle=col; cx.fillStyle=col; cx.lineWidth=3;
+        drawArr(200, 200, x2, y2);
+        cx.fillStyle='black'; cx.font="14px Arial"; cx.textAlign='left';
+        cx.fillText(f.label.replace(/[{}_]/g,''), x2+10, y2);
+    });
+    if(fs.length > 0 && Rmag > 0) {
+        const Rx2 = 200 + sumFx*s, Ry2 = 200 - sumFy*s, Rcol = '#ff6b6b';
+        cx.strokeStyle='rgba(255, 107, 107, 0.4)'; cx.lineWidth=2; cx.setLineDash([4, 4]);
+        cx.beginPath(); cx.moveTo(Rx2, Ry2); cx.lineTo(Rx2, 200); cx.stroke();
+        cx.beginPath(); cx.moveTo(Rx2, Ry2); cx.lineTo(200, Ry2); cx.stroke();
+        cx.setLineDash([]);
+        cx.strokeStyle=Rcol; cx.fillStyle=Rcol; cx.lineWidth=4;
+        drawArr(200, 200, Rx2, Ry2);
+        cx.fillStyle=Rcol; cx.font="bold 16px Arial";
+        cx.fillText("FR", Rx2+12, Ry2+5);
+    }
+};
+
+function updateStatement(chs, qU) {
+    const el = document.getElementById('problem-statement');
+    if(chs.length < 2) { el.innerHTML = "Coloca al menos dos cargas en el lienzo e interactúa con ellas para generar el problema."; return; }
+    let t = `Un sistema consta de ${chs.length} cargas puntuales interaccionando en el vacío: `;
+    t += chs.map(c => `<b>q<sub>${c.id}</sub> = ${formatExpHTML(c.q * qU)} C</b>`).join(', ') + '. ';
+    t += `<br><br>Determine analítica y gráficamente la magnitud y dirección de la <b>fuerza eléctrica resultante</b> sobre cada una de las cargas originada por el resto del sistema.`;
+    el.innerHTML = t;
+}
+
+function generateInsights(chs, fs) {
+    const conc = document.getElementById('solution-conclusion');
+    const theo = document.getElementById('theory-questions');
+    if(chs.length < 2) { conc.innerHTML=''; theo.innerHTML=''; return; }
+
+    let cHtml = "<strong style='color:var(--accent)'><i class='ph ph-info'></i> Conclusiones Físicas:</strong><ul style='margin-left:20px;margin-top:5px'>";
+    chs.forEach(ch => {
+        const fToMe = fs.filter(f=>f.target===ch.id);
+        if(fToMe.length===0) return;
+        let sx=0, sy=0; fToMe.forEach(f=>{sx+=f.Fx;sy+=f.Fy;});
+        const R = Math.hypot(sx, sy), a = (Math.atan2(sy, sx)*180/Math.PI+360)%360;
+        if(R>1e-12) {
+            cHtml += `<li>La carga <b>q<sub>${ch.id}</sub></b> experimenta una fuerza neta de <b>${formatExpHTML(R)} N</b> hacia <b>${a.toFixed(1)}°</b>. `;
+            if(ch.q > 0) cHtml += "Al ser positiva, su aceleración será en esa dirección.</li>";
+            else cHtml += "Al ser negativa, su aceleración también será en la dirección de la fuerza neta.</li>";
+        } else { cHtml += `<li>La carga <b>q<sub>${ch.id}</sub></b> se encuentra en estado de equilibrio traslacional.</li>`; }
+    });
+    conc.innerHTML = cHtml + "</ul>";
+
+    let tHtml = "<strong style='color:#f1c40f'><i class='ph ph-lightbulb'></i> Análisis Teórico & Tips:</strong><ul style='margin-left:20px;margin-top:5px'>";
+    tHtml += `<li><b>Pregunta de Análisis:</b> Si la distancia se reduce a la mitad, ¿qué sucede con la fuerza? <br><i>Respuesta: Se cuadruplica (relación inversa al cuadrado).</i></li>`;
+    tHtml += `<li><b>Tip Geométrico:</b> Cargas de igual signo se repelen, signos opuestos se atraen.</li>`;
+    theo.innerHTML = tHtml + "</ul>";
+}
+
+function renderLatex(){
+    const b=document.getElementById('latex-result');let h="";const gs={};state.calculatedForces.forEach(f=>{if(!gs[f.target])gs[f.target]=[];gs[f.target].push(f);});
+    if(!Object.keys(gs).length){ h="\\text{Sin fuerzas correctas}"; }else{
+        h+="\\text{Componentes rectangulares:} \\\\[0.5em] F_x = |\\vec{F}| \\cos(\\theta) \\quad F_y = |\\vec{F}| \\sin(\\theta) \\\\[1em]";
+        for(const[tid,fs]of Object.entries(gs)){h+=`\\underline{\\text{Análisis sobre } q_${tid}}:\\\\ \\begin{aligned}`;let sx=0,sy=0;fs.forEach(f=>{h+=`r_{${f.source}${f.target}} &= ${formatExp(f.r)} \\text{ m}, \\theta = ${f.angleDeg.toFixed(1)}^\\circ \\\\`;h+=`|\\vec{F}_{${f.source}${f.target}}| &= k_e \\frac{|q_${f.source} q_${f.target}|}{r^2} = ${formatExp(f.mag)} \\text{ N} \\\\`;h+=`{F}_{x} &= ${formatExp(f.mag)} \\cos(${f.angleDeg.toFixed(1)}^\\circ) = ${formatExp(f.Fx)} \\text{ N} \\\\`;h+=`{F}_{y} &= ${formatExp(f.mag)} \\sin(${f.angleDeg.toFixed(1)}^\\circ) = ${formatExp(f.Fy)} \\text{ N} \\\\[0.8em]`;sx+=f.Fx;sy+=f.Fy;});h+=`\\end{aligned} \\\\[1em]`;const R=Math.hypot(sx,sy),Ra=(Math.atan2(sy,sx)*180/Math.PI+360)%360;h+=`\\text{Vector Resultante } \\vec{F}_R: \\\\ \\begin{aligned} \\sum F_x &= \\mathbf{${formatExp(sx)} \\text{ N}} \\\\ \\sum F_y &= \\mathbf{${formatExp(sy)} \\text{ N}} \\\\ |\\vec{F}_R| &= \\mathbf{${formatExp(R)} \\text{ N}} \\\\ \\theta_R &= \\mathbf{${Ra.toFixed(1)}^\\circ} \\end{aligned} \\\\[2em]`;}
+    }
+    katex.render(h,b,{displayMode:!0,throwOnError:!1, strict: "ignore"});
+}
+
+function drawPath(ps,c='#999',w=2){if(ps.length<2)return;ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(ps[0].x,ps[0].y);for(let i=1;i<ps.length;i++)ctx.lineTo(ps[i].x,ps[i].y);ctx.stroke();}
+function redraw(){
+    ctx.clearRect(0,0,cvs.width,cvs.height);lbls.innerHTML='';
+    if(state.origin.x!==null){ctx.beginPath();ctx.strokeStyle='rgba(128,128,128,0.3)';ctx.lineWidth=1;ctx.moveTo(0,state.origin.y);ctx.lineTo(cvs.width,state.origin.y);ctx.moveTo(state.origin.x,0);ctx.lineTo(state.origin.x,cvs.height);ctx.stroke();ctx.beginPath();ctx.arc(state.origin.x,state.origin.y,4,0,Math.PI*2);ctx.fillStyle=state.isDraggingOrigin?'#4ecca3':'rgba(128,128,128,0.5)';ctx.fill();}
+    const chs=state.objects.filter(o=>o.type.startsWith('charge'));
+    if(chs.length>1){ctx.setLineDash([5,5]);ctx.strokeStyle='rgba(128,128,128,0.4)';ctx.lineWidth=1;for(let i=0;i<chs.length;i++)for(let j=i+1;j<chs.length;j++){ctx.beginPath();ctx.moveTo(chs[i].x,chs[i].y);ctx.lineTo(chs[j].x,chs[j].y);ctx.stroke();}ctx.setLineDash([]);}
+    state.rawStrokes.forEach(s=>drawPath(s,'rgba(128,128,128,0.3)',2));if(state.currentStroke.length)drawPath(state.currentStroke,'#999',2);if(state.currentFreeStroke)drawPath(state.currentFreeStroke.points,state.currentFreeStroke.color,3);
+    if(state.currentLine){ctx.strokeStyle=state.currentLine.color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(state.currentLine.start.x,state.currentLine.start.y);ctx.lineTo(state.currentLine.end.x,state.currentLine.end.y);ctx.stroke();}
+    if(state.currentShape){ctx.strokeStyle=state.currentShape.color;ctx.lineWidth=3;if(state.currentShape.type==='rect')ctx.strokeRect(Math.min(state.currentShape.start.x,state.currentShape.end.x),Math.min(state.currentShape.start.y,state.currentShape.end.y),Math.abs(state.currentShape.end.x-state.currentShape.start.x),Math.abs(state.currentShape.end.y-state.currentShape.start.y));else if(state.currentShape.type==='circle'){ctx.beginPath();ctx.arc((state.currentShape.start.x+state.currentShape.end.x)/2,(state.currentShape.start.y+state.currentShape.end.y)/2,Math.hypot(state.currentShape.end.x-state.currentShape.start.x,state.currentShape.end.y-state.currentShape.start.y)/2,0,Math.PI*2);ctx.stroke();}}
+    if(state.selectionBox){ctx.fillStyle='rgba(78,204,163,0.1)';ctx.strokeStyle='#4ecca3';ctx.lineWidth=1;ctx.fillRect(state.selectionBox.x,state.selectionBox.y,state.selectionBox.w,state.selectionBox.h);ctx.strokeRect(state.selectionBox.x,state.selectionBox.y,state.selectionBox.w,state.selectionBox.h);}
+    state.objects.forEach(o=>{if(o.hidden&&state.tool!=='visibility')return;const pA=ctx.globalAlpha;if(o.hidden)ctx.globalAlpha=0.3;const isS=state.selectedObjects.includes(o);ctx.shadowBlur=isS?15:0;ctx.shadowColor='#4ecca3';
+        if(o.type.startsWith('charge')){const r=o.radius||25;ctx.beginPath();ctx.arc(o.x,o.y,r,0,Math.PI*2);ctx.fillStyle=o.type==='charge_pos'?'#3b82f6':'#ef4444';ctx.fill();ctx.strokeStyle=isS?'#4ecca3':'#fff';ctx.lineWidth=isS?3:2;ctx.stroke();ctx.shadowBlur=0;ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(12,r-5)}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(o.type==='charge_pos'?'+':'-',o.x,o.y+2);addLbl(o.x+r+5,o.y-r-5,o.label,o.hidden);
+            if(isS){ctx.fillStyle='#fff';ctx.fillRect(o.x+r-5,o.y+r-5,10,10);ctx.strokeRect(o.x+r-5,o.y+r-5,10,10);} 
+        }else if(o.type==='vector'){const c=o.validation==='correct'?(o.isAttract?'#3b82f6':'#ef4444'):o.validation==='error'?'#ff6b6b':'#f1c40f';ctx.strokeStyle=isS?'#4ecca3':c;ctx.fillStyle=isS?'#4ecca3':c;ctx.lineWidth=isS?5:3;drawArrow(o.start.x,o.start.y,o.end.x,o.end.y);ctx.shadowBlur=0;if(o.label)addLbl(o.end.x,o.end.y-15,o.label,o.hidden);if(isS)drawHandles([o.start,o.end]);}
+        else if(o.type==='line'){ctx.strokeStyle=isS?'#4ecca3':o.color;ctx.lineWidth=isS?4:2;ctx.beginPath();ctx.moveTo(o.start.x,o.start.y);ctx.lineTo(o.end.x,o.end.y);ctx.stroke();ctx.shadowBlur=0;if(isS)drawHandles([o.start,o.end]);}
+        else if(o.type==='rect'){ctx.strokeStyle=isS?'#4ecca3':o.color;ctx.lineWidth=isS?4:2;ctx.strokeRect(Math.min(o.start.x,o.end.x),Math.min(o.start.y,o.end.y),Math.abs(o.end.x-o.start.x),Math.abs(o.end.y-o.start.y));ctx.shadowBlur=0;if(isS)drawHandles([o.start,o.end]);}
+        else if(o.type==='circle'){ctx.strokeStyle=isS?'#4ecca3':o.color;ctx.lineWidth=isS?4:2;ctx.beginPath();ctx.arc((o.start.x+o.end.x)/2,(o.start.y+o.end.y)/2,Math.hypot(o.end.x-o.start.x,o.end.y-o.start.y)/2,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;if(isS)drawHandles([o.start,o.end]);}
+        else if(o.type==='free_stroke'){drawPath(o.points,isS?'#4ecca3':o.color,isS?5:3);ctx.shadowBlur=0;if(isS){const b=getBounds(o.points);drawHandles([{x:b.minX,y:b.minY},{x:b.maxX,y:b.minY},{x:b.minX,y:b.maxY},{x:b.maxX,y:b.maxY}]);}}
+        else if(o.type==='text'){ctx.fillStyle=isS?'#4ecca3':o.color;ctx.font='bold 20px "Segoe UI",Arial';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(o.text,o.x,o.y);ctx.shadowBlur=0;}
+        ctx.globalAlpha=pA;
+    });
+    const n=Date.now();state.laserPoints=state.laserPoints.filter(p=>n-p.t<400);
+    if(state.laserPoints.length>1){ctx.beginPath();ctx.strokeStyle='#ff0000';ctx.lineWidth=4;ctx.shadowBlur=15;ctx.shadowColor='#ff0000';ctx.moveTo(state.laserPoints[0].x,state.laserPoints[0].y);for(let i=1;i<state.laserPoints.length;i++)ctx.lineTo(state.laserPoints[i].x,state.laserPoints[i].y);ctx.stroke();ctx.shadowBlur=0;}
+    if(state.laserPoints.length>0)requestAnimationFrame(redraw);
+    if(state.showInCanvasDCL){chs.forEach(ch=>{if(ch.hasVectors){const fs=state.calculatedForces.filter(f=>f.target===ch.id);if(!fs.length)return;let sx=0,sy=0;fs.forEach(f=>{sx+=f.Fx;sy+=f.Fy;});const R=Math.hypot(sx,sy),max=Math.max(...fs.map(f=>f.mag),R,1e-9),s=90/max;ctx.strokeStyle='rgba(128,128,128,0.4)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(ch.x-100,ch.y);ctx.lineTo(ch.x+100,ch.y);ctx.moveTo(ch.x,ch.y-100);ctx.lineTo(ch.x,ch.y+100);ctx.stroke();ctx.setLineDash([]);fs.forEach(f=>{const x2=ch.x+f.Fx*s,y2=ch.y-f.Fy*s,c=f.isAttract?'#3b82f6':'#ef4444';ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=2;drawArrow(ch.x,ch.y,x2,y2);});if(R>0){const x2=ch.x+sx*s,y2=ch.y-sy*s;ctx.strokeStyle='#27c93f';ctx.fillStyle='#27c93f';ctx.lineWidth=3;drawArrow(ch.x,ch.y,x2,y2);ctx.fillText("FR",x2+10,y2);}}});}
+}window.redraw=redraw;
+function drawHandles(pts){ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.lineWidth=1;pts.forEach(p=>{ctx.fillRect(p.x-5,p.y-5,10,10);ctx.strokeRect(p.x-5,p.y-5,10,10);});}
+function drawArrow(x1,y1,x2,y2){const h=15,a=Math.atan2(y2-y1,x2-x1);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-h*Math.cos(a-Math.PI/6),y2-h*Math.sin(a-Math.PI/6));ctx.lineTo(x2-h*Math.cos(a+Math.PI/6),y2-h*Math.sin(a+Math.PI/6));ctx.fill();}
+function addLbl(x,y,t,hid=!1){const d=document.createElement('div');d.className='canvas-label';d.style.left=x+'px';d.style.top=y+'px';if(hid)d.style.opacity='0.3';katex.render(t,d,{throwOnError:!1});lbls.appendChild(d);}
+function updateCoord(id,ax,v){const o=state.objects.find(x=>x.id===id),nv=parseFloat(v);if(!o||isNaN(nv))return;if(ax==='x'){o.physX=nv;o.x=nv+state.origin.x;}else{o.physY=nv;o.y=state.origin.y-nv;}analizarFisica();window.reqSync(true);}
+
+// UI Control
+function setTool(t,b){finalizeText();state.tool=t;document.querySelectorAll('.h-menu .btn').forEach(e=>e.classList.remove('active'));if(b)b.classList.add('active');if(t!=='move')selectObj(null);} window.setTool=setTool;
+window.toggleTheme=()=>{document.body.classList.toggle('dark-mode');document.body.classList.toggle('light-mode');const ic=document.querySelector('.ph-moon')||document.querySelector('.ph-sun');if(ic){ic.classList.toggle('ph-moon');ic.classList.toggle('ph-sun');}redraw();};
+function undo(){if(state.rawStrokes.length)state.rawStrokes.pop();else if(state.objects.length){state.objects.pop();analizarFisica();}redraw();window.reqSync(true);} window.undo=undo;
+function limpiarTodo(){state.objects=[];state.rawStrokes=[];state.selectedObjects=[];analizarFisica();redraw();fd.style.display='none';window.reqSync(true);} window.limpiarTodo=limpiarTodo;
+function togglePanel(){document.getElementById('right-panel').classList.toggle('open');} window.togglePanel=togglePanel;
+function toggleWin(id,act){const e=document.getElementById(id);if(act==='min'){e.classList.remove('maximized');e.style.height='40px';e.style.overflow='hidden';}else if(act==='max'){e.style.height='auto';e.style.overflow='auto';e.classList.toggle('maximized');}} window.toggleWin=toggleWin;
+function toggleInCanvasDCL(){state.showInCanvasDCL=!state.showInCanvasDCL;document.getElementById('btn-toggle-dcl').classList.toggle('active',state.showInCanvasDCL);redraw();window.reqSync(true);} window.toggleInCanvasDCL=toggleInCanvasDCL;
+function showModal(id){document.getElementById(id).style.display='flex';} window.showModal=showModal;
+function hideModal(id){document.getElementById(id).style.display='none';} window.hideModal=hideModal;
+
+// Context Menu & Dynamic Radius Update
+function openCtx(obj,c){state.ctxTarget=obj;cMenu.style.display='block';cMenu.style.left=c.x+'px';cMenu.style.top=c.y+'px';document.getElementById('ctx-q').value=obj.q;document.getElementById('ctx-x').value=Math.round(obj.physX);document.getElementById('ctx-y').value=Math.round(obj.physY);}
+function closeCtx(){cMenu.style.display='none';state.ctxTarget=null;} window.closeCtx=closeCtx;
+function ctxUpdate(){
+    if(!state.ctxTarget)return;
+    const nQ=parseFloat(document.getElementById('ctx-q').value); state.ctxTarget.q=nQ;
+    state.ctxTarget.radius = Math.max(15, Math.min(50, 20 + Math.abs(nQ) * 1.5));
+    updateCoord(state.ctxTarget.id,'x',document.getElementById('ctx-x').value);
+    updateCoord(state.ctxTarget.id,'y',document.getElementById('ctx-y').value);
+} window.ctxUpdate=ctxUpdate;
+
+function exportarImagen(){const t=document.createElement('canvas');t.width=cvs.width;t.height=cvs.height;const tx=t.getContext('2d');tx.fillStyle=document.body.classList.contains('light-mode')?'#eef2f5':'#0b0e14';tx.fillRect(0,0,t.width,t.height);tx.drawImage(cvs,0,0);const l=document.createElement('a');l.download='CoulombLab10.png';l.href=t.toDataURL('image/png');l.click();} window.exportarImagen=exportarImagen;
+
+document.addEventListener("DOMContentLoaded",()=>{if(!localStorage.getItem('tourDone'))showModal('tour-modal');});
+</script>
+
+<script type="module">
+// MIGRACIÓN A FIRESTORE + RTDB (Arquitectura Híbrida Optimizada)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection, updateDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getDatabase, ref, set, get, push, onValue, update } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+const cfg = {apiKey:"AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",authDomain:"laboratorio-de-coulomb.firebaseapp.com",databaseURL:"https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",projectId:"laboratorio-de-coulomb",storageBucket:"laboratorio-de-coulomb.firebasestorage.app",messagingSenderId:"525944850850",appId:"1:525944850850:web:eca9c0b79809358e8d8afb",measurementId:"G-SZECJNG25E"};
+const app=initializeApp(cfg), db=getFirestore(app), rtdb=getDatabase(app), auth=getAuth(app);
+const APP_ID = 'coulombLab10';
+
+let selAvatar='👨‍🔬', appRating=0, curRoomRef=null, unsubRoom=null, isRecv=!1, chatRef=null;
+let localPoints = 0, localLevel = 1;
+
+window.selAvt = (el) => { document.querySelectorAll('.avt').forEach(a=>{a.style.transform='scale(1)';a.style.borderColor='transparent'}); el.style.transform='scale(1.2)'; el.style.borderColor='var(--accent)'; selAvatar=el.innerText; };
+
+// Gamificación: Otorgar Puntos
+window.addPoints = async (pts) => {
+    if(!auth.currentUser) return;
+    localPoints += pts;
+    localLevel = Math.floor(localPoints / 100) + 1;
+    
+    document.getElementById('user-stats').innerText = `🏆 Nivel ${localLevel} | ${localPoints} pts`;
+    document.getElementById('prof-nivel-disp').innerText = localLevel;
+    document.getElementById('prof-puntos-disp').innerText = localPoints;
+
+    try {
+        await updateDoc(doc(db, `artifacts/${APP_ID}/users/${auth.currentUser.uid}/profile/data`), { puntos: increment(pts) });
+        await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/directory/${auth.currentUser.uid}`), { puntos: increment(pts) });
+    } catch(e) {}
+};
+
+// Limpieza Total al Salir
+window.resetLocalState = () => {
+    localPoints = 0; localLevel = 1;
+    document.getElementById('prof-nivel-disp').innerText = '1';
+    document.getElementById('prof-puntos-disp').innerText = '0';
+    document.getElementById('user-stats').innerText = `🏆 Nivel 1 | 0 pts`;
+};
+
+onAuthStateChanged(auth, async u => {
+    if(u){
+        document.getElementById('auth-modal').style.display='none';
+        document.getElementById('btn-logout').style.display='inline-flex';
+        document.getElementById('btn-rooms').style.display='inline-flex';
+        document.getElementById('user-stats').style.display='inline-flex';
+        
+        try {
+            const s = await getDoc(doc(db,`artifacts/${APP_ID}/users/${u.uid}/profile/data`));
+            if(!s.exists()) {
+                window.resetLocalState();
+                document.getElementById('user-info').innerText = `👤 ${u.email.split('@')[0]}`;
+                showModal('profile-setup-modal'); 
+            } else {
+                const pd = s.data();
+                localPoints = pd.puntos || 0;
+                localLevel = Math.floor(localPoints / 100) + 1;
+                
+                document.getElementById('user-info').innerText = `${pd.avatar||'👤'} ${pd.alias||pd.nombre||u.email.split('@')[0]} (${pd.rol||'estudiante'})`;
+                document.getElementById('user-stats').innerText = `🏆 Nivel ${localLevel} | ${localPoints} pts`;
+                document.getElementById('prof-nivel-disp').innerText = localLevel;
+                document.getElementById('prof-puntos-disp').innerText = localPoints;
+                
+                if(u.email === 'dudbilopr@gmail.com' || pd.rol === 'admin') {
+                    document.getElementById('btn-admin').style.display='inline-flex';
+                }
+            }
+        } catch(e) { console.error("Error Auth: ", e); }
+    } else {
+        window.resetLocalState();
+        showModal('auth-modal'); document.getElementById('btn-logout').style.display='none'; document.getElementById('btn-rooms').style.display='none'; document.getElementById('btn-admin').style.display='none'; document.getElementById('user-stats').style.display='none'; document.getElementById('btn-chat').style.display='none';
+        if(unsubRoom)unsubRoom(); curRoomRef=null; window.limpiarTodo();
+    }
+});
+
+window.iniciarSesion=()=>signInWithEmailAndPassword(auth,document.getElementById('auth-email').value,document.getElementById('auth-pass').value).catch(e=>alert(e.message));
+window.registrarUsuario=()=>createUserWithEmailAndPassword(auth,document.getElementById('auth-email').value,document.getElementById('auth-pass').value).catch(e=>alert(e.message));
+window.iniciarSesionConGoogle=async()=>{
+    try { await signInWithPopup(auth, new GoogleAuthProvider()); } 
+    catch(e) { alert("Tu navegador o red ha bloqueado el inicio con Google (COOP Policy). Por favor, usa correo y contraseña en su lugar. Detalles: " + e.message); }
+};
+
+window.cerrarSesion = async () => {
+    if(curRoomRef) {
+        if(confirm("¿Deseas guardar la sincronización actual antes de salir?")) window.sendData();
+    }
+    await signOut(auth);
+};
+
+window.editProfile = async () => {
+    if(!auth.currentUser) return;
+    try {
+        const s = await getDoc(doc(db, `artifacts/${APP_ID}/users/${auth.currentUser.uid}/profile/data`));
+        if(s.exists()){
+            const d = s.data();
+            document.getElementById('prof-name').value = d.nombre||'';
+            document.getElementById('prof-alias').value = d.alias||'';
+            if(d.avatar) { selAvatar = d.avatar; document.querySelectorAll('.avt').forEach(a=>{ if(a.innerText===d.avatar){a.style.transform='scale(1.2)';a.style.borderColor='var(--accent)'}else{a.style.transform='scale(1)';a.style.borderColor='transparent'} }); }
+            document.getElementById('prof-age').value = d.edad||'';
+            document.getElementById('prof-gender').value = d.genero||'';
+            document.getElementById('prof-major').value = d.carrera||'';
+        }
+        showModal('profile-setup-modal');
+    } catch(e) { alert("Error cargando perfil: "+e.message); }
+};
+
+window.saveProfile = async () => {
+    const u=auth.currentUser;
+    const n=document.getElementById('prof-name').value, al=document.getElementById('prof-alias').value, a=document.getElementById('prof-age').value, g=document.getElementById('prof-gender').value, m=document.getElementById('prof-major').value;
+    if(!n||!a||!g||!m) return alert("Completa todos los campos básicos");
+    
+    try {
+        let currentRole = 'estudiante'; let currentGroup = 'General';
+        const currProf = await getDoc(doc(db, `artifacts/${APP_ID}/users/${u.uid}/profile/data`));
+        if (currProf.exists()) { currentRole = currProf.data().rol || 'estudiante'; currentGroup = currProf.data().grupo || 'General'; }
+        if (u.email === 'dudbilopr@gmail.com') currentRole = 'admin'; 
+        
+        const pd = {nombre:n, alias:al, avatar:selAvatar, rol:currentRole, grupo:currentGroup, edad:a, genero:g, carrera:m, email:u.email};
+        
+        await setDoc(doc(db,`artifacts/${APP_ID}/users/${u.uid}/profile/data`), pd, {merge: true});
+        await setDoc(doc(db,`artifacts/${APP_ID}/public/data/directory/${u.uid}`), pd, {merge: true});
+        
+        hideModal('profile-setup-modal'); 
+        document.getElementById('user-info').innerText=`${selAvatar} ${al||n} (${currentRole})`;
+        if(u.email === 'dudbilopr@gmail.com') document.getElementById('btn-admin').style.display='inline-flex';
+        
+    } catch(e) { alert("Error guardando: "+e.message); }
+};
+
+// --- GESTIÓN DE SALAS EN RTDB (SYNC MULTI-TAB) ---
+window.crearUnirseSala = async () => {
+    const n = document.getElementById('new-room-name').value.trim();
+    const p = document.getElementById('new-room-pass')?.value || '';
+    if(!n) return alert("Ingresa el nombre de la sala");
+    
+    try {
+        const passRef = ref(rtdb, `salas/${n}/password`);
+        const snap = await get(passRef);
+        
+        if (snap.exists() && snap.val() !== p && p !== '') { return alert("Contraseña incorrecta para esta sala."); } 
+        else if (!snap.exists()) { await set(passRef, p); }
+        
+        joinRoom(n);
+    } catch(e) { alert("Error verificando la sala: " + e.message); }
+};
+
+window.joinRoom = (id) => {
+    hideModal('rooms-modal');
+    document.getElementById('room-info').innerText = `🌐 Sala: ${id}`;
+    if (unsubRoom) unsubRoom();
+    
+    curRoomRef = ref(rtdb, `salas/${id}/state`);
+    unsubRoom = onValue(curRoomRef, snap => {
+        const d = snap.val();
+        if (d && !window.isSendingData) {
+            isRecv = true;
+            if(d.cases) { casesData = d.cases; }
+            window.appState.objects = casesData[activeCase].objects || [];
+            window.appState.rawStrokes = casesData[activeCase].rawStrokes || [];
+            window.appState.origin = casesData[activeCase].origin || {x:null, y:null};
+            window.analizarFisica();
+            window.redraw();
+            setTimeout(() => { isRecv = false; }, 50);
+        }
+    });
+
+    // Activar Chat
+    chatRef = ref(rtdb, `salas/${id}/chat`);
+    onValue(chatRef, snap => {
+        const msgs = snap.val();
+        const box = document.getElementById('chat-messages'); box.innerHTML = '';
+        if(msgs) {
+            Object.values(msgs).sort((a,b)=>a.time-b.time).forEach(m => {
+                box.innerHTML += `<div style="background:var(--card-bg); padding:5px 8px; border-radius:6px; border:1px solid var(--glass-border)"><b>${m.user}:</b> <span style="color:#aaa">${m.text}</span></div>`;
+            });
+            box.scrollTop = box.scrollHeight;
+        }
+    });
+    document.getElementById('btn-chat').style.display = 'inline-flex';
+    document.getElementById('room-chat-panel').style.display = 'flex';
+};
+
+window.sendData = () => {
+    if(!curRoomRef || isRecv || !auth.currentUser) return;
+    window.isSendingData = true;
+    casesData[activeCase].objects = [...window.appState.objects];
+    casesData[activeCase].rawStrokes = [...window.appState.rawStrokes];
+    casesData[activeCase].origin = {...window.appState.origin};
+    
+    set(curRoomRef, { cases: casesData, active: activeCase }).then(() => { window.isSendingData = false; });
+};
+
+window.sendMsg = () => {
+    const i = document.getElementById('chat-input');
+    if(!i.value.trim() || !chatRef) return;
+    const newMsgRef = push(chatRef);
+    set(newMsgRef, { text: i.value, user: document.getElementById('user-info').innerText, time: Date.now() });
+    i.value = '';
+};
+
+// --- EL DASHBOARD EXCLUSIVO DEL ADMINISTRADOR ---
+window.showAdminDashboard = async () => {
+    if(auth.currentUser.email !== 'dudbilopr@gmail.com') return alert("Acceso Restringido. Función de Administrador Principal.");
+    try {
+        showModal('admin-modal');
+        const s = await getDocs(collection(db,`artifacts/${APP_ID}/public/data/directory`));
+        const rev = await getDocs(collection(db,`artifacts/${APP_ID}/public/data/reviews`));
+        
+        let c=0, tr='', totalStars=0;
+        s.forEach(docSnap => {
+            const u = docSnap.data(); c++;
+            const uid = docSnap.id;
+            tr += `<tr>
+                <td><div style="font-size:0.8rem">${u.email}</div><div style="font-size:0.75rem;color:#888">${u.nombre}</div></td>
+                <td>${u.avatar||''} ${u.alias||'-'}</td>
+                <td>
+                    <select id="adm-role-${uid}" style="padding:4px;font-size:0.8rem;background:transparent;border:1px solid var(--glass-border)">
+                        <option value="estudiante" ${u.rol==='estudiante'?'selected':''}>Estudiante</option>
+                        <option value="docente" ${u.rol==='docente'?'selected':''}>Docente</option>
+                        <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
+                    </select>
+                </td>
+                <td><input type="text" id="adm-group-${uid}" value="${u.grupo||'General'}" style="padding:4px;font-size:0.8rem;background:transparent;border:1px solid var(--glass-border);width:100px"></td>
+                <td><button class="btn btn-primary" style="padding:4px 8px;font-size:0.75rem" onclick="adminUpdateUser('${uid}')">Guardar</button></td>
+            </tr>`;
+        });
+        
+        let revC=0; rev.forEach(r=>{ totalStars += r.data().rating; revC++; });
+        
+        document.getElementById('adm-users-count').innerText=c;
+        document.getElementById('adm-rating-avg').innerText=revC>0 ? (totalStars/revC).toFixed(1)+" ⭐" : "0.0 ⭐";
+        document.getElementById('adm-users-list').innerHTML=tr;
+    } catch(e) { alert("Error Dashboard: "+e.message); }
+};
+
+window.adminUpdateUser = async (uid) => {
+    try {
+        const r = document.getElementById(`adm-role-${uid}`).value;
+        const g = document.getElementById(`adm-group-${uid}`).value;
+        await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/directory/${uid}`), { rol: r, grupo: g });
+        await updateDoc(doc(db, `artifacts/${APP_ID}/users/${uid}/profile/data`), { rol: r, grupo: g });
+        alert("Usuario actualizado correctamente.");
+    } catch(e) { alert("Error asignando roles: "+e.message); }
+};
+
+// --- INTERACCIÓN DE COMUNIDAD Y RANKING (Directorio) ---
+window.openRooms = async () => {
+    if(!auth.currentUser) return;
+    try {
+        const s = await getDocs(collection(db, `artifacts/${APP_ID}/public/data/directory`));
+        const rl = document.getElementById('rooms-list'); rl.innerHTML='';
+        
+        const arr = [];
+        s.forEach(docSnap => arr.push({id: docSnap.id, ...docSnap.data()}));
+        
+        arr.forEach(u => {
+            if(u.id === auth.currentUser.uid) return;
+            rl.innerHTML += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;padding:10px;margin-bottom:8px">
+                <div><b>${u.avatar||''} ${u.alias||u.nombre}</b><br><span style="font-size:0.75rem;color:#888">Grupo: ${u.grupo||'General'} | Rol: ${u.rol}</span></div> 
+                <div style="display:flex;gap:5px">
+                    <button class="btn" style="background:rgba(231,76,60,0.2);color:#e74c3c;padding:4px 8px" onclick="enviarRegalo('${u.id}')" title="Enviar Regalo">🎁 ${u.regalos||0}</button>
+                    <button class="btn" style="background:rgba(241,196,15,0.2);color:#f1c40f;padding:4px 8px" onclick="darEstrella('${u.id}')" title="Dar Estrella">⭐ ${u.estrellas||0}</button>
+                </div>
+            </div>`;
+        });
+        if(rl.innerHTML==='') rl.innerHTML='<i style="color:#888;font-size:0.8rem">Aún no hay otros usuarios en la red.</i>';
+        
+        // Generar Ranking de Puntos
+        arr.sort((a,b) => (b.puntos||0) - (a.puntos||0));
+        const rk = document.getElementById('ranking-list'); rk.innerHTML = '';
+        arr.slice(0, 10).forEach((u, i) => {
+            let badge = i===0 ? '🥇' : i===1 ? '🥈' : i===2 ? '🥉' : `#${i+1}`;
+            rk.innerHTML += `<div style="display:flex; justify-content:space-between; padding:8px; background:var(--card-bg); border-radius:4px; font-size:0.85rem; border:1px solid rgba(128,128,128,0.2);">
+                <span><b>${badge}</b> ${u.avatar||''} ${u.alias||u.nombre}</span>
+                <span style="color:#f1c40f; font-weight:bold;">${u.puntos||0} pts</span>
+            </div>`;
+        });
+
+        showModal('rooms-modal');
+    } catch(e) { console.error("Error abriendo comunidad:", e); }
+};
+
+window.enviarRegalo = async (uid) => {
+    try { await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/directory/${uid}`), { regalos: increment(1) }); openRooms(); }
+    catch(e) {}
+};
+window.darEstrella = async (uid) => {
+    try { await updateDoc(doc(db, `artifacts/${APP_ID}/public/data/directory/${uid}`), { estrellas: increment(1) }); openRooms(); }
+    catch(e) {}
+};
+
+// --- REVIEW SYSTEM (Regla 4) ---
+window.setAppRating = (v) => {
+    appRating = v; const s = document.querySelectorAll('#app-rating-stars i');
+    s.forEach((e,i) => { if(i<v) e.classList.add('active'); else e.classList.remove('active'); });
+};
+window.submitAppReview = async () => {
+    if(appRating===0) return alert("Por favor, selecciona las estrellas.");
+    if(!auth.currentUser) return alert("Debes iniciar sesión.");
+    try {
+        const payload = { uid: auth.currentUser.uid, email: auth.currentUser.email, rating: appRating, q1: document.getElementById('rev-q1').value, q2: document.getElementById('rev-q2').value, comment: document.getElementById('rev-comment').value, timestamp: Date.now() };
+        await setDoc(doc(db, `artifacts/${APP_ID}/public/data/reviews/${Date.now()}_${auth.currentUser.uid}`), payload);
+        alert("¡Gracias por tu aporte! Tu calificación ha sido registrada.");
+        hideModal('review-modal');
+    } catch(e) { alert("Error guardando review: "+e.message); }
+};
+</script>
+</body></html>

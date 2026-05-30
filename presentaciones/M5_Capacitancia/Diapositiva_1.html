@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flujo Eléctrico y Ley de Gauss - Avanzado</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], tags: 'none' },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        /* Base anti-scroll estricto */
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        /* Contenedor principal fluido */
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        /* Tipografía académica escalable */
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(13px, 1.25vw, 21px); line-height: 1.4; }
+        .math-display { font-size: clamp(16px, 1.5vw, 26px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 1vmin 0; }
+
+        /* Contenedores Canvas 3D */
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 4px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #475569; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        /* Etiqueta 3D del ángulo */
+        .angle-label {
+            position: absolute; transform: translate(-50%, -50%);
+            font-weight: bold; font-family: monospace; color: #d97706; /* Ambar para destacar */
+            background: rgba(255, 255, 255, 0.8); padding: 2px 6px; border-radius: 12px;
+            pointer-events: none; z-index: 20; border: 1px solid #fcd34d;
+            font-size: clamp(12px, 1vw, 16px); display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; }
+        select, input[type=text] { outline: none; border-color: #cbd5e1; background: white; }
+        
+        /* Controles Globales UI */
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        .eq-input { width: 3.5vw; min-width: 35px; padding: 0.2vmin 0.5vmin; border-radius: 0.25rem; border: 1px solid #94a3b8; font-family: monospace; }
+        
+        /* Ventanas Flotantes (Tips) */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(12px, 1vw, 15px); color: #92400e; }
+        .tip-wrapper:hover .tip-content {display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <!-- CABECERA -->
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-600">
+                <h1 class="font-bold tracking-wide" style="font-size: clamp(20px, 2vw, 40px);">Flujo Eléctrico y Ley de Gauss</h1>
+                <p class="text-blue-300" style="font-size: clamp(12px, 1vw, 18px);">Simulador Interactivo 3D - Superficies y Campos Vectoriales</p>
+            </header>
+
+            <!-- CUERPO PRINCIPAL -->
+            <div class="flex-1 flex flex-row p-[2vmin] gap-[2vmin] min-h-0">          
+            
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA Y TIPS -->
+                <!-- COLUMNA IZQUIERDA: TEORÍAS DINÁMICAS -->
+                <!-- <div class="w-[40%] flex flex-col justify-between text-academic"> -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <div class="bg-white p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg relative">
+                        <p class="flex items-start">
+                            <span>El <strong>flujo eléctrico</strong> mide la cantidad de campo $\vec{E}$ que atraviesa una superficie plana S. Matemáticamente, es el producto escalar entre el vector campo y el vector superficie:</span>
+                            <span class="relative tip-wrapper inline-block">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Tip mental:</strong> Imagina una red de pescar en un río. El flujo es el agua que pasa a través de ella. Depende de la velocidad del agua ($\vec{E}$), el área de la red ($S$), y el ángulo con el que la sostienes ($\theta$).</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$\Phi = \vec{E} \cdot \vec{S} = E \cdot S \cdot \cos(\theta)$$</div>
+                    </div>
+
+                    <div class="bg-white p-[1.5vmin] border border-slate-200 shadow-sm rounded-lg my-[0.5vmin] relative">
+                        <p class="mb-[0.5vmin] flex items-start">
+                            <span>El vector superficie $\vec{S}$ (o $d\vec{S}$) tiene por módulo el área local, y su dirección siempre es rigurosamente <strong>perpendicular (normal)</strong> al parche que lo origina.</span>
+                            <span class="relative tip-wrapper inline-block z-40">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Visualización:</strong> Si la superficie es tu mano abierta, el vector normal es como un lápiz pegado verticalmente en tu palma, apuntando hacia afuera.</span>
+                            </span>
+                        </p>
+                        <div class="bg-red-50 text-red-900 p-[1vmin] rounded border border-red-200 font-semibold italic text-center">
+                            "Si $\vec{E} \perp d\vec{S}$ ($\theta = 90^\circ$), el campo roza la superficie sin atravesarla. El flujo es cero."
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-[1.5vmin] border border-slate-200 shadow-sm rounded-lg relative">
+                        <p class="flex items-start">
+                            <span>En campos no uniformes o superficies curvas, la geometría cambia punto a punto. Por ello, debemos integrar (sumar) el flujo a través de cada elemento infinitesimal $d\vec{S}$ para hallar el flujo total:</span>
+                            <span class="relative tip-wrapper inline-block z-30">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Integración:</strong> Dividimos la superficie en "escamas" diminutas ($d\vec{S}$), calculamos el flujo exacto en cada escama, y sumamos todos esos pedacitos ($\int$).</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$\Phi = \int_S \vec{E} \cdot d\vec{S}$$</div>
+                    </div>
+
+                    <div class="bg-blue-100 p-[1.5vmin] shadow-sm rounded-lg border border-blue-300 mt-[0.5vmin] relative">
+                        <p class="flex items-start">
+                            <span>La monumental <strong>Ley de Gauss</strong> afirma que el flujo neto a través de <em>cualquier</em> superficie cerrada depende única y exclusivamente de la carga neta encerrada en su interior:</span>
+                            <span class="relative tip-wrapper inline-block z-20">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Ley de Gauss:</strong> ¡No importa la forma del contenedor (esfera o caja deformada)! Si encierran la misma carga, el número neto de líneas de campo que escapan es idéntico.</span>
+                            </span>
+                        </p>
+                        <div class="math-display bg-white py-[0.5vmin] rounded border border-blue-200 mt-[0.5vmin]">
+                            $$\oint_S \vec{E} \cdot d\vec{S} = \frac{q_{encerrada}}{\varepsilon_0}$$
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[60%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL GLOBAL -->
+                    <div class="control-panel shadow-sm">
+                        <div class="control-group font-bold text-slate-700">Campo $\vec{E}$:</div>
+                        <select id="field-type" class="p-1 rounded font-semibold text-blue-700">
+                            <option value="uniform">Uniforme (E = const)</option>
+                            <option value="point">Carga Puntual (1/r²)</option>
+                            <option value="custom">Ecuación Libre</option>
+                        </select>
+                        
+                        <!-- Controles Carga Puntual (Posición) -->
+                        <div id="point-src-container" class="control-group hidden bg-white px-2 py-1 rounded border border-slate-300">
+                            <span class="font-bold text-red-600 mr-1 text-[11px] uppercase tracking-wider">Fuente:</span>
+                            X<input type="range" id="src-x" min="-3" max="3" step="0.2" value="0" class="w-[3.5vw]">
+                            Y<input type="range" id="src-y" min="-3" max="3" step="0.2" value="0" class="w-[3.5vw]">
+                            Z<input type="range" id="src-z" min="-3" max="3" step="0.2" value="0" class="w-[3.5vw]">
+                        </div>
+
+                        <!-- Controles Ecuación Personalizada -->
+                        <div id="custom-eq-container" class="control-group hidden bg-white px-2 py-1 rounded border border-slate-300">
+                            <span class="italic text-slate-500">Ex=</span><input type="text" id="eq-x" value="x" class="eq-input">
+                            <span class="italic text-slate-500">Ey=</span><input type="text" id="eq-y" value="y" class="eq-input">
+                            <span class="italic text-slate-500">Ez=</span><input type="text" id="eq-z" value="0" class="eq-input">
+                            <button id="btn-apply-eq" class="bg-blue-600 text-white px-2 rounded hover:bg-blue-700 font-bold">✓</button>
+                        </div>
+
+                        <div class="control-group border-l border-slate-300 pl-3 flex-1">
+                            <label class="font-semibold text-slate-700">Densidad:</label>
+                            <input type="range" id="slider-density" min="2" max="6" value="4" class="w-full">
+                        </div>
+
+                        <div class="control-group border-l border-slate-300 pl-3">
+                            <label class="flex items-center gap-1 cursor-pointer font-semibold text-slate-700">
+                                <input type="checkbox" id="toggle-rotate" checked> Rotación
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- PANEL 1: Superficies Abiertas -->
+                    <div class="flex-1 flex flex-col bg-white rounded-xl shadow-md border border-slate-200 p-[1vmin] min-h-0">
+                        <div class="flex justify-between items-center mb-[0.5vmin] px-2">
+                            <h2 class="font-bold text-slate-800" style="font-size: clamp(14px, 1.2vw, 20px);">1. Superficies Abiertas</h2>
+                            <div class="flex items-center gap-[0.5vmin] bg-slate-50 px-[1vmin] py-[0.5vmin] rounded border border-slate-200" style="font-size: clamp(10px, 0.8vw, 14px);">
+                                <select id="shape1-selector" class="p-1 rounded font-semibold text-slate-700 mr-1">
+                                    <option value="rect">Plano</option>
+                                    <option value="disk">Disco</option>
+                                    <option value="wedge">Cuña</option>
+                                    <option value="wavy">Ondulada</option>
+                                </select>
+                                
+                                <label class="font-semibold text-slate-700 border-l border-slate-300 pl-2">Giro:</label>
+                                <input type="range" id="slider-plane" min="0" max="90" value="0" class="w-[3.5vw]">
+                                
+                                <label class="font-semibold text-slate-700 border-l border-slate-300 pl-2 text-red-600">Mover $d\vec{S}$:</label>
+                                X:<input type="range" id="slider-x1" min="-2.4" max="2.4" step="0.1" value="0" class="w-[3.5vw]">
+                                Z:<input type="range" id="slider-z1" min="-1.9" max="1.9" step="0.1" value="0" class="w-[3.5vw]">
+                            </div>
+                        </div>
+                        <div class="flex-1 flex gap-[1vmin] min-h-0">
+                            <div class="w-3/4 h-full canvas-wrapper" id="canvas-open">
+                                <div class="hint-overlay">⟲ Rotar | ⚲ Zoom</div>
+                                <div id="lbl-angle-1" class="angle-label">0°</div>
+                            </div>
+                            <div class="w-1/4 h-full flex flex-col justify-center items-center bg-slate-50 border border-slate-200 rounded p-[1vmin] text-center">
+                                <div class="text-slate-600 font-serif italic" style="font-size: clamp(12px, 1vw, 16px);">Ángulo ($\theta$) Local</div>
+                                <div id="val-plane" class="font-mono font-bold text-blue-600" style="font-size: clamp(20px, 2vw, 32px);">0°</div>
+                                <div class="mt-2 text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+                                    <input type="checkbox" id="toggle-ds1" checked> Ver $d\vec{S}$ y arco
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PANEL 2: Superficies Cerradas -->
+                    <div class="flex-1 flex flex-col bg-white rounded-xl shadow-md border border-slate-200 p-[1vmin] min-h-0">
+                        <div class="flex justify-between items-center mb-[0.5vmin] px-2">
+                            <h2 class="font-bold text-slate-800" style="font-size: clamp(14px, 1.2vw, 20px);">2. Superficies Cerradas / Volumen</h2>
+                            <div class="flex items-center gap-[1vmin] bg-slate-50 px-[1vmin] py-[0.5vmin] rounded border border-slate-200" style="font-size: clamp(10px, 0.8vw, 14px);">
+                                <select id="shape2-selector" class="p-1 rounded font-semibold text-slate-700">
+                                    <option value="sphere">Esfera de Gauss</option>
+                                    <option value="box">Caja (Paralelepípedo)</option>
+                                    <option value="deformed">Superficie Irregular</option>
+                                </select>
+                                <label class="font-semibold text-slate-700 border-l border-slate-300 pl-2 text-red-600">Mover $d\vec{S}$:</label>
+                                U:<input type="range" id="slider-u" min="0" max="100" value="50" class="w-[4vw]">
+                                V:<input type="range" id="slider-v" min="0" max="100" value="50" class="w-[4vw]">
+                            </div>
+                        </div>
+                        <div class="flex-1 flex gap-[1vmin] min-h-0">
+                            <div class="w-3/4 h-full canvas-wrapper" id="canvas-closed">
+                                <div class="hint-overlay">⟲ Rotar | ⚲ Zoom</div>
+                                <div id="lbl-angle-2" class="angle-label">0°</div>
+                            </div>
+                            <div class="w-1/4 h-full flex flex-col justify-center items-center bg-slate-50 border border-slate-200 rounded p-[1vmin] text-center">
+                                <div class="text-slate-600 font-serif italic" style="font-size: clamp(12px, 1vw, 16px);">Ángulo ($\theta$) Local</div>
+                                <div id="val-local-angle" class="font-mono font-bold text-red-600" style="font-size: clamp(20px, 2vw, 32px);">0°</div>
+                                <div class="mt-2 text-[10px] leading-tight text-slate-500 font-semibold">
+                                    El arco $\theta$ representa la desviación entre el Campo $\vec{E}$ local y el diferencial normal.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS Y FÍSICA -->
+    <script>
+        // Utilidades y Colores
+        const C_FIELD = 0x2563eb; const C_SURF = 0x94a3b8; const C_DS = 0xdc2626; const C_ARC = 0xd97706;
+        
+        // Estado Global del Campo
+        let currentField = { type: 'uniform', fn: (x,y,z) => new THREE.Vector3(0,1,0) };
+        let gridDensity = 4; 
+        let sourcePos = new THREE.Vector3(0,0,0); // Posición de carga puntual
+
+        // Estado del Cálculo Visual del Ángulo
+        const angleState1 = { active: false, pos: new THREE.Vector3(), normal: new THREE.Vector3(), eDir: new THREE.Vector3(), angleRad: 0 };
+        const angleState2 = { active: false, pos: new THREE.Vector3(), normal: new THREE.Vector3(), eDir: new THREE.Vector3(), angleRad: 0 };
+
+        // Evaluador de Ecuaciones Personalizadas
+        function parseCustomField(ex, ey, ez) {
+            try {
+                const fx = new Function('x', 'y', 'z', `return ${ex || 0}`);
+                const fy = new Function('x', 'y', 'z', `return ${ey || 0}`);
+                const fz = new Function('x', 'y', 'z', `return ${ez || 0}`);
+                fx(1,1,1); fy(1,1,1); fz(1,1,1); // Test
+                return (x,y,z) => new THREE.Vector3(fx(x,y,z), fy(x,y,z), fz(x,y,z));
+            } catch (e) {
+                alert("Ecuación inválida. Usando campo uniforme por defecto.");
+                return (x,y,z) => new THREE.Vector3(0,1,0);
+            }
+        }
+
+        // Función Principal del Cálculo de Campo
+        function calculateField(x, y, z) {
+            let v;
+            if (currentField.type === 'uniform') {
+                v = new THREE.Vector3(0, 2, 0);
+            } else if (currentField.type === 'point') {
+                const dx = x - sourcePos.x, dy = y - sourcePos.y, dz = z - sourcePos.z;
+                const r2 = dx*dx + dy*dy + dz*dz || 0.001;
+                v = new THREE.Vector3(dx, dy, dz).normalize().multiplyScalar(10 / r2); 
+            } else {
+                v = currentField.fn(x, y, z);
+            }
+            if(v.length() > 4) v.clampLength(0, 4);
+            return v;
+        }
+
+        // Generador de Matriz 3D de Vectores
+        function buildFieldVectors(group, bounds) {
+            group.clear();
+            const step = (bounds * 2) / gridDensity;
+            for(let x = -bounds; x <= bounds; x += step) {
+                for(let y = -bounds; y <= bounds; y += step) {
+                    for(let z = -bounds; z <= bounds; z += step) {
+                        const fieldVec = calculateField(x, y, z);
+                        const mag = fieldVec.length();
+                        if (mag > 0.1) {
+                            const color = new THREE.Color().setHSL(0.6, 1, 0.2 + Math.min(mag/2, 1)*0.5);
+                            const arrowLen = Math.min(mag, step * 0.9);
+                            group.add(new THREE.ArrowHelper(fieldVec.clone().normalize(), new THREE.Vector3(x,y,z), arrowLen, color, Math.min(arrowLen*0.3, 0.3), Math.min(arrowLen*0.18, 0.18)));
+                        }
+                    }
+                }
+            }
+        }
+
+        // SETUP BÁSICO ESCENAS
+        function initScene(containerId) {
+            const cont = document.getElementById(containerId);
+            const scene = new THREE.Scene();
+            const cam = new THREE.PerspectiveCamera(40, cont.clientWidth / cont.clientHeight, 0.1, 100);
+            cam.position.set(8, 6, 8);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(cont.clientWidth, cont.clientHeight);
+            cont.appendChild(renderer.domElement);
+            const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+            ctrl.enableDamping = true; ctrl.autoRotate = true; ctrl.autoRotateSpeed = 1.0;
+            
+            scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+            const light = new THREE.DirectionalLight(0xffffff, 0.5);
+            light.position.set(5, 10, 5); scene.add(light);
+            
+            return { scene, cam, renderer, ctrl, cont };
+        }
+
+        const env1 = initScene('canvas-open');
+        const env2 = initScene('canvas-closed');
+        const raycaster = new THREE.Raycaster();
+
+        // Esferas visuales de la "Carga Puntual" (Fuente)
+        const chargeGeo = new THREE.SphereGeometry(0.25, 16, 16);
+        const chargeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const chargeMesh1 = new THREE.Mesh(chargeGeo, chargeMat); chargeMesh1.visible = false; env1.scene.add(chargeMesh1);
+        const chargeMesh2 = new THREE.Mesh(chargeGeo, chargeMat); chargeMesh2.visible = false; env2.scene.add(chargeMesh2);
+
+        // Geometría del arco de ángulo
+        const arcMat = new THREE.LineBasicMaterial({ color: C_ARC, linewidth: 2 });
+        const arcLine1 = new THREE.Line(new THREE.BufferGeometry(), arcMat); env1.scene.add(arcLine1);
+        const arcLine2 = new THREE.Line(new THREE.BufferGeometry(), arcMat); env2.scene.add(arcLine2);
+
+        /* ==============================================================
+           ESCENA 1: SUPERFICIES ABIERTAS
+           ============================================================== */
+        const fieldGroup1 = new THREE.Group(); env1.scene.add(fieldGroup1);
+        const surfGroup1 = new THREE.Group(); env1.scene.add(surfGroup1);
+        
+        // Geometrías Abiertas
+        const geoRect = new THREE.BoxGeometry(5, 0.1, 4);
+        const geoDisk = new THREE.CylinderGeometry(3, 3, 0.1, 64);
+        const shape = new THREE.Shape(); shape.moveTo(-2, 0); shape.lineTo(2, 0); shape.lineTo(2, 2); shape.lineTo(-2, 0);
+        const geoWedge = new THREE.ExtrudeGeometry(shape, { depth: 4, bevelEnabled: false }); geoWedge.translate(0, -1, -2);
+        
+        const geoWavy = new THREE.PlaneGeometry(6, 6, 40, 40); geoWavy.rotateX(-Math.PI / 2);
+        const posW = geoWavy.attributes.position;
+        for (let i = 0; i < posW.count; i++) posW.setY(i, Math.sin(posW.getX(i)) * Math.cos(posW.getZ(i)) * 0.8);
+        geoWavy.computeVertexNormals();
+
+        let currentMesh1 = new THREE.Mesh(geoRect, new THREE.MeshStandardMaterial({ color: C_SURF, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+        surfGroup1.add(currentMesh1);
+
+        const wireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.3, depthWrite: false });
+        let wireMesh1 = new THREE.Mesh(geoRect, wireMat); surfGroup1.add(wireMesh1);
+
+        // Parche dS Móvil
+        const patchGroup1 = new THREE.Group();
+        const patchMesh1 = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide }));
+        patchGroup1.add(patchMesh1);
+        const arrowLocalNormal1 = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, C_DS, 0.5, 0.3);
+        patchGroup1.add(arrowLocalNormal1);
+        env1.scene.add(patchGroup1);
+
+        function updateRaycastPatch1() {
+            const x = parseFloat(document.getElementById('slider-x1').value);
+            const z = parseFloat(document.getElementById('slider-z1').value);
+            
+            const localOrigin = new THREE.Vector3(x, 10, z);
+            surfGroup1.updateMatrixWorld(true);
+            const worldOrigin = localOrigin.clone().applyMatrix4(surfGroup1.matrixWorld);
+            const worldDir = new THREE.Vector3(0, -1, 0).transformDirection(surfGroup1.matrixWorld).normalize();
+
+            raycaster.set(worldOrigin, worldDir);
+            const intersects = raycaster.intersectObject(currentMesh1, false);
+            const showDS = document.getElementById('toggle-ds1').checked;
+            
+            if (intersects.length > 0 && showDS) {
+                patchGroup1.visible = true;
+                const hit = intersects[0];
+                patchGroup1.position.copy(hit.point);
+                
+                let normal = hit.face.normal.clone().transformDirection(currentMesh1.matrixWorld).normalize();
+                patchMesh1.lookAt(hit.point.clone().add(normal));
+                arrowLocalNormal1.setDirection(normal);
+                
+                const eFieldLocal = calculateField(hit.point.x, hit.point.y, hit.point.z);
+                if(eFieldLocal.lengthSq() > 0.001) {
+                    const angleRad = normal.angleTo(eFieldLocal.clone().normalize());
+                    document.getElementById('val-plane').textContent = Math.round(angleRad * 180 / Math.PI) + "°";
+                    
+                    // Actualizar estado del ángulo para el render loop
+                    angleState1.active = true;
+                    angleState1.pos.copy(hit.point);
+                    angleState1.normal.copy(normal);
+                    angleState1.eDir.copy(eFieldLocal).normalize();
+                    angleState1.angleRad = angleRad;
+                } else {
+                    angleState1.active = false;
+                }
+            } else {
+                patchGroup1.visible = false;
+                angleState1.active = false;
+                document.getElementById('val-plane').textContent = "-";
+            }
+        }
+
+        /* ==============================================================
+           ESCENA 2: SUPERFICIES CERRADAS
+           ============================================================== */
+        const fieldGroup2 = new THREE.Group(); env2.scene.add(fieldGroup2);
+        const surfGroup2 = new THREE.Group(); env2.scene.add(surfGroup2);
+        
+        const geoSphere = new THREE.SphereGeometry(3, 32, 32);
+        const geoBox = new THREE.BoxGeometry(4.5, 4.5, 4.5);
+        const geoDeformed = new THREE.SphereGeometry(3, 64, 64);
+        const posD = geoDeformed.attributes.position;
+        for(let i=0; i < posD.count; i++) {
+            const v = new THREE.Vector3(posD.getX(i), posD.getY(i), posD.getZ(i));
+            v.add(v.clone().normalize().multiplyScalar(Math.sin(v.x*2) * Math.cos(v.y*2) * 0.4));
+            posD.setXYZ(i, v.x, v.y, v.z);
+        }
+        geoDeformed.computeVertexNormals();
+
+        let currentMesh2 = new THREE.Mesh(geoSphere, new THREE.MeshStandardMaterial({ color: C_SURF, transparent: true, opacity: 0.5, wireframe: false, side: THREE.DoubleSide }));
+        surfGroup2.add(currentMesh2);
+        let wireMesh2 = new THREE.Mesh(geoSphere, wireMat); surfGroup2.add(wireMesh2);
+
+        // Parche dS (Interactivo)
+        const patchGroup2 = new THREE.Group();
+        const patchMesh2 = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.8), new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide }));
+        patchGroup2.add(patchMesh2);
+        const arrowLocalNormal2 = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 2, C_DS, 0.5, 0.3);
+        patchGroup2.add(arrowLocalNormal2);
+        env2.scene.add(patchGroup2);
+
+        function updateRaycastPatch2() {
+            const u = document.getElementById('slider-u').value / 100;
+            const v = document.getElementById('slider-v').value / 100;
+            
+            const theta = u * Math.PI * 2, phi = Math.acos(2 * v - 1); 
+            const dir = new THREE.Vector3(Math.sin(phi)*Math.cos(theta), Math.cos(phi), Math.sin(phi)*Math.sin(theta)).normalize();
+
+            raycaster.set(new THREE.Vector3(0,0,0), dir);
+            const intersects = raycaster.intersectObject(currentMesh2, false);
+            
+            if (intersects.length > 0) {
+                const hit = intersects[intersects.length - 1]; 
+                patchGroup2.position.copy(hit.point);
+                
+                const normal = hit.face.normal.clone().transformDirection(currentMesh2.matrixWorld).normalize();
+                patchMesh2.lookAt(hit.point.clone().add(normal));
+                arrowLocalNormal2.setDirection(normal);
+                
+                const eFieldLocal = calculateField(hit.point.x, hit.point.y, hit.point.z);
+                if(eFieldLocal.lengthSq() > 0.001) {
+                    const angleRad = normal.angleTo(eFieldLocal.clone().normalize());
+                    document.getElementById('val-local-angle').textContent = Math.round(angleRad * 180 / Math.PI) + "°";
+                    
+                    angleState2.active = true;
+                    angleState2.pos.copy(hit.point);
+                    angleState2.normal.copy(normal);
+                    angleState2.eDir.copy(eFieldLocal).normalize();
+                    angleState2.angleRad = angleRad;
+                } else {
+                    angleState2.active = false;
+                }
+            }
+        }
+
+        /* ==============================================================
+           FUNCIONES VISUALES EN TIEMPO REAL (ARCOS DE ÁNGULO)
+           ============================================================== */
+        function updateAngleVisuals(state, arcLine, labelId, cam, env) {
+            const lbl = document.getElementById(labelId);
+            if (!state.active || state.angleRad < 0.05) {
+                arcLine.visible = false; lbl.style.display = 'none'; return;
+            }
+            arcLine.visible = true; lbl.style.display = 'block';
+
+            // Dibujar arco curvo entre Normal y E
+            const pts = [];
+            const radius = 1.2;
+            for(let i=0; i<=10; i++) {
+                // Interpolación lineal normalizada (SLERP simplificado)
+                pts.push(new THREE.Vector3().copy(state.normal).lerp(state.eDir, i/10).normalize().multiplyScalar(radius));
+            }
+            arcLine.geometry.setFromPoints(pts);
+            arcLine.position.copy(state.pos);
+
+            // Posicionar etiqueta HTML sobre la mitad del arco
+            const midVec = new THREE.Vector3().copy(state.normal).lerp(state.eDir, 0.5).normalize().multiplyScalar(radius * 1.3);
+            const worldMid = midVec.add(state.pos).project(cam);
+            
+            const x = (worldMid.x * 0.5 + 0.5) * env.cont.clientWidth;
+            const y = -(worldMid.y * 0.5 - 0.5) * env.cont.clientHeight;
+            lbl.style.left = x + 'px';
+            lbl.style.top = y + 'px';
+            lbl.innerText = Math.round(state.angleRad * 180 / Math.PI) + "°";
+        }
+
+        /* ==============================================================
+           CONTROLADORES Y EVENTOS UI
+           ============================================================== */
+        function updateAllFields() {
+            buildFieldVectors(fieldGroup1, 3.5); buildFieldVectors(fieldGroup2, 3.5);
+            updateRaycastPatch1(); updateRaycastPatch2();
+        }
+
+        function updateSourcePos() {
+            sourcePos.set(parseFloat(document.getElementById('src-x').value), parseFloat(document.getElementById('src-y').value), parseFloat(document.getElementById('src-z').value));
+            chargeMesh1.position.copy(sourcePos); chargeMesh2.position.copy(sourcePos);
+            updateAllFields();
+        }
+
+        document.getElementById('field-type').addEventListener('change', (e) => {
+            currentField.type = e.target.value;
+            document.getElementById('custom-eq-container').classList.toggle('hidden', currentField.type !== 'custom');
+            document.getElementById('custom-eq-container').classList.toggle('flex', currentField.type === 'custom');
+            document.getElementById('point-src-container').classList.toggle('hidden', currentField.type !== 'point');
+            document.getElementById('point-src-container').classList.toggle('flex', currentField.type === 'point');
+            chargeMesh1.visible = (currentField.type === 'point'); chargeMesh2.visible = (currentField.type === 'point');
+            updateAllFields();
+        });
+
+        document.getElementById('btn-apply-eq').addEventListener('click', () => { currentField.fn = parseCustomField(document.getElementById('eq-x').value, document.getElementById('eq-y').value, document.getElementById('eq-z').value); updateAllFields(); });
+        document.getElementById('slider-density').addEventListener('input', (e) => { gridDensity = parseInt(e.target.value); updateAllFields(); });
+        document.getElementById('toggle-rotate').addEventListener('change', (e) => { env1.ctrl.autoRotate = e.target.checked; env2.ctrl.autoRotate = e.target.checked; });
+        ['src-x', 'src-y', 'src-z'].forEach(id => document.getElementById(id).addEventListener('input', updateSourcePos));
+
+        // Eventos Panel 1
+        document.getElementById('shape1-selector').addEventListener('change', (e) => {
+            const v = e.target.value;
+            surfGroup1.remove(currentMesh1); surfGroup1.remove(wireMesh1);
+            if(v==='rect') { currentMesh1.geometry = geoRect; wireMesh1.geometry = geoRect; }
+            else if(v==='disk') { currentMesh1.geometry = geoDisk; wireMesh1.geometry = geoDisk; }
+            else if(v==='wedge') { currentMesh1.geometry = geoWedge; wireMesh1.geometry = geoWedge; }
+            else if(v==='wavy') { currentMesh1.geometry = geoWavy; wireMesh1.geometry = geoWavy; }
+            surfGroup1.add(currentMesh1); surfGroup1.add(wireMesh1);
+            updateRaycastPatch1();
+        });
+
+        document.getElementById('slider-plane').addEventListener('input', (e) => { surfGroup1.rotation.x = e.target.value * Math.PI / 180; updateRaycastPatch1(); });
+        ['slider-x1', 'slider-z1', 'toggle-ds1'].forEach(id => document.getElementById(id).addEventListener('change', updateRaycastPatch1));
+        ['slider-x1', 'slider-z1'].forEach(id => document.getElementById(id).addEventListener('input', updateRaycastPatch1));
+
+        // Eventos Panel 2
+        document.getElementById('shape2-selector').addEventListener('change', (e) => {
+            const v = e.target.value;
+            surfGroup2.remove(currentMesh2); surfGroup2.remove(wireMesh2);
+            if(v==='sphere') { currentMesh2.geometry = geoSphere; wireMesh2.geometry = geoSphere; }
+            else if(v==='box') { currentMesh2.geometry = geoBox; wireMesh2.geometry = geoBox; }
+            else if(v==='deformed') { currentMesh2.geometry = geoDeformed; wireMesh2.geometry = geoDeformed; }
+            surfGroup2.add(currentMesh2); surfGroup2.add(wireMesh2);
+            updateRaycastPatch2();
+        });
+
+        ['slider-u', 'slider-v'].forEach(id => document.getElementById(id).addEventListener('input', updateRaycastPatch2));
+
+        /* ==============================================================
+           INICIALIZACIÓN Y RENDER LOOP
+           ============================================================== */
+        updateAllFields();
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                const { width, height } = entry.contentRect;
+                if(entry.target.id === 'canvas-open') { env1.cam.aspect = width / height; env1.cam.updateProjectionMatrix(); env1.renderer.setSize(width, height); }
+                else if(entry.target.id === 'canvas-closed') { env2.cam.aspect = width / height; env2.cam.updateProjectionMatrix(); env2.renderer.setSize(width, height); }
+            }
+        });
+        resizeObserver.observe(env1.cont); resizeObserver.observe(env2.cont);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            env1.ctrl.update(); env2.ctrl.update();
+            
+            // Actualizar elementos dinámicos flotantes 3D -> 2D
+            updateAngleVisuals(angleState1, arcLine1, 'lbl-angle-1', env1.cam, env1);
+            updateAngleVisuals(angleState2, arcLine2, 'lbl-angle-2', env2.cam, env2);
+
+            env1.renderer.render(env1.scene, env1.cam);
+            env2.renderer.render(env2.scene, env2.cam);
+        }
+        animate();
+
+      // Tip encima de todo 
+      (function () {
+          let globalTip = document.createElement("div");
+          globalTip.className = "tip-content";
+          globalTip.style.position = "fixed";
+          globalTip.style.zIndex = "999999";
+          globalTip.style.pointerEvents = "none";
+          globalTip.style.opacity = "0";
+          globalTip.style.visibility = "hidden";
+        
+          document.body.appendChild(globalTip);
+        
+          document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+            const localTip = wrapper.querySelector(".tip-content");
+        
+            wrapper.addEventListener("mouseenter", () => {
+              const rect = wrapper.getBoundingClientRect();
+        
+              globalTip.innerHTML = localTip.innerHTML;
+        
+              globalTip.style.top = rect.top + "px";
+              globalTip.style.left = (rect.right + 10) + "px";
+        
+              globalTip.style.opacity = "1";
+              globalTip.style.visibility = "visible";
+            });
+        
+            wrapper.addEventListener("mouseleave", () => {
+              globalTip.style.opacity = "0";
+              globalTip.style.visibility = "hidden";
+            });
+          });
+        })();
+    </script>
+</body>
+</html>

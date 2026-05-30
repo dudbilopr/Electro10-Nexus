@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Coulomb: Dinámica Vectorial y DCL</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 4px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #475569; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        .angle-label {
+            position: absolute; transform: translate(-50%, -50%);
+            font-weight: bold; font-family: monospace; color: #dc2626;
+            background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 6px;
+            pointer-events: none; z-index: 20; border: 1px solid #fca5a5;
+            font-size: clamp(11px, 0.9vw, 15px); display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        
+        /* Buttons Custom */
+        .btn-action { padding: 0.3vmin 1vmin; border-radius: 4px; font-weight: bold; cursor: pointer; transition: background 0.2s; border: 1px solid transparent; }
+        .btn-pos { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; } .btn-pos:hover { background: #fecaca; }
+        .btn-neg { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; } .btn-neg:hover { background: #bfdbfe; }
+        .btn-play { background: #dcfce7; color: #15803d; border-color: #86efac; } .btn-play:hover { background: #bbf7d0; }
+        .btn-reset { background: #f1f5f9; color: #475569; border-color: #cbd5e1; } .btn-reset:hover { background: #e2e8f0; }
+
+        /* Panel DCL */
+        .math-line { display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding: 2px 0; align-items: center; }
+        .math-line:last-child { border-bottom: none; }
+        
+        .selected-ring { position: absolute; border: 2px dashed #eab308; border-radius: 50%; pointer-events: none; transform: translate(-50%, -50%); display: none; z-index: 15; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-600">
+                <h1 class="font-bold tracking-wide" style="font-size: clamp(20px, 2vw, 36px);">Laboratorio Interactivo: Dinámica y Ley de Coulomb</h1>
+                <p class="text-blue-300" style="font-size: clamp(12px, 1vw, 18px);">Análisis Vectorial, Proyecciones Trigonométricas y Diagramas de Cuerpo Libre (DCL)</p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BLOQUE 1: LEY DE COULOMB VECTORIAL -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span><strong>1. Forma Vectorial:</strong> La fuerza eléctrica está dirigida a lo largo de la línea que une las cargas. El vector unitario $\hat{r}$ le da el carácter direccional a la fuerza:</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Magnitud Q:</strong> Ahora puedes hacer clic en cualquier carga y modificar su magnitud. Observa cómo una mayor magnitud alarga los vectores de fuerza proporcionalmente al producto $q_1 q_2$.</span>
+                            </span>
+                        </p>
+                        <div class="math-display"> $$\vec{F}_{12} = k \frac{q_1 q_2}{r^2} \hat{r} = k \frac{q_1 q_2}{|\vec{r}_{12}|^2} \left(\frac{\vec{r}_2 - \vec{r}_1}{|\vec{r}_{12}|}\right) = k \frac{q_1 q_2}{|\vec{r}_{12}|^3} (\vec{r}_2 - \vec{r}_1) $$</div>
+                    </div>
+
+                    <!-- BLOQUE 2: PROYECCIONES TRIGONOMÉTRICAS -->
+                    <div class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg mb-[1vmin] relative">
+                        <p class="font-bold text-indigo-800 flex items-center">
+                            2. Diagrama de Cuerpo Libre (DCL) y Proyecciones
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Componentes:</strong> Cualquier fuerza diagonal se puede dividir en partes independientes (X e Y) usando las funciones trigonométricas fundamentales.</span>
+                            </span>
+                        </p>
+                        <p class="mt-1 text-sm">Para analizar el movimiento, descomponemos el vector fuerza $\vec{F}$ en sus componentes ortogonales usando el ángulo $\theta$ formado con el eje horizontal:</p>
+                        <div class="math-display">
+                            \begin{aligned}
+                            \cos\theta &= \frac{\Delta x}{r}, \quad \sin\theta = \frac{\Delta y}{r} \\[1ex]
+                            F_x &= |\vec{F}| \cos\theta \\
+                            F_y &= |\vec{F}| \sin\theta
+                            \end{aligned}
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE 3: DINÁMICA Y COLISIONES -->
+                    <div class="bg-amber-50 p-[1.5vmin] border border-amber-300 shadow-sm rounded-lg mb-[1vmin] relative">
+                        <p class="font-bold text-amber-800 flex items-center">
+                            3. Dinámica de Partículas
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">⚠️</span>
+                                <span class="tip-content"><strong>⚠️ Antioscilación:</strong> Matemáticamente $1/r^2 \to \infty$ si $r \to 0$. Para evitar una oscilación infinita y caótica al acercarse, el simulador amortigua el movimiento cuando las cargas están en contacto inelástico.</span>
+                            </span>
+                        </p>
+                        <p class="mt-1 text-sm">Al liberar las cargas, obedecen la 2da Ley de Newton ($\vec{a} = \vec{F}_{neta}/m$). Observa que las cargas más pesadas o de menor carga acelerarán más lentamente.</p>
+                    </div>
+
+                    <!-- BLOQUE 4: SUPERPOSICIÓN Y DCL DETALLADO -->
+                    <div class="bg-emerald-50 p-[1.5vmin] shadow-sm rounded-lg border border-emerald-200 flex-1 relative">
+                        <p class="font-bold text-emerald-800 flex items-center">
+                            4. Superposición (Múltiples Fuerzas)
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 DCL Real:</strong> En la vista 3D verás flechas naranjas representando cada empuje/tirón individual. La suma geométrica (punta con cola) de estas flechas naranjas resulta en la flecha de la fuerza neta.</span>
+                            </span>
+                        </p>
+                        <p class="text-sm mt-1">
+                            En un sistema múltiple, la fuerza neta sobre una carga (flecha gruesa) es la <strong>suma vectorial exacta</strong> de todas las contribuciones individuales (flechas naranjas). Selecciona una carga con el mouse para ver su DCL en detalle en el panel derecho.
+                        </p>
+                        <div class="math-display">$$ \vec{F}_{neta} = \sum_{i} \vec{F}_i = \vec{F}_1 + \vec{F}_2 + \vec{F}_3 \dots $$</div>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL -->
+                    <div class="control-panel shadow-sm">
+                        
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-slate-800">Entorno:</label>
+                            <select id="select-dim" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500">
+                                <option value="2d">Plano 2D (Recomendado DCL)</option>
+                                <option value="3d">Espacio 3D</option>
+                                <option value="1d">Línea 1D (X)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3 gap-1">
+                            <button class="btn-action btn-pos" id="btn-add-pos">+ Carga Q</button>
+                            <button class="btn-action btn-neg" id="btn-add-neg">- Carga Q</button>
+                            <button class="btn-action btn-reset" id="btn-reset">Limpiar</button>
+                        </div>
+
+                        <!-- Edición de Carga Seleccionada -->
+                        <div class="control-group border-r border-slate-300 pr-3 transition-opacity duration-300" id="ui-charge-editor" style="opacity: 0.3; pointer-events: none;">
+                            <label class="font-bold text-amber-700" title="Selecciona una carga primero">Modificar Q:</label>
+                            <input type="range" id="slider-q" min="-5" max="5" step="0.5" value="1" class="w-[5vw]">
+                            <span id="val-q" class="font-mono font-bold w-[2vw] text-right text-slate-700">1.0</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3 gap-1">
+                            <button class="btn-action btn-play" id="btn-play">▶ Simular</button>
+                        </div>
+
+                        <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-sm font-semibold text-slate-700">
+                            <label><input type="checkbox" id="toggle-force-ind" checked> F Individuales (<span class="text-amber-500 font-bold">■</span>)</label>
+                            <label><input type="checkbox" id="toggle-force" checked> F Neta</label>
+                            <label class="text-blue-700 border border-blue-200 bg-blue-50 px-1 rounded cursor-pointer"><input type="checkbox" id="toggle-dcl" checked> Proyecciones XY</label>
+                            <label><input type="checkbox" id="toggle-trails" checked> Rutas</label>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper" id="canvas-3d">
+                            <div class="hint-overlay">⟲ Rotar | ⚲ Zoom | 🖱️ <strong>Click para editar magnitud. Arrastra para mover.</strong></div>
+                            <div id="lbl-angle" class="angle-label"></div>
+                            <div id="selection-ring" class="selected-ring w-12 h-12"></div>
+                        </div>
+
+                        <!-- 2D Graph & Stats (Detalle Analítico) -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Gráfica F vs r -->
+                            <div class="h-[40%] graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(10px, 0.9vw, 14px);">Magnitud $|\vec{F}|$ vs Distancia $r$</div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- DCL y Solución Analítica -->
+                            <div class="flex-1 bg-white border border-slate-200 rounded-lg p-[1.5vmin] shadow-sm flex flex-col min-h-0">
+                                <div class="text-slate-700 font-bold border-b border-slate-200 pb-1 mb-2 text-center" style="font-size: clamp(12px, 1vw, 16px);">
+                                    Detalle Analítico DCL (Selección)
+                                </div>
+                                <div id="ui-dcl-math" class="font-mono text-slate-600 flex-1 overflow-y-auto custom-scroll pr-1" style="font-size: clamp(10px, 0.9vw, 14px);">
+                                    <div class="text-center text-slate-400 mt-4 italic">Haz clic en una carga en el espacio 3D para ver su diagrama de fuerzas individuales y resultantes.</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS Y FÍSICA -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(45, cont3D.clientWidth / cont3D.clientHeight, 0.1, 100);
+        cam.position.set(0, 0, 16); // Modo 2D por defecto
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const light = new THREE.DirectionalLight(0xffffff, 0.5);
+        light.position.set(10, 20, 10); scene.add(light);
+
+        // Rejillas de ayuda
+        const gridGroup = new THREE.Group();
+        const gridHelperXY = new THREE.GridHelper(20, 20);
+        gridHelperXY.rotation.x = Math.PI / 2;
+        gridHelperXY.material.opacity = 0.2; gridHelperXY.material.transparent = true;
+        const gridHelperXZ = new THREE.GridHelper(20, 20);
+        gridHelperXZ.material.opacity = 0.2; gridHelperXZ.material.transparent = true;
+        gridHelperXZ.visible = false; // Oculto en 2D
+        gridGroup.add(gridHelperXY, gridHelperXZ);
+        scene.add(gridGroup);
+
+        // ==========================================
+        // 2. MOTOR FÍSICO Y ESTADO
+        // ==========================================
+        let charges = [];
+        let chargeCounter = 1;
+        let selectedCharge = null;
+
+        let params = {
+            mode: '2d', // Empieza en 2D para ver mejor el DCL
+            playing: false,
+            k: 50, // Constante de Coulomb escalada visualmente
+            softening: 0.1, // Evitar colapso total
+            dt: 0.016, // Time step
+            damping: 0.99, // Fricción base
+            collisionDist: 0.8 // 2 * radio de carga (0.4)
+        };
+
+        const geoCharge = new THREE.SphereGeometry(0.4, 32, 32);
+        const matPos = new THREE.MeshPhysicalMaterial({ color: 0xdc2626, metalness: 0.3, roughness: 0.4 });
+        const matNeg = new THREE.MeshPhysicalMaterial({ color: 0x2563eb, metalness: 0.3, roughness: 0.4 });
+
+        function createCharge(sign) {
+            const mesh = new THREE.Mesh(geoCharge, sign > 0 ? matPos : matNeg);
+            
+            // Posición inicial aleatoria dentro de límites según modo
+            const range = 4;
+            mesh.position.set(
+                (Math.random() - 0.5) * range * 2,
+                params.mode !== '1d' ? (Math.random() - 0.5) * range * 2 : 0,
+                params.mode === '3d' ? (Math.random() - 0.5) * range * 2 : 0
+            );
+            
+            // Escalar visualmente según la magnitud de la carga
+            const absQ = Math.abs(sign * 1.0);
+            const scaleFac = 0.5 + 0.5 * absQ;
+            mesh.scale.set(scaleFac, scaleFac, scaleFac);
+
+            // Rastros
+            const trailMat = new THREE.LineBasicMaterial({ color: sign > 0 ? 0xfca5a5 : 0x93c5fd, transparent: true, opacity: 0.5 });
+            const trailGeo = new THREE.BufferGeometry();
+            const trailPoints = new Float32Array(50 * 3);
+            trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPoints, 3));
+            const trailLine = new THREE.Line(trailGeo, trailMat);
+            scene.add(trailLine);
+
+            // Flechas DCL
+            const arrowNet = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), mesh.position, 0, sign > 0 ? 0xff0000 : 0x0000ff);
+            const arrowX = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), mesh.position, 0, 0xef4444); // Rojo claro
+            const arrowY = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), mesh.position, 0, 0x22c55e); // Verde
+            scene.add(arrowNet); scene.add(arrowX); scene.add(arrowY);
+
+            // Grupo para flechas de fuerzas individuales
+            const arrowsIndGroup = new THREE.Group();
+            scene.add(arrowsIndGroup);
+
+            const chargeObj = {
+                id: chargeCounter++,
+                sign: sign,
+                q: sign * 1.0,
+                m: 1.0,
+                mesh: mesh,
+                v: new THREE.Vector3(0,0,0),
+                f: new THREE.Vector3(0,0,0),
+                individualForces: [], // Almacenará {forceVec, sourceCharge}
+                trailLine: trailLine,
+                trailPos: [],
+                arrowNet: arrowNet,
+                arrowX: arrowX,
+                arrowY: arrowY,
+                arrowsIndGroup: arrowsIndGroup
+            };
+
+            charges.push(chargeObj);
+            scene.add(mesh);
+            selectCharge(chargeObj); // Seleccionar automáticamente al crear
+            updateAll();
+        }
+
+        function removeAllCharges() {
+            charges.forEach(c => {
+                scene.remove(c.mesh);
+                scene.remove(c.trailLine);
+                scene.remove(c.arrowNet);
+                scene.remove(c.arrowX);
+                scene.remove(c.arrowY);
+                scene.remove(c.arrowsIndGroup);
+            });
+            charges = [];
+            chargeCounter = 1;
+            selectCharge(null);
+            updateAll();
+        }
+
+        function selectCharge(c) {
+            // Deseleccionar anterior
+            if(selectedCharge && selectedCharge.mesh) {
+                selectedCharge.mesh.material.emissive.setHex(0x000000);
+            }
+            
+            selectedCharge = c;
+            const editor = document.getElementById('ui-charge-editor');
+            const slider = document.getElementById('slider-q');
+            const valLabel = document.getElementById('val-q');
+            const ring = document.getElementById('selection-ring');
+
+            if(selectedCharge) {
+                selectedCharge.mesh.material.emissive.setHex(0x444444); // Brillo suave
+                editor.style.opacity = '1';
+                editor.style.pointerEvents = 'auto';
+                slider.value = selectedCharge.q;
+                valLabel.textContent = selectedCharge.q.toFixed(1);
+                ring.style.display = 'block';
+            } else {
+                editor.style.opacity = '0.3';
+                editor.style.pointerEvents = 'none';
+                valLabel.textContent = "-";
+                ring.style.display = 'none';
+                document.getElementById('ui-dcl-math').innerHTML = '<div class="text-center text-slate-400 mt-4 italic">Haz clic en una carga para ver su diagrama de fuerzas.</div>';
+            }
+        }
+
+        // ==========================================
+        // 3. LÓGICA DE INTERACCIÓN (RAYCASTING DRAG)
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let draggedCharge = null;
+        let dragPlane = new THREE.Plane();
+        let intersection = new THREE.Vector3();
+
+        cont3D.addEventListener('pointerdown', (e) => {
+            const rect = cont3D.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, cam);
+            const intersects = raycaster.intersectObjects(charges.map(c => c.mesh));
+            
+            if(intersects.length > 0) {
+                ctrl.enabled = false;
+                draggedCharge = charges.find(c => c.mesh === intersects[0].object);
+                selectCharge(draggedCharge); // Actualizar selección al tocar
+                
+                const camDir = new THREE.Vector3();
+                cam.getWorldDirection(camDir);
+                dragPlane.setFromNormalAndCoplanarPoint(camDir.negate(), draggedCharge.mesh.position);
+                
+                draggedCharge.v.set(0,0,0);
+            }
+        });
+
+        cont3D.addEventListener('pointermove', (e) => {
+            if(!draggedCharge) return;
+            const rect = cont3D.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, cam);
+            if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
+                if (params.mode === '1d') { intersection.y = 0; intersection.z = 0; }
+                if (params.mode === '2d') { intersection.z = 0; }
+                
+                draggedCharge.mesh.position.copy(intersection);
+                if (!params.playing) updateAll(); // Update math immediately if paused
+            }
+        });
+
+        cont3D.addEventListener('pointerup', (e) => {
+            draggedCharge = null;
+            ctrl.enabled = true;
+            
+            // Si el mouse no se movió mucho y tocamos el fondo, deseleccionar
+            if (e.target.id === 'canvas-3d') {
+                 raycaster.setFromCamera(mouse, cam);
+                 const intersects = raycaster.intersectObjects(charges.map(c => c.mesh));
+                 if(intersects.length === 0) {
+                     selectCharge(null);
+                     updateAll();
+                 }
+            }
+        });
+
+        // Cambio de magnitud vía UI
+        document.getElementById('slider-q').addEventListener('input', (e) => {
+            if(selectedCharge) {
+                const newQ = parseFloat(e.target.value);
+                selectedCharge.q = newQ;
+                
+                // Actualizar color si cambia de signo (0 es gris neutro temporal)
+                if (newQ > 0) selectedCharge.mesh.material = matPos;
+                else if (newQ < 0) selectedCharge.mesh.material = matNeg;
+                
+                // Mantener el emissive porque está seleccionada
+                selectedCharge.mesh.material.emissive.setHex(0x444444);
+                
+                // Actualizar tamaño
+                const absQ = Math.abs(newQ);
+                const scaleFac = 0.5 + 0.5 * absQ; // 0.5 min, 3.0 max (para Q=5)
+                selectedCharge.mesh.scale.set(scaleFac, scaleFac, scaleFac);
+
+                document.getElementById('val-q').textContent = newQ.toFixed(1);
+                if (!params.playing) updateAll();
+            }
+        });
+
+        // ==========================================
+        // 4. COMPUTACIÓN FÍSICA Y COLISIONES (ANTIOSCILACIÓN)
+        // ==========================================
+        function computeForces() {
+            charges.forEach(c => {
+                c.f.set(0,0,0);
+                c.individualForces = []; // Limpiar desglose
+            });
+
+            for(let i = 0; i < charges.length; i++) {
+                for(let j = i + 1; j < charges.length; j++) {
+                    const c1 = charges[i];
+                    const c2 = charges[j];
+                    
+                    if(c1.q === 0 || c2.q === 0) continue; // Si alguna carga es 0, no hay fuerza mutua
+                    
+                    const rVec = new THREE.Vector3().subVectors(c2.mesh.position, c1.mesh.position);
+                    const rDist = rVec.length();
+                    const touching = rDist < params.collisionDist;
+                    
+                    let fMag = 0;
+
+                    if (touching && params.playing) {
+                        // Lógica para evitar la oscilación infinita (Spring effect)
+                        if (c1.sign !== c2.sign) {
+                            // Cargas opuestas colisionan inelásticamente y "se pegan"
+                            // Apagamos la fuerza de Coulomb para detener la atracción brutal
+                            fMag = 0;
+                            // Reducimos velocidad drásticamente si se están acercando
+                            if (c1.v.clone().sub(c2.v).dot(rVec) < 0) {
+                                c1.v.multiplyScalar(0.7);
+                                c2.v.multiplyScalar(0.7);
+                            }
+                        } else {
+                            // Cargas iguales tienen un núcleo sólido repulsivo
+                            fMag = params.k * (c1.q * c2.q) / (params.collisionDist * params.collisionDist);
+                        }
+                    } else {
+                        // Ley de Coulomb Normal
+                        const rSoft = Math.sqrt(rDist * rDist + params.softening * params.softening);
+                        fMag = params.k * (Math.abs(c1.q * c2.q)) / (rSoft * rSoft);
+                        // Signo: cargas iguales repelen (fMag > 0), distintas atraen (fDir se invertirá luego si es negativo, pero usaremos signo de q1*q2)
+                        if (c1.q * c2.q < 0) fMag = -fMag;
+                    }
+                    
+                    if (fMag !== 0) {
+                        const fDir = rVec.clone().normalize();
+                        const fVecOn2 = fDir.multiplyScalar(fMag); // Fuerza de 1 sobre 2
+                        
+                        // Añadir fuerzas individuales (para DCL)
+                        c2.individualForces.push({ force: fVecOn2.clone(), source: c1 });
+                        c1.individualForces.push({ force: fVecOn2.clone().negate(), source: c2 });
+
+                        c2.f.add(fVecOn2);
+                        c1.f.sub(fVecOn2); // Ley de Acción/Reacción
+                    }
+                }
+            }
+        }
+
+        function updatePhysics() {
+            if (!params.playing) return;
+
+            computeForces();
+
+            const dt = params.dt;
+            const bounds = 9;
+
+            charges.forEach(c => {
+                if (c === draggedCharge) return;
+
+                const a = c.f.clone().divideScalar(c.m);
+                c.v.add(a.multiplyScalar(dt));
+                c.v.multiplyScalar(params.damping);
+                
+                if (params.mode === '1d') { c.v.y = 0; c.v.z = 0; }
+                if (params.mode === '2d') { c.v.z = 0; }
+
+                c.mesh.position.add(c.v.clone().multiplyScalar(dt));
+
+                // Rebote en paredes
+                if(Math.abs(c.mesh.position.x) > bounds) { c.mesh.position.x = Math.sign(c.mesh.position.x)*bounds; c.v.x *= -0.5; }
+                if(params.mode !== '1d' && Math.abs(c.mesh.position.y) > bounds) { c.mesh.position.y = Math.sign(c.mesh.position.y)*bounds; c.v.y *= -0.5; }
+                if(params.mode === '3d' && Math.abs(c.mesh.position.z) > bounds) { c.mesh.position.z = Math.sign(c.mesh.position.z)*bounds; c.v.z *= -0.5; }
+
+                if (c.trailPos.length === 0 || c.trailPos[0].distanceTo(c.mesh.position) > 0.1) {
+                    c.trailPos.unshift(c.mesh.position.clone());
+                    if (c.trailPos.length > 50) c.trailPos.pop();
+                }
+            });
+        }
+
+        // ==========================================
+        // 5. ACTUALIZACIÓN VISUAL Y MATEMÁTICAS EN UI
+        // ==========================================
+        function updateVisuals() {
+            const showForceInd = document.getElementById('toggle-force-ind').checked;
+            const showForceNet = document.getElementById('toggle-force').checked;
+            const showDCL = document.getElementById('toggle-dcl').checked;
+            const showTrails = document.getElementById('toggle-trails').checked;
+            const scaleForce = 0.2;
+
+            // Anillo de selección HTML sobre 3D
+            const ring = document.getElementById('selection-ring');
+            if (selectedCharge) {
+                const pos = selectedCharge.mesh.position.clone().project(cam);
+                ring.style.left = ((pos.x + 1) * cont3D.clientWidth / 2) + 'px';
+                ring.style.top = ((-pos.y + 1) * cont3D.clientHeight / 2) + 'px';
+            }
+
+            charges.forEach(c => {
+                // Fuerzas Individuales (Las naranjas)
+                c.arrowsIndGroup.clear();
+                if (showForceInd) {
+                    c.individualForces.forEach(indF => {
+                        const fLen = indF.force.length();
+                        if(fLen > 0.05) {
+                            const dir = indF.force.clone().normalize();
+                            const lenVis = Math.min(fLen * scaleForce, 4);
+                            const arrow = new THREE.ArrowHelper(dir, c.mesh.position, lenVis, 0xf59e0b, lenVis*0.3, lenVis*0.2); // Amber color
+                            c.arrowsIndGroup.add(arrow);
+                        }
+                    });
+                }
+
+                // Vector Fza Neta (Principal)
+                if (showForceNet && c.f.length() > 0.1) {
+                    c.arrowNet.visible = true;
+                    c.arrowNet.position.copy(c.mesh.position);
+                    c.arrowNet.setDirection(c.f.clone().normalize());
+                    const len = Math.min(c.f.length() * scaleForce, 4);
+                    c.arrowNet.setLength(len, len*0.3, len*0.2);
+                } else {
+                    c.arrowNet.visible = false;
+                }
+
+                // Vectores DCL (Componentes X, Y)
+                if (showDCL && c.f.length() > 0.1) {
+                    c.arrowX.visible = true; c.arrowY.visible = true;
+                    c.arrowX.position.copy(c.mesh.position); c.arrowY.position.copy(c.mesh.position);
+                    
+                    const lenX = Math.abs(c.f.x) * scaleForce;
+                    if(lenX > 0.05) {
+                        c.arrowX.setDirection(new THREE.Vector3(Math.sign(c.f.x), 0, 0));
+                        c.arrowX.setLength(Math.min(lenX, 4), Math.min(lenX*0.3, 0.5), Math.min(lenX*0.2, 0.3));
+                    } else c.arrowX.visible = false;
+
+                    const lenY = Math.abs(c.f.y) * scaleForce;
+                    if(lenY > 0.05) {
+                        c.arrowY.setDirection(new THREE.Vector3(0, Math.sign(c.f.y), 0));
+                        c.arrowY.setLength(Math.min(lenY, 4), Math.min(lenY*0.3, 0.5), Math.min(lenY*0.2, 0.3));
+                    } else c.arrowY.visible = false;
+                } else {
+                    c.arrowX.visible = false; c.arrowY.visible = false;
+                }
+
+                // Rastros
+                c.trailLine.visible = showTrails;
+                if (showTrails && c.trailPos.length > 1) {
+                    const positions = c.trailLine.geometry.attributes.position.array;
+                    for (let i = 0; i < c.trailPos.length; i++) {
+                        positions[i*3] = c.trailPos[i].x;
+                        positions[i*3+1] = c.trailPos[i].y;
+                        positions[i*3+2] = c.trailPos[i].z;
+                    }
+                    c.trailLine.geometry.setDrawRange(0, c.trailPos.length);
+                    c.trailLine.geometry.attributes.position.needsUpdate = true;
+                } else {
+                    c.trailLine.geometry.setDrawRange(0, 0);
+                }
+            });
+
+            // Panel Matemático DCL (Basado en la carga seleccionada)
+            if (selectedCharge) {
+                const cTarget = selectedCharge;
+                const fNeta = cTarget.f.length();
+                
+                let html = `<div class="font-bold text-center text-indigo-800 bg-indigo-50 py-1 rounded mb-2">Análisis de Carga ${cTarget.id} (Q = ${cTarget.q.toFixed(1)}C)</div>`;
+
+                if (cTarget.individualForces.length === 0) {
+                     html += `<div class="text-center text-slate-400 mt-2 text-xs">No hay interacción (se requiere otra carga con magnitud $\\neq$ 0).</div>`;
+                } else {
+                    html += `<div class="text-xs font-bold text-slate-500 mb-1">Fuerzas Individuales:</div>`;
+                    cTarget.individualForces.forEach(indF => {
+                        const mag = indF.force.length();
+                        let ang = Math.atan2(indF.force.y, indF.force.x) * 180 / Math.PI;
+                        if (ang < 0) ang += 360;
+                        html += `<div class="math-line text-amber-600 text-xs pl-2 border-l-2 border-amber-300">
+                                    <span>$\\vec{F}_{${indF.source.id} \\to ${cTarget.id}}$</span> 
+                                    <b>${mag.toFixed(1)} N, ${ang.toFixed(0)}°</b>
+                                 </div>`;
+                    });
+
+                    // Calculamos angulo de la fuerza neta
+                    let thetaNetDeg = Math.atan2(cTarget.f.y, cTarget.f.x) * 180 / Math.PI;
+                    if (thetaNetDeg < 0) thetaNetDeg += 360;
+
+                    html += `
+                        <div class="mt-3 text-xs font-bold text-slate-500 mb-1">Resultante Vectorial:</div>
+                        <div class="math-line bg-slate-100 px-1 rounded"><span class="text-slate-700">Fza Neta $|\\sum \\vec{F}|$:</span> <b class="text-red-600">${fNeta.toFixed(1)} N</b></div>
+                        <div class="math-line bg-slate-100 px-1 rounded"><span class="text-slate-700">Ángulo Neta $\\theta$:</span> <b class="text-red-600">${thetaNetDeg.toFixed(1)}°</b></div>
+                        
+                        <div class="mt-3 text-center text-[10px] font-bold text-slate-400 uppercase tracking-wide">Proyecciones de la Resultante</div>
+                        <div class="math-line text-red-600 font-bold text-xs bg-red-50 px-1 rounded mt-1">
+                            <span class="text-slate-500 font-normal">$F_x = F_{net} \\cos(\\theta)$</span> 
+                            <span>${cTarget.f.x > 0 ? '+' : ''}${cTarget.f.x.toFixed(1)} N</span>
+                        </div>
+                        <div class="math-line text-green-600 font-bold text-xs bg-green-50 px-1 rounded mt-1">
+                            <span class="text-slate-500 font-normal">$F_y = F_{net} \\sin(\\theta)$</span> 
+                            <span>${cTarget.f.y > 0 ? '+' : ''}${cTarget.f.y.toFixed(1)} N</span>
+                        </div>
+                    `;
+                }
+                
+                // Actualizar HTML solo si cambia
+                const dclContainer = document.getElementById('ui-dcl-math');
+                if(dclContainer.innerHTML !== html) {
+                    dclContainer.innerHTML = html;
+                    if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                        MathJax.typesetPromise([dclContainer]).catch((e) => console.log(e));
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 6. GRÁFICA 2D EXPERIMENTAL
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const canvas2D = document.getElementById('graph-2d');
+        const ctx = canvas2D.getContext('2d');
+
+        function resizeGraph() {
+            canvas2D.width = graphCont.clientWidth;
+            canvas2D.height = graphCont.clientHeight;
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const w = canvas2D.width; const h = canvas2D.height;
+            const padX = 35; const padY = 20;
+            ctx.clearRect(0, 0, w, h);
+
+            ctx.beginPath(); ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1;
+            ctx.moveTo(padX, 5); ctx.lineTo(padX, h - padY);
+            ctx.lineTo(w - 5, h - padY); ctx.stroke();
+            ctx.fillStyle = "#475569"; ctx.font = "10px sans-serif";
+            ctx.fillText("F", padX - 12, 12); ctx.fillText("r", w - 10, h - padY + 12);
+
+            const maxR_graph = 10;
+            const maxF_graph = params.k * 1 / (0.6 * 0.6); 
+
+            const mapX = (rad) => padX + (rad / maxR_graph) * (w - padX - 10);
+            const mapY = (fVal) => (h - padY) - Math.min(fVal / maxF_graph, 1.0) * (h - padY - 10);
+
+            // Curva Teórica
+            ctx.beginPath(); ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
+            let started = false;
+            for(let r = 0.6; r <= maxR_graph; r += 0.2) {
+                const f = params.k * 1 / (r*r);
+                if(!started) { ctx.moveTo(mapX(r), mapY(f)); started = true; }
+                else { ctx.lineTo(mapX(r), mapY(f)); }
+            }
+            ctx.stroke(); ctx.setLineDash([]);
+
+            // Dato experimental (Basado en la Carga Seleccionada y su mayor interacción)
+            if (selectedCharge && selectedCharge.individualForces.length > 0) {
+                // Trazar el punto del par de cargas que genera la fuerza más fuerte (para visualización)
+                let maxF = null;
+                selectedCharge.individualForces.forEach(indF => {
+                    if (!maxF || indF.force.length() > maxF.force.length()) maxF = indF;
+                });
+                
+                if (maxF) {
+                    const r = selectedCharge.mesh.position.distanceTo(maxF.source.mesh.position);
+                    const F = maxF.force.length();
+                    
+                    if (r < maxR_graph) {
+                        const currX = mapX(r); const currY = mapY(F);
+                        ctx.beginPath(); ctx.setLineDash([2, 2]); ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 1;
+                        ctx.moveTo(currX, h - padY); ctx.lineTo(currX, currY);
+                        ctx.moveTo(padX, currY); ctx.lineTo(currX, currY);
+                        ctx.stroke(); ctx.setLineDash([]);
+                        ctx.beginPath(); ctx.arc(currX, currY, 4, 0, Math.PI*2); ctx.fillStyle = "#ef4444"; ctx.fill();
+                        
+                        // Etiqueta del par
+                        ctx.fillStyle = "#ef4444"; ctx.font = "9px sans-serif";
+                        ctx.fillText(`C${selectedCharge.id}-C${maxF.source.id}`, currX + 6, currY - 6);
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 7. EVENTOS Y BUCLE PRINCIPAL
+        // ==========================================
+        function updateAll() {
+            if(!params.playing) computeForces();
+            updateVisuals(); 
+            drawGraph();
+        }
+
+        document.getElementById('select-dim').addEventListener('change', (e) => {
+            params.mode = e.target.value;
+            charges.forEach(c => {
+                if (params.mode === '1d') { c.mesh.position.y = 0; c.mesh.position.z = 0; c.v.set(0,0,0); }
+                if (params.mode === '2d') { c.mesh.position.z = 0; c.v.z = 0; }
+                c.trailPos = [];
+            });
+            if (params.mode === '1d' || params.mode === '2d') {
+                cam.position.set(0, 0, 16); cam.lookAt(0,0,0);
+                gridHelperXZ.visible = false;
+            } else {
+                cam.position.set(10, 8, 15); cam.lookAt(0,0,0);
+                gridHelperXZ.visible = true;
+            }
+            updateAll();
+        });
+
+        document.getElementById('btn-add-pos').addEventListener('click', () => createCharge(1));
+        document.getElementById('btn-add-neg').addEventListener('click', () => createCharge(-1));
+        document.getElementById('btn-reset').addEventListener('click', removeAllCharges);
+        
+        const btnPlay = document.getElementById('btn-play');
+        btnPlay.addEventListener('click', () => {
+            params.playing = !params.playing;
+            if (params.playing) {
+                btnPlay.textContent = "⏸ Pausar";
+                btnPlay.classList.replace('btn-play', 'btn-pos');
+            } else {
+                btnPlay.textContent = "▶ Simular";
+                btnPlay.classList.replace('btn-pos', 'btn-play');
+            }
+        });
+
+        ['toggle-force-ind', 'toggle-force', 'toggle-dcl', 'toggle-trails'].forEach(id => {
+            document.getElementById(id).addEventListener('change', updateAll);
+        });
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height);
+                } else if(entry.target.id === 'graph-container') {
+                    resizeGraph();
+                }
+            }
+        });
+        resizeObserver.observe(cont3D); resizeObserver.observe(graphCont);
+
+        // Inicializar escenario
+        createCharge(1);
+        setTimeout(() => { createCharge(-1); }, 50);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctrl.update();
+            updatePhysics();
+            if(params.playing) updateAll(); 
+            // Update ring position specifically during animation if it's moving
+            if (selectedCharge && params.playing) {
+                const ring = document.getElementById('selection-ring');
+                const pos = selectedCharge.mesh.position.clone().project(cam);
+                ring.style.left = ((pos.x + 1) * cont3D.clientWidth / 2) + 'px';
+                ring.style.top = ((-pos.y + 1) * cont3D.clientHeight / 2) + 'px';
+            }
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tooltip System
+        (function () {
+            let globalTip = document.createElement("div");
+            globalTip.className = "tip-content";
+            globalTip.style.position = "fixed";
+            globalTip.style.zIndex = "999999";
+            globalTip.style.pointerEvents = "none";
+            globalTip.style.opacity = "0";
+            globalTip.style.visibility = "hidden";
+            
+            document.body.appendChild(globalTip);
+            
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                const localTip = wrapper.querySelector(".tip-content");
+                
+                wrapper.addEventListener("mouseenter", () => {
+                    const rect = wrapper.getBoundingClientRect();
+                    globalTip.innerHTML = localTip.innerHTML;
+                    globalTip.style.top = rect.top + "px";
+                    globalTip.style.left = (rect.right + 10) + "px";
+                    globalTip.style.opacity = "1";
+                    globalTip.style.visibility = "visible";
+                });
+                
+                wrapper.addEventListener("mouseleave", () => {
+                    globalTip.style.opacity = "0";
+                    globalTip.style.visibility = "hidden";
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

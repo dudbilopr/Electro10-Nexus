@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+        <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Analítico: Potencial Eléctrico</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'ams' 
+            },
+            chtml: { matchFontHeight: false },
+            startup: {
+                pageReady: () => {
+                    return MathJax.startup.defaultPageReady().then(() => {
+                        console.log('MathJax initial typesetting complete');
+                    });
+                }
+            }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(13px, 1.1vw, 17px); line-height: 1.5; color: #1e293b; }
+        .math-display { font-size: clamp(14px, 1.2vw, 18px); color: #1e3a8a; text-align: center; margin: 1.2vmin 0; overflow-x: auto;}
+        
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #1e293b, #020617);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden;
+        }
+        .canvas-wrapper canvas { cursor: grab; }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+        
+        .graph-wrapper, .dcl-wrapper { border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+        .dcl-wrapper { background: #0f172a; }
+        .graph-wrapper { background: #ffffff; }
+
+        .hint-overlay {
+            position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.95);
+            padding: 8px 14px; border-radius: 6px; font-size: clamp(11px, 0.9vw, 14px);
+            font-weight: 600; color: #0f172a; pointer-events: none; box-shadow: 0 4px 10px rgba(0,0,0,0.15); z-index: 10;
+            border-left: 4px solid #3b82f6;
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; cursor: pointer; }
+        .control-panel { background: #f1f5f9; border-radius: 0.5rem; padding: 1vmin 1.5vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(12px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.8vmin; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background-color: #64748b; }
+
+        .btn-ui { padding: 0.4rem 0.8rem; border-radius: 0.25rem; font-size: 0.9em; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn-ui:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .btn-ui:active { transform: translateY(0); }
+
+        .math-demo-container { display: none; animation: fadeIn 0.4s ease-out; }
+        .math-demo-container.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        #paint-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; touch-action: none; pointer-events: none; }
+        .paint-mode-active { cursor: crosshair !important; pointer-events: auto !important; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-indigo-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="font-bold tracking-wide flex items-center gap-3" style="font-size: clamp(22px, 2vw, 36px);">
+                            ⚡ Análisis Analítico de Campos y Potenciales
+                        </h1>
+                        <p class="text-indigo-300 font-light" style="font-size: clamp(14px, 1vw, 18px);">
+                            Demostraciones formales, geometría topológica y cálculo de trabajo eléctrico
+                        </p>
+                    </div>
+                    <div class="text-right text-xs bg-slate-800 p-2 rounded border border-slate-700 shadow-inner">
+                        <span class="text-red-400 font-bold tracking-wider">🔴 FUENTES (+)</span><br>
+                        <span class="text-blue-400 font-bold tracking-wider">🔵 FUENTES (-)</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA Y DEMOSTRACIONES -->
+                <div class="w-[45%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll gap-[1.5vmin]" id="theory-container">
+                    
+                    <!-- EXPLICACIÓN EXHAUSTIVA DE SIGNOS Y ENERGÍA -->
+                    <div class="bg-amber-50 border border-amber-300 shadow-sm rounded-lg p-[1.5vmin]">
+                        <h2 class="font-bold text-amber-900 border-b-2 border-amber-400 mb-2 pb-1 text-[1.1em]">1. Convención de Signos y Energía</h2>
+                        <p class="mb-2">El campo eléctrico $\vec{E}$ siempre apunta en la dirección de la máxima disminución del potencial: $\vec{E} = -\nabla V$.</p>
+                        
+                        <div class="grid grid-cols-2 gap-3 text-[0.9em]">
+                            <div class="bg-white p-2 border border-slate-200 rounded">
+                                <h3 class="font-bold text-red-700 border-b border-red-100 mb-1">Cargas de Prueba ($+q$)</h3>
+                                <p>Sufren una fuerza paralela al campo ($\vec{F} = +q\vec{E}$). Tienden a "caer" naturalmente de mayor a menor potencial ($\Delta V < 0$).</p>
+                                <p class="mt-1 font-mono text-xs text-slate-600 bg-slate-100 p-1 rounded">Caída libre $\implies W_{campo} > 0$</p>
+                            </div>
+                            <div class="bg-white p-2 border border-slate-200 rounded">
+                                <h3 class="font-bold text-emerald-700 border-b border-emerald-100 mb-1">Cargas de Prueba ($-q$)</h3>
+                                <p>Sufren una fuerza antiparalela al campo ($\vec{F} = -q\vec{E}$). "Flotan" naturalmente hacia potenciales mayores ($\Delta V > 0$).</p>
+                                <p class="mt-1 font-mono text-xs text-slate-600 bg-slate-100 p-1 rounded">Subida libre $\implies W_{campo} > 0$</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 bg-amber-100 p-2 rounded border border-amber-200 text-sm">
+                            <span class="font-bold text-amber-950">Ecuación Maestra del Trabajo:</span>
+                            El trabajo realizado <strong>por el campo eléctrico</strong> al mover una carga $q$ es el negativo de la variación de energía potencial $\Delta U$:
+                            <div class="math-display" style="margin: 0.5vmin 0;">$$W_{A \to B} = \int_{A}^{B} \vec{F}_e \cdot d\vec{r} = -q\Delta V = -q(V_B - V_A)$$</div>
+                            Si $W > 0$, el campo facilita el movimiento. Si $W < 0$, debemos aplicar trabajo externo para mover la carga contra el campo.
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE 2: DEMOSTRACIONES MATEMÁTICAS DINÁMICAS -->
+                    <div class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg flex-1 flex flex-col">
+                        <h2 class="font-bold text-indigo-900 border-b-2 border-indigo-400 mb-3 pb-1 flex justify-between items-center text-[1.1em]">
+                            <span>2. Resolución Analítica Paso a Paso</span>
+                            <span id="math-title-badge" class="bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-full font-sans shadow-sm tracking-wide">Dipolo Eléctrico</span>
+                        </h2>
+                        
+                        <div class="flex-1 relative overflow-y-auto custom-scroll pr-2">
+                            
+                            <!-- DEMO: Carga Puntual -->
+                            <div id="math-puntual" class="math-demo-container">
+                                <p>Para una carga fuente $Q$ en el origen, el campo radial es $\vec{E} = \frac{kQ}{r^2}\hat{r}$. Definimos el potencial como la integral del campo desde el infinito (donde $V=0$) hasta una distancia $r$:</p>
+                                <div class="math-display">
+                                    \begin{aligned}
+                                    V(r) &= -\int_{\infty}^{r} \vec{E} \cdot d\vec{r'} = -\int_{\infty}^{r} \frac{kQ}{r'^2} dr' \\
+                                    &= -kQ \left[ -\frac{1}{r'} \right]_{\infty}^{r} = \frac{kQ}{r}
+                                    \end{aligned}
+                                </div>
+                                <p class="mt-2">En nuestro plano de simulación $XZ$, la distancia euclidiana es $r = \sqrt{x^2 + z^2}$. Por lo tanto, el mapa topológico del potencial es:</p>
+                                <div class="bg-white border border-indigo-300 rounded-lg p-3 my-3 shadow-sm">
+                                    <div class="math-display" style="margin:0;">$$V(x,z) = \frac{kQ}{\sqrt{x^2 + z^2}}$$</div>
+                                </div>
+                                <p class="text-sm"><strong>Geometría:</strong> Si $Q > 0$, obtenemos un paraboloide hiperbólico infinito positivo (un "pico" topográfico). Las superficies equipotenciales ($V = \text{cte}$) son circunferencias concéntricas en 2D, donde no se realiza trabajo al desplazarse sobre ellas.</p>
+                            </div>
+
+                            <!-- DEMO: Dipolo -->
+                            <div id="math-dipolo" class="math-demo-container active">
+                                <p>Un dipolo consta de $+Q$ en la posición $(+d, 0)$ y $-Q$ en $(-d, 0)$. El <strong>Principio de Superposición</strong> establece que el potencial total es la suma escalar de los potenciales:</p>
+                                <div class="math-display">$$V_{tot} = \sum V_i = V_+ + V_- = \frac{k(+Q)}{r_+} + \frac{k(-Q)}{r_-}$$</div>
+                                <p class="mt-2">Aplicando el teorema de Pitágoras para hallar las distancias espaciales $r_+$ y $r_-$ desde las fuentes hasta un punto $(x,z)$ arbitrario:</p>
+                                <div class="math-display">$$r_+ = \sqrt{(x-d)^2 + z^2} \quad ; \quad r_- = \sqrt{(x+d)^2 + z^2}$$</div>
+                                <div class="bg-white border border-indigo-300 rounded-lg p-3 my-3 shadow-sm">
+                                    <div class="math-display" style="margin:0;">$$V(x,z) = kQ \left[ \frac{1}{\sqrt{(x-d)^2 + z^2}} - \frac{1}{\sqrt{(x+d)^2 + z^2}} \right]$$</div>
+                                </div>
+                                <p class="text-sm border-l-4 border-indigo-400 pl-3 py-1 bg-indigo-100/50"><strong>Caso Especial (Plano Ecuatorial):</strong> Si evaluamos en el eje $Z$ ($x=0$), las distancias son idénticas ($r_+ = r_-$), por lo que $V(0,z) \equiv 0$. Mover una carga a lo largo de este eje no requiere trabajo eléctrico.</p>
+                            </div>
+
+                            <!-- DEMO: Cuadrupolo -->
+                            <div id="math-cuadrupolo" class="math-demo-container">
+                                <p>El cuadrupolo lineal en este simulador tiene 4 cargas en los vértices de un cuadrado de semidiagonal $d$. Dos positivas en $(d,d)$ y $(-d,-d)$, y dos negativas en $(d,-d)$ y $(-d,d)$.</p>
+                                <p class="mt-2">Expandiendo la sumatoria $\sum_{i=1}^4 \frac{kQ_i}{r_i}$ con las coordenadas exactas:</p>
+                                <div class="bg-white border border-indigo-300 rounded-lg p-3 my-3 shadow-sm overflow-x-auto">
+                                    <div class="math-display" style="margin:0; font-size: 0.9em;">
+                                        \begin{aligned}
+                                        V(x,z) = kQ \Bigg[ &\frac{1}{\sqrt{(x-d)^2 + (z-d)^2}} + \frac{1}{\sqrt{(x+d)^2 + (z+d)^2}} \\
+                                        &- \frac{1}{\sqrt{(x-d)^2 + (z+d)^2}} - \frac{1}{\sqrt{(x+d)^2 + (z-d)^2}} \Bigg]
+                                        \end{aligned}
+                                    </div>
+                                </div>
+                                <p class="text-sm mt-2"><strong>Desarrollo Multipolar:</strong> A grandes distancias ($r \gg d$), el término monopolar (carga neta) y dipolar se cancelan. El potencial cuadrupolar sobrevive y decae proporcional a $1/r^3$, creando una topología de "silla de montar" en el centro.</p>
+                            </div>
+
+                            <!-- DEMO: Uniforme -->
+                            <div id="math-uniforme" class="math-demo-container">
+                                <p>Un campo eléctrico uniforme $\vec{E} = E_0 \hat{i}$ (generado por placas paralelas infinitas) tiene magnitud y dirección constantes en todo el espacio.</p>
+                                <p class="mt-2">Para hallar el potencial asumiendo la referencia $V(0)=0$, integramos a lo largo de la componente $X$:</p>
+                                <div class="math-display">
+                                    \begin{aligned}
+                                    V(x) &= -\int_{0}^{x} \vec{E} \cdot d\vec{r} = -\int_{0}^{x} (E_0 \hat{i}) \cdot (dx \hat{i} + dz \hat{k}) \\
+                                    &= -E_0 \int_{0}^{x} dx = -E_0 x
+                                    \end{aligned}
+                                </div>
+                                <div class="bg-white border border-indigo-300 rounded-lg p-3 my-3 shadow-sm">
+                                    <div class="math-display" style="margin:0;">$$V(x,z) = -E_0 x$$</div>
+                                </div>
+                                <p class="text-sm"><strong>Geometría:</strong> El potencial forma un "plano inclinado" matemáticamente perfecto. Las equipotenciales son líneas ortogonales al eje X (líneas donde $x=\text{cte}$). Todo el trabajo depende <em>únicamente</em> del desplazamiento horizontal $\Delta x$.</p>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[55%] flex flex-col min-w-0 gap-[1.5vmin]">
+
+                    <!-- PANEL DE CONTROL UI -->
+                    <div class="control-panel shadow-sm relative z-20 flex-col !items-start bg-white">
+                        
+                        <!-- Fila 1: Configuración Global -->
+                        <div class="flex w-full gap-[2vmin] border-b border-slate-200 pb-2 mb-1 items-center">
+                            <div class="control-group border-r border-slate-200 pr-4">
+                                <label class="font-bold text-slate-700 text-sm">Topología Teórica:</label>
+                                <select id="select-config" class="bg-slate-50 border border-slate-300 rounded px-2 py-1 font-semibold text-indigo-700 outline-none hover:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all cursor-pointer text-sm">
+                                    <option value="dipolo">Dipolo Eléctrico (+/-)</option>
+                                    <option value="puntual">Carga Puntual (Monopolo)</option>
+                                    <option value="cuadrupolo">Cuadrupolo (Silla montar)</option>
+                                    <option value="uniforme">Campo Uniforme (Placas)</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group border-r border-slate-200 pr-4">
+                                <label class="font-bold text-slate-700 text-sm">Perspectiva:</label>
+                                <button id="btn-toggle-3d" class="btn-ui bg-indigo-600 text-white hover:bg-indigo-700">Modo 3D (Relieve topográfico)</button>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end">
+                                <button id="btn-reset" class="btn-ui bg-slate-200 text-slate-700 hover:bg-slate-300 border border-slate-300" title="Reiniciar Posición">🔄 Origen</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2: Parámetros del Experimento -->
+                        <div class="flex w-full gap-[2vmin] items-center pt-1">
+                            <div class="control-group border-r border-slate-200 pr-4">
+                                <label class="font-bold text-red-700 text-[13px]" title="Carga de la fuente creadora de campo">Fuente $Q$ (Magnitud):</label>
+                                <input type="range" id="slider-Q" min="2" max="10" step="1" value="5" class="w-[6vw]">
+                                <span id="val-Q" class="font-mono font-bold w-[2vw] text-right text-red-700">5</span>
+                            </div>
+
+                            <div class="control-group border-r border-slate-200 pr-4 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">
+                                <label class="font-bold text-emerald-800 text-[13px]" title="Carga que movemos en el campo">Prueba $q$ (Test):</label>
+                                <input type="range" id="slider-q" min="-5" max="5" step="1" value="1" class="w-[6vw]">
+                                <span id="val-q" class="font-mono font-bold w-[2vw] text-right text-emerald-700">+1</span>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end gap-3 text-sm font-semibold text-slate-700">
+                                <label class="flex items-center cursor-pointer hover:text-indigo-600 select-none">
+                                    <input type="checkbox" id="toggle-grid" class="mr-1.5 w-4 h-4 accent-indigo-600"> Mostrar $\vec{E}$
+                                </label>
+                                <label class="flex items-center cursor-pointer text-slate-700 border border-slate-300 bg-slate-50 px-2 py-1 rounded hover:bg-slate-100 select-none transition-colors">
+                                    <input type="checkbox" id="toggle-paint" class="mr-1.5 accent-slate-600"> ✏️ Dibujar
+                                </label>
+                                <button id="btn-clear-paint" class="btn-ui bg-red-100 text-red-700 border border-red-200 hidden hover:bg-red-200">Borrar Pizarra</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TELEMETRÍA EN TIEMPO REAL -->
+                    <div class="bg-slate-800 text-slate-100 p-[1.5vmin] shadow-sm rounded-lg border border-slate-700">
+                        <div class="flex justify-between items-end mb-2">
+                            <p class="font-bold text-amber-400 text-[13px] tracking-wide uppercase">Telemetría Dinámica de la Carga $q$</p>
+                            <p class="text-[11px] text-slate-400">Arrastra la esfera en el lienzo inferior</p>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="bg-slate-900 p-2.5 rounded border border-slate-600 shadow-inner flex flex-col justify-center">
+                                <span class="text-slate-400 text-[11px] uppercase font-bold tracking-wider">Potencial $V(x,z)$</span>
+                                <div><span id="ui-val-v" class="font-mono font-bold text-yellow-400 text-2xl tracking-tighter">0.00</span> <span class="text-xs text-slate-500">V</span></div>
+                            </div>
+                            <div class="bg-slate-900 p-2.5 rounded border border-slate-600 shadow-inner flex flex-col justify-center">
+                                <span class="text-slate-400 text-[11px] uppercase font-bold tracking-wider">Magnitud $|\vec{E}|$</span>
+                                <div><span id="ui-val-e" class="font-mono font-bold text-emerald-400 text-2xl tracking-tighter">0.00</span> <span class="text-xs text-slate-500">V/m</span></div>
+                            </div>
+                            <div class="bg-slate-900 p-2.5 rounded border border-slate-600 shadow-inner flex flex-col justify-center relative overflow-hidden">
+                                <div class="absolute right-0 top-0 bottom-0 w-1 bg-slate-700" id="work-indicator"></div>
+                                <span class="text-slate-400 text-[11px] uppercase font-bold tracking-wider">Trabajo $W_{campo}$</span>
+                                <div><span id="ui-val-w" class="font-mono font-bold text-slate-300 text-2xl tracking-tighter">0.00</span> <span class="text-xs text-slate-500">J</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL E INTERACTIVA -->
+                    <div class="flex-1 flex gap-[1.5vmin] min-h-0">
+                        
+                        <!-- 3D Canvas / Pantalla Principal -->
+                        <div class="w-[60%] h-full canvas-wrapper relative shadow-inner" id="canvas-wrapper-3d">
+                            <div class="hint-overlay shadow-md flex flex-col gap-1 backdrop-blur-sm bg-white/90">
+                                <span>👆 <strong>Arrastra la esfera</strong> para evaluar las integrales.</span>
+                                <span id="hint-3d" class="text-xs text-indigo-700">🔄 Órbita: Click derecho o Arrastrar fondo.</span>
+                            </div>
+                            
+                            <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                            <canvas id="paint-canvas"></canvas>
+                        </div>
+
+                        <!-- Panel de Análisis Gráfico -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1.5vmin]">
+                            
+                            <!-- Diagrama DCL -->
+                            <div class="h-[45%] dcl-wrapper p-[1.5vmin] flex flex-col shadow-inner border-slate-600">
+                                <div class="text-center font-bold text-slate-300 mb-1 text-[13px] tracking-widest uppercase border-b border-slate-700 pb-1">
+                                    Vectores (Plano XZ)
+                                </div>
+                                <div class="flex-1 relative w-full mt-1" id="dcl-container">
+                                    <canvas id="dcl-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                                <div class="text-center text-[11px] text-slate-400 mt-2 font-mono bg-slate-900 rounded py-1 px-2 border border-slate-700">
+                                    <span class="text-yellow-500 mr-2">⟶ $\vec{E}$</span>
+                                    <span class="text-red-500 font-bold">⇢ $\vec{F}_e = q\vec{E}$</span>
+                                </div>
+                            </div>
+
+                            <!-- Gráfica de Trabajo vs Pasos -->
+                            <div class="h-[55%] graph-wrapper p-[1.5vmin] flex flex-col shadow-inner">
+                                <div class="text-center font-bold text-slate-700 mb-1 text-[13px] tracking-widest uppercase border-b border-slate-200 pb-1">
+                                    Evolución del Trabajo $W$
+                                </div>
+                                <div class="flex-1 relative w-full mt-1" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                                <div class="text-center text-[10px] text-slate-500 font-mono mt-1">
+                                    Eje X: Trayectoria | Eje Y: Joules
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CÓDIGO CORE: LÓGICA MATEMÁTICA Y RENDERING -->
+    <script>
+        // ==========================================
+        // 0. GESTOR DE TEORÍA DINÁMICA (MATHJAX)
+        // ==========================================
+        const configTitles = {
+            'puntual': 'Carga Puntual Monopolar',
+            'dipolo': 'Dipolo Eléctrico',
+            'cuadrupolo': 'Cuadrupolo Eléctrico',
+            'uniforme': 'Campo Uniforme (Placas)'
+        };
+
+        function updateMathPanel(configKey) {
+            document.getElementById('math-title-badge').textContent = configTitles[configKey];
+            document.querySelectorAll('.math-demo-container').forEach(el => el.classList.remove('active'));
+            document.getElementById(`math-${configKey}`).classList.add('active');
+            
+            // Re-render math if available (useful if dynamic equations were injected, though here they are static pre-loaded blocks)
+            if(window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise([document.getElementById(`math-${configKey}`)]);
+            }
+        }
+
+        // ==========================================
+        // 1. INICIALIZACIÓN THREE.JS
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        
+        const aspect = cont3D.clientWidth / cont3D.clientHeight;
+        const cam = new THREE.PerspectiveCamera(45, aspect, 0.1, 200);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Optimize performance
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true;
+        ctrl.dampingFactor = 0.05;
+        ctrl.maxPolarAngle = Math.PI / 2 + 0.1; // Evitar vista submarina extrema
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const light = new THREE.DirectionalLight(0xffffff, 0.9);
+        light.position.set(15, 30, 15); 
+        scene.add(light);
+
+        // ==========================================
+        // 2. MODELO FÍSICO Y ESTADOS
+        // ==========================================
+        let params = {
+            config: 'dipolo',
+            Q: 5.0,      
+            q: 1.0,      
+            k: 2.0,      // Constante k_e visual
+            is3D: true,
+            d: 4.0       // Distancia geométrica de separación
+        };
+        
+        let particle = {
+            mesh: null,
+            startPos: new THREE.Vector3(0,0,0),
+            pos: new THREE.Vector3(0,0,0),
+            trail: [], 
+            workHistory: []
+        };
+
+        // Materiales Carga Prueba
+        const geoTest = new THREE.SphereGeometry(0.6, 32, 32);
+        const matTest = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.2, metalness: 0.2 });
+        particle.mesh = new THREE.Mesh(geoTest, matTest);
+        scene.add(particle.mesh);
+
+        // Anillo Seleccionador
+        const ringGeo = new THREE.RingGeometry(0.8, 1.0, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+        const selectionRing = new THREE.Mesh(ringGeo, ringMat);
+        selectionRing.rotation.x = Math.PI/2;
+        selectionRing.visible = false;
+        particle.mesh.add(selectionRing);
+
+        // Trail Line
+        const trailMat = new THREE.LineBasicMaterial({ color: 0xe2e8f0, linewidth: 2 });
+        let trailLine = new THREE.Line(new THREE.BufferGeometry(), trailMat);
+        scene.add(trailLine);
+
+        // Groups
+        const vectorsGroup = new THREE.Group();
+        scene.add(vectorsGroup);
+        const sourceGroup = new THREE.Group();
+        scene.add(sourceGroup);
+
+        // Topography Mesh
+        const surfSize = 32;
+        const surfSegs = 64;
+        const surfGeo = new THREE.PlaneGeometry(surfSize, surfSize, surfSegs, surfSegs);
+        surfGeo.rotateX(-Math.PI / 2); 
+        
+        const surfMat = new THREE.MeshStandardMaterial({ 
+            vertexColors: true, side: THREE.DoubleSide, transparent: true, opacity: 0.85, roughness: 0.5, metalness: 0.1
+        });
+        const wireMat = new THREE.MeshBasicMaterial({ color: 0x0f172a, wireframe: true, transparent: true, opacity: 0.08 });
+
+        const surfaceMesh = new THREE.Mesh(surfGeo, surfMat);
+        const wireMesh = new THREE.Mesh(surfGeo, wireMat);
+        scene.add(surfaceMesh); 
+        scene.add(wireMesh);
+
+        // ==========================================
+        // 3. MOTOR DE CÁLCULO ANALÍTICO
+        // ==========================================
+        function calculateV(x, z) {
+            let v = 0;
+            const rMin = 0.5; // Evita discontinuidad asintótica en el origen
+            const d = params.d;
+            const kQ = params.k * params.Q;
+
+            switch (params.config) {
+                case 'puntual':
+                    let r = Math.sqrt(x*x + z*z + rMin);
+                    v = kQ / r;
+                    break;
+                case 'dipolo':
+                    let rp = Math.sqrt((x-d)**2 + z**2 + rMin); 
+                    let rm = Math.sqrt((x+d)**2 + z**2 + rMin); 
+                    v = kQ * (1/rp - 1/rm);
+                    break;
+                case 'cuadrupolo':
+                    let r1 = Math.sqrt((x-d)**2 + (z-d)**2 + rMin);
+                    let r2 = Math.sqrt((x+d)**2 + (z+d)**2 + rMin);
+                    let r3 = Math.sqrt((x-d)**2 + (z+d)**2 + rMin);
+                    let r4 = Math.sqrt((x+d)**2 + (z-d)**2 + rMin);
+                    v = kQ * (1/r1 + 1/r2 - 1/r3 - 1/r4);
+                    break;
+                case 'uniforme':
+                    v = - (params.Q / 2.5) * x; // Escala visual para el plano
+                    break;
+            }
+            return Math.max(-10, Math.min(10, v)); // Clamp para estabilidad del renderizado
+        }
+
+        function calculateE(x, z) {
+            // Gradiente numérico central
+            const h = 0.05; 
+            const dvdx = (calculateV(x + h, z) - calculateV(x - h, z)) / (2 * h);
+            const dvdz = (calculateV(x, z + h) - calculateV(x, z - h)) / (2 * h);
+            return new THREE.Vector3(-dvdx, 0, -dvdz); // E = -Grad(V)
+        }
+
+        // ==========================================
+        // 4. GENERACIÓN DE COLOR Y GEOMETRÍA
+        // ==========================================
+        function getColorByV(v) {
+            const color = new THREE.Color();
+            let norm = (v + 10) / 20; // Rango visual asumido [-10, 10]
+            norm = Math.max(0, Math.min(1, norm));
+            
+            // Discretización para efecto "curvas de nivel"
+            let bands = 24;
+            let stepNorm = Math.floor(norm * bands) / bands;
+
+            if (stepNorm < 0.5) {
+                // Pozos V < 0
+                color.lerpColors(new THREE.Color(0x020617), new THREE.Color(0x38bdf8), stepNorm * 2);
+            } else {
+                // Picos V > 0
+                color.lerpColors(new THREE.Color(0xfacc15), new THREE.Color(0x991b1b), (stepNorm - 0.5) * 2);
+            }
+            return color;
+        }
+
+        function updateTopography() {
+            const positions = surfGeo.attributes.position;
+            const colors = [];
+            
+            for (let i = 0; i < positions.count; i++) {
+                let x = positions.getX(i);
+                let z = positions.getZ(i);
+                let v = calculateV(x, z);
+                
+                positions.setY(i, params.is3D ? v : 0);
+                
+                let c = getColorByV(v);
+                colors.push(c.r, c.g, c.b);
+            }
+            
+            surfGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            positions.needsUpdate = true;
+            surfGeo.computeVertexNormals();
+
+            // Dibujar esferas de las fuentes
+            sourceGroup.clear();
+            const sGeo = new THREE.SphereGeometry(1.2, 16, 16);
+            const matPos = new THREE.MeshBasicMaterial({color: 0xff3333, wireframe: true});
+            const matNeg = new THREE.MeshBasicMaterial({color: 0x3388ff, wireframe: true});
+            
+            let addSource = (px, pz, isPos) => {
+                let s = new THREE.Mesh(sGeo, isPos ? matPos : matNeg);
+                s.position.set(px, params.is3D ? calculateV(px, pz) : 0, pz);
+                sourceGroup.add(s);
+            };
+
+            const d = params.d;
+            if(params.config === 'puntual') addSource(0,0, true);
+            if(params.config === 'dipolo') { addSource(d,0,true); addSource(-d,0,false); }
+            if(params.config === 'cuadrupolo') { addSource(d,d,true); addSource(-d,-d,true); addSource(d,-d,false); addSource(-d,d,false); }
+            
+            updateVectors();
+        }
+
+        function updateVectors() {
+            vectorsGroup.clear();
+            if (!document.getElementById('toggle-grid').checked) return;
+
+            const spacing = 3.5;
+            for (let x = -surfSize/2 + 1; x <= surfSize/2 - 1; x += spacing) {
+                for (let z = -surfSize/2 + 1; z <= surfSize/2 - 1; z += spacing) {
+                    let E = calculateE(x, z);
+                    let mag = E.length();
+                    if (mag < 0.15) continue;
+
+                    let dir = E.clone().normalize();
+                    let vY = params.is3D ? calculateV(x, z) : 0;
+                    let origin = new THREE.Vector3(x, vY + (params.is3D? 0.5 : 0), z);
+                    
+                    let arrowDir = params.is3D ? new THREE.Vector3(dir.x, 0, dir.z).normalize() : dir;
+                    let visualLen = Math.min(mag * 0.4, spacing * 0.75);
+                    
+                    let arrow = new THREE.ArrowHelper(arrowDir, origin, visualLen, 0xffffff, visualLen*0.3, visualLen*0.25);
+                    arrow.line.material.transparent = true; arrow.line.material.opacity = 0.6;
+                    arrow.cone.material.transparent = true; arrow.cone.material.opacity = 0.8;
+                    vectorsGroup.add(arrow);
+                }
+            }
+        }
+
+        // ==========================================
+        // 5. CÁMARA Y PERSPECTIVA
+        // ==========================================
+        function setupView() {
+            const btn = document.getElementById('btn-toggle-3d');
+            const hint = document.getElementById('hint-3d');
+            if (params.is3D) {
+                cam.position.set(0, 25, 30);
+                cam.lookAt(0,0,0);
+                ctrl.enableRotate = true;
+                btn.textContent = "Vista 3D (Relieve)";
+                btn.className = "btn-ui bg-indigo-600 text-white hover:bg-indigo-700";
+                hint.innerHTML = "🔄 Órbita: Click derecho o Arrastrar fondo. <span class='text-red-600 font-bold'>Picos V>0</span>, <span class='text-blue-600 font-bold'>Pozos V<0</span>.";
+            } else {
+                cam.position.set(0, 35, 0); 
+                cam.lookAt(0,0,0);
+                ctrl.enableRotate = false; 
+                btn.textContent = "Vista 2D (Topografía plana)";
+                btn.className = "btn-ui bg-slate-200 text-slate-800 hover:bg-slate-300 border border-slate-400";
+                hint.textContent = "Vista Geométrica Superior. Las líneas de color representan las equipotenciales (V=cte).";
+            }
+            updateTopography();
+            updateParticlePos();
+        }
+
+        document.getElementById('btn-toggle-3d').addEventListener('click', () => {
+            params.is3D = !params.is3D;
+            setupView();
+        });
+
+        // ==========================================
+        // 6. DINÁMICA DE ARRASTRE Y FÍSICA
+        // ==========================================
+        function updateParticlePos() {
+            let v = calculateV(particle.pos.x, particle.pos.z);
+            particle.pos.y = params.is3D ? v : 0;
+            particle.mesh.position.copy(particle.pos);
+            
+            // Color de la partícula según su carga
+            if (params.q > 0) matTest.color.setHex(0x10b981); // Emerald
+            else if (params.q < 0) matTest.color.setHex(0xef4444); // Red
+            else matTest.color.setHex(0x9ca3af); // Gray
+            
+            updateUI();
+            drawDCL();
+        }
+
+        function resetParticle() {
+            particle.pos.set(0, 0, 0);
+            particle.startPos.copy(particle.pos);
+            particle.trail = [particle.pos.clone()];
+            particle.workHistory = [{ step: 0, w: 0 }];
+            trailLine.geometry.setFromPoints(particle.trail);
+            updateParticlePos();
+            drawGraph();
+        }
+
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isDragging = false;
+        const canvasEl = renderer.domElement;
+
+        canvasEl.addEventListener('pointerdown', (e) => {
+            if (document.getElementById('toggle-paint').checked) return; 
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, cam);
+            const intersects = raycaster.intersectObject(particle.mesh);
+
+            if (intersects.length > 0) {
+                isDragging = true;
+                selectionRing.visible = true;
+                
+                // Reset integrator when grabbed
+                particle.startPos.copy(particle.pos);
+                particle.trail = [particle.pos.clone()];
+                particle.workHistory = [{ step: 0, w: 0 }];
+
+                canvasEl.setPointerCapture(e.pointerId);
+                document.body.style.cursor = 'grabbing';
+                ctrl.enabled = false; 
+            }
+        });
+
+        canvasEl.addEventListener('pointermove', (e) => {
+            if (document.getElementById('toggle-paint').checked) return;
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (isDragging) {
+                raycaster.setFromCamera(mouse, cam);
+                // Intersect perfectly with the mathematical XZ plane
+                let planeZ = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+                let intersectPoint = new THREE.Vector3();
+                raycaster.ray.intersectPlane(planeZ, intersectPoint);
+                
+                if (intersectPoint) {
+                    const b = surfSize / 2 - 0.5;
+                    particle.pos.x = Math.max(-b, Math.min(b, intersectPoint.x));
+                    particle.pos.z = Math.max(-b, Math.min(b, intersectPoint.z));
+                    
+                    updateParticlePos();
+
+                    // Update trail and work integral if moved enough
+                    if(particle.pos.distanceTo(particle.trail[particle.trail.length-1]) > 0.4) {
+                        particle.trail.push(particle.pos.clone());
+                        if(particle.trail.length > 200) particle.trail.shift();
+                        trailLine.geometry.setFromPoints(particle.trail);
+                        
+                        let vIni = calculateV(particle.startPos.x, particle.startPos.z);
+                        let vAct = calculateV(particle.pos.x, particle.pos.z);
+                        let w = -params.q * (vAct - vIni); // Core Equation: W = -q * DeltaV
+                        
+                        particle.workHistory.push({ step: particle.workHistory.length, w: w });
+                        if(particle.workHistory.length > 200) particle.workHistory.shift();
+                        drawGraph();
+                    }
+                }
+            } else {
+                raycaster.setFromCamera(mouse, cam);
+                if (raycaster.intersectObject(particle.mesh).length > 0) {
+                    document.body.style.cursor = 'grab';
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            }
+        });
+
+        const onPointerUp = (e) => {
+            if (isDragging) {
+                selectionRing.visible = false;
+                isDragging = false;
+                document.body.style.cursor = 'default';
+                ctrl.enabled = true; 
+                try { canvasEl.releasePointerCapture(e.pointerId); } catch(err){}
+            }
+        };
+
+        canvasEl.addEventListener('pointerup', onPointerUp);
+        canvasEl.addEventListener('pointercancel', onPointerUp);
+
+        // ==========================================
+        // 7. RENDERIZADO DE TELEMETRÍA Y GRÁFICOS
+        // ==========================================
+        function updateUI() {
+            let vIni = calculateV(particle.startPos.x, particle.startPos.z);
+            let vAct = calculateV(particle.pos.x, particle.pos.z);
+            let E = calculateE(particle.pos.x, particle.pos.z);
+            
+            let Work = -params.q * (vAct - vIni); 
+
+            document.getElementById('ui-val-v').textContent = (vAct > 0 ? "+" : "") + vAct.toFixed(2);
+            document.getElementById('ui-val-e').textContent = E.length().toFixed(2);
+            document.getElementById('ui-val-w').textContent = (Work > 0 ? "+" : (Work < 0 ? "" : "")) + Work.toFixed(2);
+            
+            // Work indicator coloring
+            let wEl = document.getElementById('ui-val-w');
+            let indEl = document.getElementById('work-indicator');
+            if (Work > 0) {
+                wEl.className = "font-mono font-bold text-emerald-400 text-2xl tracking-tighter";
+                indEl.className = "absolute right-0 top-0 bottom-0 w-1.5 bg-emerald-500 shadow-[0_0_8px_#10b981]";
+            } else if (Work < 0) {
+                wEl.className = "font-mono font-bold text-red-400 text-2xl tracking-tighter";
+                indEl.className = "absolute right-0 top-0 bottom-0 w-1.5 bg-red-500 shadow-[0_0_8px_#ef4444]";
+            } else {
+                wEl.className = "font-mono font-bold text-slate-300 text-2xl tracking-tighter";
+                indEl.className = "absolute right-0 top-0 bottom-0 w-1 bg-slate-700";
+            }
+        }
+
+        // --- DIAGRAMA DE CUERPO LIBRE ---
+        const dclCont = document.getElementById('dcl-container');
+        const dclCanvas = document.getElementById('dcl-canvas');
+        const dclCtx = dclCanvas.getContext('2d');
+
+        function resizeDCL() {
+            dclCanvas.width = dclCont.clientWidth;
+            dclCanvas.height = dclCont.clientHeight;
+            drawDCL(); 
+        }
+
+        function drawDCL() {
+            const w = dclCanvas.width; const h = dclCanvas.height;
+            const cx = w/2; const cy = h/2;
+            dclCtx.clearRect(0, 0, w, h);
+
+            // Ejes Cartesianos
+            dclCtx.beginPath(); dclCtx.strokeStyle = "#334155"; dclCtx.lineWidth = 1;
+            dclCtx.moveTo(0, cy); dclCtx.lineTo(w, cy); 
+            dclCtx.moveTo(cx, 0); dclCtx.lineTo(cx, h); 
+            dclCtx.stroke();
+
+            // Partícula
+            dclCtx.beginPath(); dclCtx.arc(cx, cy, 7, 0, Math.PI*2);
+            dclCtx.fillStyle = (params.q > 0) ? "#10b981" : (params.q < 0 ? "#ef4444" : "#9ca3af");
+            dclCtx.fill(); dclCtx.strokeStyle="#fff"; dclCtx.lineWidth=2; dclCtx.stroke();
+
+            let E = calculateE(particle.pos.x, particle.pos.z);
+            let Fe = E.clone().multiplyScalar(params.q);
+            const scaleVector = 18;
+
+            const drawArrowCtx = (vec, color, lineWidth, dashed=false, isOffset=false) => {
+                let vLen = vec.length() * scaleVector;
+                if(vLen < 1) return;
+                
+                let startX = cx; let startY = cy;
+                if (isOffset) { startX += 2.5; startY += 2.5; } 
+
+                let endX = startX + vec.x * scaleVector;
+                let endY = startY + vec.z * scaleVector; 
+
+                dclCtx.beginPath(); 
+                dclCtx.strokeStyle = color; dclCtx.lineWidth = lineWidth;
+                if(dashed) dclCtx.setLineDash([4, 4]); else dclCtx.setLineDash([]);
+                
+                var headlen = 8; 
+                var angle = Math.atan2(vec.z, vec.x);
+
+                dclCtx.moveTo(startX, startY); dclCtx.lineTo(endX, endY);
+                dclCtx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                dclCtx.moveTo(endX, endY);
+                dclCtx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+                dclCtx.stroke();
+                dclCtx.setLineDash([]); 
+            };
+
+            drawArrowCtx(E, "#eab308", 2.5);  // Campo Eléctrico
+            drawArrowCtx(Fe, "#ef4444", 2.5, true, true); // Fuerza
+        }
+
+        // --- GRÁFICA EVOLUCIÓN DEL TRABAJO ---
+        const graphCont = document.getElementById('graph-container');
+        const graphCanvas = document.getElementById('graph-2d');
+        const gCtx = graphCanvas.getContext('2d');
+
+        function resizeGraph() {
+            graphCanvas.width = graphCont.clientWidth;
+            graphCanvas.height = graphCont.clientHeight;
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const w = graphCanvas.width; const h = graphCanvas.height;
+            const padX = 35; const padY = 25;
+            gCtx.clearRect(0, 0, w, h);
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#cbd5e1"; gCtx.lineWidth = 1;
+            gCtx.moveTo(padX, 0); gCtx.lineTo(padX, h); 
+            gCtx.moveTo(padX, h/2); gCtx.lineTo(w, h/2); 
+            gCtx.stroke();
+
+            gCtx.fillStyle = "#64748b"; gCtx.font = "11px system-ui";
+            gCtx.fillText("+W", 5, 20); 
+            gCtx.fillText("-W", 5, h - 10); 
+            gCtx.fillText("0", 20, h/2 + 4);
+
+            if (particle.workHistory.length < 2) return;
+
+            let steps = particle.workHistory.length;
+            
+            let maxW = 5, minW = -5;
+            particle.workHistory.forEach(d => {
+                if(Math.abs(d.w) > maxW) {
+                    maxW = Math.abs(d.w);
+                    minW = -maxW; 
+                }
+            });
+            maxW += 2; minW -= 2;
+
+            const mapX = (i) => padX + (i / Math.max(10, steps-1)) * (w - padX - 10);
+            const mapY = (wVal) => h - ((wVal - minW) / (maxW - minW)) * h;
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#3b82f6"; gCtx.lineWidth = 2.5;
+            for(let i=0; i<steps; i++) {
+                let px = mapX(i);
+                let py = mapY(particle.workHistory[i].w);
+                if (i===0) gCtx.moveTo(px, py);
+                else gCtx.lineTo(px, py);
+            }
+            gCtx.stroke();
+            
+            let lastVal = particle.workHistory[steps-1].w;
+            gCtx.beginPath(); gCtx.arc(mapX(steps-1), mapY(lastVal), 5, 0, Math.PI*2);
+            gCtx.fillStyle = lastVal >= 0 ? "#10b981" : "#ef4444"; 
+            gCtx.fill();
+            gCtx.lineWidth = 1.5; gCtx.strokeStyle = "#fff"; gCtx.stroke();
+        }
+
+        // ==========================================
+        // 8. PIZARRA DE DIBUJO (PAINT CANVAS)
+        // ==========================================
+        const paintCanvas = document.getElementById('paint-canvas');
+        const pCtx = paintCanvas.getContext('2d');
+        let isPainting = false;
+
+        function resizePaint() {
+            paintCanvas.width = paintCanvas.offsetWidth;
+            paintCanvas.height = paintCanvas.offsetHeight;
+            pCtx.lineWidth = 3; pCtx.lineCap = 'round'; pCtx.lineJoin = 'round'; pCtx.strokeStyle = '#ef4444'; 
+        }
+
+        const startPaint = (e) => {
+            isPainting = true;
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.beginPath(); pCtx.moveTo(clientX - rect.left, clientY - rect.top);
+        };
+        const drawPaint = (e) => {
+            if (!isPainting) return;
+            e.preventDefault();
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.lineTo(clientX - rect.left, clientY - rect.top); pCtx.stroke();
+        };
+        const stopPaint = () => { isPainting = false; };
+
+        paintCanvas.addEventListener('mousedown', startPaint);
+        paintCanvas.addEventListener('mousemove', drawPaint);
+        window.addEventListener('mouseup', stopPaint);
+        paintCanvas.addEventListener('touchstart', startPaint, {passive: false});
+        paintCanvas.addEventListener('touchmove', drawPaint, {passive: false});
+        paintCanvas.addEventListener('touchend', stopPaint);
+
+        document.getElementById('btn-clear-paint').addEventListener('click', () => { pCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height); });
+        document.getElementById('toggle-paint').addEventListener('change', (e) => {
+            const btnClear = document.getElementById('btn-clear-paint');
+            if(e.target.checked) {
+                paintCanvas.classList.add('paint-mode-active'); btnClear.classList.remove('hidden'); document.getElementById('canvas-3d').style.pointerEvents = "none";
+            } else {
+                paintCanvas.classList.remove('paint-mode-active'); btnClear.classList.add('hidden'); document.getElementById('canvas-3d').style.pointerEvents = "auto";
+            }
+        });
+
+        // ==========================================
+        // 9. EVENTOS Y BUCLE DE RENDER
+        // ==========================================
+        document.getElementById('select-config').addEventListener('change', (e) => { 
+            params.config = e.target.value; 
+            updateMathPanel(params.config); 
+            updateTopography();
+            resetParticle();
+        });
+
+        document.getElementById('slider-Q').addEventListener('input', (e) => { 
+            params.Q = parseFloat(e.target.value);
+            document.getElementById('val-Q').textContent = params.Q;
+            updateTopography();
+            updateParticlePos();
+        });
+
+        document.getElementById('slider-q').addEventListener('input', (e) => { 
+            params.q = parseFloat(e.target.value);
+            let txt = params.q > 0 ? "+" + params.q : params.q;
+            document.getElementById('val-q').textContent = txt;
+            let el = document.getElementById('val-q');
+            el.className = `font-mono font-bold w-[2vw] text-right ${params.q > 0 ? 'text-emerald-700' : (params.q < 0 ? 'text-red-700' : 'text-slate-500')}`;
+            updateParticlePos();
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', resetParticle);
+        document.getElementById('toggle-grid').addEventListener('change', updateVectors);
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-wrapper-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height); resizePaint();
+                } else if(entry.target.id === 'dcl-container') resizeDCL(); 
+                else if(entry.target.id === 'graph-container') resizeGraph();
+            }
+        });
+        resizeObserver.observe(document.getElementById('canvas-wrapper-3d')); 
+        resizeObserver.observe(dclCont); resizeObserver.observe(graphCont);
+
+        // INIT
+        updateMathPanel(params.config);
+        setupView();
+        resetParticle();
+        
+        setTimeout(() => { resizePaint(); resizeDCL(); resizeGraph(); updateTopography(); updateUI(); }, 200);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctrl.update();
+            renderer.render(scene, cam);
+        }
+        animate();
+
+    </script>
+</body>
+</html>

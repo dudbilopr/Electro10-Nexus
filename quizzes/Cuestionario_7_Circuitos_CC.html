@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Universitaria: Circuitos Eléctricos y Leyes de Kirchhoff</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- KaTeX for Beautiful Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Chart.js para Estadísticas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f8fafc; }
+        
+        /* Draggable items styles */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone.dragover { background-color: #e2e8f0; border-color: #3b82f6; }
+        .math-input { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; }
+        
+        /* Navigation Grid Styles */
+        .nav-btn { transition: all 0.2s ease; }
+        .nav-answered { background-color: #3b82f6; color: white; border-color: #2563eb; }
+        .nav-flagged { background-color: #f59e0b; color: white; border-color: #d97706; }
+        .nav-active { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4); transform: scale(1.1); z-index: 10; }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        .correct-card { border: 2px solid #22c55e !important; background-color: #f0fdf4 !important; }
+        .incorrect-card { border: 2px solid #ef4444 !important; background-color: #fef2f2 !important; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center border border-slate-200">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-warning text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">¿Evaluar examen?</h3>
+            <p class="text-slate-600 mb-6" id="confirm-message">Aún tienes preguntas sin responder.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-cancel-eval" class="px-5 py-2.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button id="btn-confirm-eval" class="px-5 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">Sí, evaluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm shrink-0 z-40 relative">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-600 p-2 rounded-lg text-white shadow-md">
+                    <i class="ph ph-plug text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">Física Eléctrica y Redes</h1>
+                    <p class="text-xs md:text-sm text-slate-500 font-medium">Evaluación: Circuitos de CC, Resistividad y Leyes de Kirchhoff</p>
+                </div>
+            </div>
+            <div class="flex gap-3 items-center">
+                <!-- Timer -->
+                <div id="exam-timer" class="flex items-center gap-2 bg-slate-100 text-slate-700 font-mono px-3 py-1.5 rounded-full border border-slate-200 shadow-inner">
+                    <i class="ph ph-timer text-lg"></i> <span id="timer-display">00:00</span>
+                </div>
+
+                <!-- Botón Pop-out (Se mostrará solo si está en un iframe) -->
+                <button id="btn-popout" class="hidden text-sm font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200 transition-colors items-center gap-1" onclick="window.open(window.location.href, '_blank')" title="Abrir en ventana completa">
+                    <i class="ph ph-arrow-square-out text-lg"></i> <span class="hidden md:inline">Pantalla completa</span>
+                </button>
+                
+                <div id="auth-status" class="text-sm font-medium text-slate-500 hidden md:flex items-center gap-1 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                    <i class="ph ph-spinner animate-spin"></i> Conectando plataforma...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <!-- Sidebar: Navigation Panel -->
+        <aside class="w-full md:w-1/4 lg:w-1/5 flex flex-col gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-full max-h-[calc(100vh-120px)] overflow-y-auto">
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="ph ph-squares-four"></i> Navegación
+                </h3>
+                
+                <div id="nav-grid" class="grid grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-6">
+                    <!-- Buttons injected via JS -->
+                </div>
+
+                <!-- Legend -->
+                <div class="text-xs text-slate-600 space-y-2 mb-6 border-t border-slate-100 pt-4">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded border border-slate-300 bg-slate-50"></div> Sin responder</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-blue-500 shadow-sm"></div> Respondida</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-amber-500 shadow-sm"></div> Bandera (Revisar)</div>
+                </div>
+
+                <div class="mt-auto space-y-3">
+                    <button id="btn-export" class="w-full hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200">
+                        <i class="ph ph-file-pdf text-lg text-red-500"></i> Exportar PDF
+                    </button>
+                    <button id="btn-evaluate" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="ph ph-check-circle text-lg"></i> Evaluar Examen
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Area: Question Display -->
+        <section class="w-full md:w-3/4 lg:w-4/5 flex flex-col h-full max-h-[calc(100vh-120px)] relative">
+            
+            <!-- Instructions -->
+            <div id="instructions-panel" class="bg-emerald-50 border border-emerald-200 rounded-xl p-6 mb-4 shadow-sm shrink-0 fade-in">
+                <h2 class="text-lg font-bold text-emerald-900 mb-2 flex items-center gap-2">
+                    <i class="ph ph-info text-xl"></i> Instrucciones de la Evaluación
+                </h2>
+                <p class="text-sm text-emerald-800 mb-2 leading-relaxed">Resuelve los 20 problemas sobre Análisis de Circuitos, Teoremas de Redes (Thévenin/Norton) y Reglas de Kirchhoff a nivel ingeniería. Utiliza las herramientas y los <strong>tips metodológicos</strong> si necesitas apoyo.</p>
+                <p class="text-sm text-emerald-800 font-semibold bg-emerald-100 p-2 rounded inline-block">Tu progreso se respaldará automáticamente en la nube de Firebase si tu nota supera el 70%.</p>
+            </div>
+
+            <!-- Question Container -->
+            <div id="questions-container" class="flex-grow overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 relative p-6 md:p-10">
+                <!-- Questions injected here via JS -->
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="mt-4 flex justify-between items-center shrink-0">
+                <button id="btn-prev" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    <i class="ph ph-caret-left text-lg"></i> Anterior
+                </button>
+                
+                <button id="btn-flag" class="px-4 py-2.5 bg-white border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="ph-fill ph-flag"></i> <span class="hidden sm:inline">Marcar con Bandera</span>
+                </button>
+
+                <button id="btn-next" class="px-5 py-2.5 bg-emerald-600 border border-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    Siguiente <i class="ph ph-caret-right text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="results-panel" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md z-30 flex flex-col items-center justify-start p-8 rounded-xl border border-slate-200 shadow-2xl fade-in overflow-y-auto max-h-full">
+                
+                <div class="bg-emerald-100 text-emerald-600 p-4 rounded-full mb-4 mt-8 shrink-0">
+                    <i class="ph ph-medal text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2 shrink-0">Resultados Finales</h2>
+                <div class="text-6xl font-black mb-4 tracking-tighter shrink-0" id="score-display">0%</div>
+                <p id="feedback-message" class="text-lg font-medium mb-6 text-center max-w-lg shrink-0"></p>
+                
+                <div class="w-full max-w-md bg-slate-200 rounded-full h-4 mb-6 shadow-inner overflow-hidden shrink-0">
+                  <div id="score-bar" class="bg-emerald-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                </div>
+
+                <div class="flex gap-4 shrink-0 mb-8">
+                    <button id="btn-review" class="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+                        <i class="ph ph-magnifying-glass"></i> Revisar Respuestas
+                    </button>
+                    <button id="btn-save" class="hidden px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                        <i class="ph ph-cloud-arrow-up text-lg"></i> Guardar en la Nube
+                    </button>
+                </div>
+
+                <!-- Statistics Container (Hidden by default, shown after save) -->
+                <div id="stats-container" class="hidden w-full max-w-4xl bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-inner shrink-0 mb-8">
+                    <h3 class="text-xl font-bold text-slate-700 mb-6 flex items-center justify-center gap-2">
+                        <i class="ph ph-chart-polar text-blue-600"></i> Estadísticas Globales de la Comunidad
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 text-center">
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                            <div class="text-xs text-slate-500 font-bold uppercase tracking-wide">Total Evaluados</div>
+                            <div class="text-3xl font-black text-blue-600 mt-1" id="stat-total">0</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                            <div class="text-xs text-slate-500 font-bold uppercase tracking-wide">Tasa de Aprobación</div>
+                            <div class="text-3xl font-black text-emerald-600 mt-1" id="stat-passrate">0%</div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                            <div class="text-xs text-slate-500 font-bold uppercase tracking-wide">Tiempo Promedio</div>
+                            <div class="text-3xl font-black text-amber-500 mt-1" id="stat-avgtime">0m 0s</div>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full h-72 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                    <p class="text-xs text-center text-slate-400 mt-4"><i class="ph ph-info"></i> Gráfico de % de acierto por pregunta basado en datos agregados en tiempo real.</p>
+                </div>
+
+            </div>
+            
+        </section>
+    </main>
+
+    <script type="module">
+        // =========================================================================
+        // === INTEGRACIÓN FIREBASE (MODO PADRE E HIJO / IFRAME) ===
+        // =========================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // IMPORTANTE: Importar increment para las estadísticas de base de datos pequeña
+        import { getFirestore, doc, setDoc, getDoc, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let isInIframe = (window.parent !== window);
+        let userId = null;
+        let db = null;
+        const appId = 'electro10'; // ID de tu base de datos central
+
+        // Variables del temporizador
+        let timerInterval;
+        let elapsedSeconds = 0;
+        let isTimerRunning = false;
+
+        // --- 1. MODO IFRAME (El Padre nos dice quién está logueado) ---
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.action === 'initSync') {
+                userId = event.data.uid;
+                
+                // Extraemos el nombre que nos manda el padre (soporta userName, name, displayName o email)
+                const userName = event.data.userName || event.data.name || event.data.displayName || (event.data.email ? event.data.email.split('@')[0] : 'Estudiante');
+                console.log("Simulador vinculado al Padre con usuario:", userId, userName);
+                
+                // Mostrar botón de Pop-out si estamos en iframe
+                if (isInIframe) {
+                    const btnPopout = document.getElementById('btn-popout');
+                    btnPopout.classList.remove('hidden');
+                    btnPopout.classList.add('flex');
+                }
+
+                // Actualizar Interfaz con el nombre del usuario
+                const statusEl = document.getElementById('auth-status');
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></div> <span class="truncate max-w-[150px] font-bold text-slate-700">${userName}</span>`;
+                statusEl.classList.remove('hidden');
+
+                // Dar el mensaje de bienvenida
+                setTimeout(() => {
+                    showToast(`¡Bienvenido al simulador, ${userName}!`, "success");
+                }, 800);
+            }
+        });
+
+        // --- 2. MODO LINK DIRECTO (Cargamos Firebase localmente) ---
+        if (!isInIframe) {
+            const firebaseConfig = {
+                apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+                authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+                projectId: "laboratorio-de-coulomb",
+                storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+                messagingSenderId: "525944850850",
+                appId: "1:525944850850:web:eca9c0b79809358e8d8afb"
+            };
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            const auth = getAuth(app);
+
+            onAuthStateChanged(auth, (user) => {
+                const statusEl = document.getElementById('auth-status');
+                if (user) {
+                    userId = user.uid;
+                    const userName = user.displayName || (user.email ? user.email.split('@')[0] : 'Estudiante');
+                    statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></div> <span class="truncate max-w-[100px]">${userName}</span>`;
+                    statusEl.classList.remove('hidden');
+                    loadProgress();
+                } else {
+                    statusEl.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Sesión no detectada`;
+                    statusEl.classList.remove('hidden');
+                    
+                    // Aviso no intrusivo al cargar
+                    setTimeout(() => {
+                        showToast("Para que tu progreso se guarde, debes iniciar sesión en la plataforma principal.", "warning");
+                    }, 1500);
+                }
+            });
+        }
+
+        // =========================================================================
+        // FUNCIONES DE COMUNICACIÓN AL TERMINAR EL TALLER
+        // =========================================================================
+        const MI_ID_DE_LECCION = "7_circuitos_CC"; 
+
+        window.marcarActividadCompletada = async function(score, timeSecs, difficultiesMap) {
+            if (isInIframe) {
+                // Le avisamos al Padre para que él guarde
+                window.parent.postMessage({
+                    action: 'marcarCompletado',
+                    lessonId: MI_ID_DE_LECCION,
+                    score: score,
+                    tiempo_segundos: timeSecs,
+                    dificultades: difficultiesMap,
+                    mensaje: '¡Has dominado este simulador!'
+                }, '*');
+                return true;
+            } else if (userId && db) {
+                // Entró por link directo y está logueado. Guardamos localmente en Firebase
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progress', 'data'), {
+                        [MI_ID_DE_LECCION]: true,
+                        [`${MI_ID_DE_LECCION}_score`]: score,
+                        [`${MI_ID_DE_LECCION}_tiempo_segundos`]: timeSecs,
+                        [`${MI_ID_DE_LECCION}_dificultades`]: difficultiesMap
+                    }, { merge: true });
+                    return true;
+                } catch (e) {
+                    console.error("Error guardando progreso", e);
+                    return false;
+                }
+            } else {
+                console.log("No se pudo guardar el progreso. Usuario no autenticado.");
+                return false;
+            }
+        };
+
+        // --- EXAM DATA: Electric Circuits & Kirchhoff ---
+        const questions = [
+            { 
+                type: 'mcq', 
+                text: "Si la longitud de un conductor cilíndrico de cobre se duplica y su radio transversal se reduce a la mitad, ¿cómo cambia su resistencia eléctrica $R$ original?", 
+                options: ["Aumenta por un factor de 2", "Aumenta por un factor de 4", "Aumenta por un factor de 8", "Permanece igual"], 
+                answer: 2, 
+                tip: "Usa la fórmula de resistividad: $R = \\rho \\frac{L}{A}$. Recuerda que el área $A = \\pi r^2$. Si $r$ se reduce a la mitad, $r^2$ disminuye a $1/4$, lo que multiplica $R$ por 4. Sumado al doble de longitud ($L \\times 2$), el factor total es $4 \\times 2 = 8$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En un nodo de un circuito convergen 3 ramas. Se sabe que por la rama A entran $5 \\text{ A}$, y por la rama B salen $2 \\text{ A}$. Según la Ley de Corrientes de Kirchhoff (LCK), ¿cuál es la corriente en la rama C?", 
+                options: ["$7 \\text{ A}$ saliendo", "$3 \\text{ A}$ saliendo", "$3 \\text{ A}$ entrando", "$0 \\text{ A}$"], 
+                answer: 1, 
+                tip: "LCK establece que $\\sum I_{\\text{entran}} = \\sum I_{\\text{salen}}$. Si entran $5\\text{A}$ y solo salen $2\\text{A}$ por B, deben salir $3\\text{A}$ adicionales por C para conservar la carga." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Tres resistencias $R_1 = 100 \\; \\Omega$, $R_2 = 200 \\; \\Omega$ y $R_3 = 300 \\; \\Omega$ están conectadas en serie a una batería ideal. Si la corriente que fluye por $R_1$ es de $10 \\text{ mA}$, ¿cuál es el voltaje de la batería?", 
+                options: ["$1 \\text{ V}$", "$3 \\text{ V}$", "$6 \\text{ V}$", "$12 \\text{ V}$"], 
+                answer: 2, 
+                tip: "En un circuito en serie, la corriente es la misma en todos los elementos. Encuentra la resistencia equivalente ($R_{eq} = R_1 + R_2 + R_3$) y luego aplica la Ley de Ohm: $V = I \\cdot R_{eq}$." 
+            },
+            { 
+                type: 'fill', 
+                text: "El inverso (recíproco) de la resistencia equivalente de un circuito conectado en paralelo es exactamente igual a la _________ de los inversos de las resistencias individuales.", 
+                answer: "suma", 
+                tip: "Es el fundamento para calcular conductancias en paralelo. Se resume en la fórmula: $\\frac{1}{R_{eq}} = \\frac{1}{R_1} + \\frac{1}{R_2} + ...$ Completa con la operación matemática correspondiente." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Dos resistores, $R_1 = 6 \\; \\Omega$ y $R_2 = 3 \\; \\Omega$, están conectados en paralelo. Esta combinación se conecta en serie con un tercer resistor $R_3 = 8 \\; \\Omega$. ¿Cuál es la resistencia equivalente total del circuito mixto?", 
+                options: ["$17 \\; \\Omega$", "$14 \\; \\Omega$", "$10 \\; \\Omega$", "$2 \\; \\Omega$"], 
+                answer: 2, 
+                tip: "Primero resuelve el paralelo: $R_p = \\frac{6 \\times 3}{6 + 3} = 2 \\; \\Omega$. Luego, suma este resultado en serie con $R_3$." 
+            },
+            { 
+                type: 'equation', 
+                text: "Escribe la expresión algebraica para calcular la **Potencia eléctrica** disipada por una resistencia en términos de la corriente $I$ y su resistencia $R$. (Escribe usando notación plana, ej: I^2*R)", 
+                answer: "I^2*R", 
+                tip: "Combina la ley de la potencia $P = V \\cdot I$ con la Ley de Ohm $V = I \\cdot R$ para eliminar el voltaje." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Dos bombillas incandescentes, una de $60 \\text{ W}$ y otra de $100 \\text{ W}$ (ambas diseñadas para operar a $120 \\text{ V}$), se conectan **en serie** a una fuente de $120 \\text{ V}$. ¿Qué bombilla brillará más y por qué?", 
+                options: ["La de 100 W, porque siempre disipa más potencia.", "La de 60 W, porque tiene mayor resistencia y disipa más potencia en serie.", "Ambas brillarán igual, pues fluye la misma corriente.", "Ninguna encenderá debido a la caída de voltaje."], 
+                answer: 1, 
+                tip: "Calcula $R$ para cada una: $R = V^2 / P$. La de 60W tiene mayor resistencia. En serie, la corriente $I$ es constante para ambas, y la potencia real disipada es $P = I^2 \\cdot R$. A mayor $R$, mayor disipación." 
+            },
+            { 
+                type: 'drag', 
+                text: "Asocia el Teorema o Ley de circuitos de la columna de la derecha con la definición correcta de la izquierda:", 
+                pairs: [
+                    { id: 'p1', question: "Ley de Corrientes (LCK)", answer: "Garantiza el principio físico de conservación de la carga en un nodo." },
+                    { id: 'p2', question: "Ley de Voltajes (LVK)", answer: "Garantiza el principio físico de conservación de la energía en una trayectoria cerrada." },
+                    { id: 'p3', question: "Teorema de Thévenin", answer: "Reduce una red lineal a una fuente de voltaje ideal en serie con una impedancia." }
+                ],
+                tip: "Thévenin simplifica para análisis de carga. LCK cuenta electrones que entran y salen. LVK cuenta energía ganada y perdida en un ciclo cerrado."
+            },
+            { 
+                type: 'mcq', 
+                text: "En el análisis de Nodos (basado en la LCK), uno de los nodos de la red eléctrica debe ser forzosamente asignado como el 'nodo de referencia'. ¿Qué valor de potencial eléctrico se le asume por convención matemática?", 
+                options: ["El voltaje más alto de la red.", "El promedio de los voltajes.", "$0 \\text{ V}$ (Tierra).", "Infinito."], 
+                answer: 2, 
+                tip: "Para establecer un sistema de ecuaciones algebraicas, se necesita un nivel base desde donde medir todas las caídas de tensión." 
+            },
+            { 
+                type: 'equation', 
+                text: "Aplica la regla del Divisor de Voltaje. Si tienes una fuente $V_s$ conectada en serie con $R_1$ y $R_2$, ¿cómo calculas el voltaje $V_1$ que cae exclusivamente en $R_1$? (Usa notación: Vs*R1/(R1+R2))", 
+                answer: "Vs*R1/(R1+R2)", 
+                tip: "El voltaje se reparte proporcionalmente al valor de cada resistencia en serie. Tomas el voltaje total y lo multiplicas por la fracción que representa R1 respecto al total." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Al aplicar el Teorema de Superposición para analizar un circuito lineal con múltiples fuentes, se debe analizar la contribución de cada fuente individualmente. Para 'apagar' o neutralizar las demás fuentes, ¿cómo se procede?", 
+                options: ["Reemplazando fuentes de voltaje por cortos y fuentes de corriente por circuitos abiertos.", "Desconectando ambas y dejando el circuito abierto.", "Reemplazando ambas por cortocircuitos.", "Invirtiendo la polaridad de las fuentes no evaluadas."], 
+                answer: 0, 
+                tip: "Una fuente de voltaje 'cero' equivale a un cable ideal (cortocircuito, $V=0$). Una fuente de corriente 'cero' equivale a cortar el cable (circuito abierto, $I=0$)." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Una batería real de $9 \\text{ V}$ nominales se conecta a una carga externa de $17 \\; \\Omega$. Si el voltímetro marca que el voltaje en las terminales de la batería cae a $8.5 \\text{ V}$, ¿cuál es la resistencia interna $r$ de la batería?", 
+                options: ["$1 \\; \\Omega$", "$0.5 \\; \\Omega$", "$2 \\; \\Omega$", "$0 \\; \\Omega$ (es ideal)"], 
+                answer: 0, 
+                tip: "Primero halla la corriente del circuito: $I = V_{carga} / R_{carga} = 8.5 / 17 = 0.5\\text{A}$. La caída interna de tensión es $9\\text{V} - 8.5\\text{V} = 0.5\\text{V}$. Aplica Ohm a la resistencia interna: $r = V_{int} / I$." 
+            },
+            { 
+                type: 'fill', 
+                text: "El Teorema de la Máxima Transferencia de Potencia establece que una fuente entregará la potencia máxima a una carga cuando la resistencia de la carga sea ________ a la resistencia de Thévenin de la red.", 
+                answer: "igual", 
+                tip: "Se conoce como adaptación o acople de impedancias. Matemáticamente ocurre en el vértice de la parábola donde $R_L = R_{th}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Si se coloca un cable conductor de cobre ideal (sin resistencia) exactamente en paralelo a una resistencia $R_1$ que está conectada en un circuito activo, ¿qué sucede físicamente?", 
+                options: ["La corriente se divide por igual entre el cable y la resistencia.", "La resistencia equivalente del bloque se vuelve infinita.", "Toda la corriente fluye por el cable, 'cortocircuitando' a $R_1$.", "El voltaje en $R_1$ se duplica."], 
+                answer: 2, 
+                tip: "El cálculo paralelo entre un valor R y 0 (el cable) es: $R_{eq} = (R \\times 0) / (R + 0) = 0$. La corriente eléctrica sigue el camino de menor resistencia." 
+            },
+            { 
+                type: 'drag', 
+                text: "Arrastra el instrumento de medición eléctrica hacia su configuración ideal en un laboratorio:", 
+                pairs: [
+                    { id: 'i1', question: "Amperímetro Ideal", answer: "Se conecta en serie; Resistencia interna tendiente a 0 Ω." },
+                    { id: 'i2', question: "Voltímetro Ideal", answer: "Se conecta en paralelo; Resistencia interna tendiente a Infinito." },
+                    { id: 'i3', question: "Óhmetro", answer: "Requiere que el componente esté desenergizado para medir." }
+                ],
+                tip: "Si un instrumento mide voltaje sin desviar corriente, su resistencia debe ser gigante. Si mide corriente sin alterar el voltaje, su resistencia debe ser nula."
+            },
+            { 
+                type: 'mcq', 
+                text: "¿Por qué NO es válido usar el Teorema de Superposición directamente para calcular la **potencia total** disipada en un resistor cuando actúan múltiples fuentes simultáneamente?", 
+                options: ["Porque la potencia es un parámetro exclusivo de CA.", "Porque la LVK no se cumple con la potencia.", "Porque la relación de potencia $P=I^2 R$ no es una ecuación lineal con respecto a la corriente.", "Porque requiere calcular la resistencia de Norton primero."], 
+                answer: 2, 
+                tip: "La superposición funciona solo en relaciones lineales (Voltaje y Corriente). Elevar al cuadrado una suma $(I_1 + I_2)^2$ no es igual a la suma de los cuadrados $(I_1^2 + I_2^2)$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En un Análisis de Mallas, escribes la ecuación para la malla 1 usando LVK. ¿Cómo modelas la caída de tensión en un resistor $R$ que es compartido entre la malla 1 (corriente $I_1$) y la malla adyacente 2 (corriente $I_2$) asumiendo el mismo sentido de rotación?", 
+                options: ["$-R(I_1 + I_2)$", "$-R(I_1 - I_2)$", "$-R \\cdot I_1$", "El componente se ignora matemáticamente."], 
+                answer: 1, 
+                tip: "Al estar en el límite, la corriente neta real que atraviesa el resistor visto desde la perspectiva de la malla 1 es la corriente principal menos la contracorriente de la malla vecina." 
+            },
+            { 
+                type: 'equation', 
+                text: "Escribe la ecuación equivalente de resistencias en paralelo para dos resistores, R1 y R2, simplificada en un solo término fraccionario. (Ej: R1*R2/(R1+R2))", 
+                answer: "R1*R2/(R1+R2)", 
+                tip: "Es el famoso producto sobre la suma. Sale algebraicamente de $1 / (1/R_1 + 1/R_2)$." 
+            },
+            { 
+                type: 'fill', 
+                text: "El fenómeno físico mediante el cual toda corriente eléctrica que fluye a través de un material conductor con resistencia $R > 0$ genera energía térmica (calor) se conoce universalmente como Efecto ________.", 
+                answer: "Joule", 
+                tip: "Este efecto es la base de funcionamiento de estufas, tostadoras, y la razón por la que los procesadores necesitan ventiladores." 
+            },
+            { 
+                type: 'canvas', 
+                text: "Simulador Ley de Ohm: Tienes un circuito en CC alimentado por una batería ideal de $12 \\text{ V}$. **Arrastra el selector** cilíndrico del reóstato (resistor variable) para ajustar su resistencia $R$ de modo que el Amperímetro indique una corriente de **$0.15 \\text{ A}$** exactos para completar la pregunta.", 
+                tip: "Usa la ley fundamental $V = I \\cdot R$. Si conoces que $V = 12$ y necesitas $I = 0.15$, despeja $R$ ($R = 12 / 0.15$). Arrastra la barra hasta llegar a ese valor (80 ohmios)." 
+            }
+        ];
+
+        let currentQuestion = 0;
+        let userState = questions.map(() => ({ answered: false, flagged: false, value: null, difficulty: null, isCorrect: false }));
+        let examSubmitted = false;
+
+        function startTimer() {
+            if (isTimerRunning) return;
+            isTimerRunning = true;
+            timerInterval = setInterval(() => {
+                elapsedSeconds++;
+                const mins = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0');
+                const secs = (elapsedSeconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer-display').textContent = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+        }
+
+        window.setDifficulty = function(index, level) {
+            if (examSubmitted) return;
+            userState[index].difficulty = level;
+            
+            // Actualizar UI de los botones
+            const group = document.getElementById(`diff-group-${index}`);
+            const buttons = group.querySelectorAll('.diff-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-600', 'bg-amber-500', 'border-amber-600', 'bg-red-500', 'border-red-600');
+                btn.classList.add('bg-white', 'text-slate-600');
+            });
+
+            const activeBtn = group.querySelector(`[data-level="${level}"]`);
+            activeBtn.classList.remove('bg-white', 'text-slate-600');
+            if (level === 'facil') activeBtn.classList.add('bg-emerald-500', 'text-white', 'border-emerald-600');
+            if (level === 'medio') activeBtn.classList.add('bg-amber-500', 'text-white', 'border-amber-600');
+            if (level === 'dificil') activeBtn.classList.add('bg-red-500', 'text-white', 'border-red-600');
+        };
+
+        function initUI() {
+            renderNavGrid();
+            renderAllQuestions();
+            showQuestion(0);
+            startTimer(); // Iniciar reloj
+            
+            document.getElementById('btn-prev').addEventListener('click', () => { if(currentQuestion > 0) showQuestion(currentQuestion - 1); });
+            document.getElementById('btn-next').addEventListener('click', () => { if(currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1); });
+            document.getElementById('btn-flag').addEventListener('click', () => toggleFlag(currentQuestion));
+            
+            document.getElementById('btn-evaluate').addEventListener('click', showConfirmModal);
+            document.getElementById('btn-cancel-eval').addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden'));
+            document.getElementById('btn-confirm-eval').addEventListener('click', () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                evaluateExam();
+            });
+
+            document.getElementById('btn-review').addEventListener('click', hideResultsPanel);
+            document.getElementById('btn-export').addEventListener('click', exportToPDF);
+            document.getElementById('btn-save').addEventListener('click', saveProgress);
+
+            // Setup KaTeX rendering for dynamic text. Wait a slight tick to let DOM settle.
+            setTimeout(() => {
+                if(window.renderMathInElement) {
+                    renderMathInElement(document.body, {
+                      delimiters: [
+                          {left: '$$', right: '$$', display: true},
+                          {left: '$', right: '$', display: false},
+                          {left: '\\(', right: '\\)', display: false},
+                          {left: '\\[', right: '\\]', display: true}
+                      ],
+                      throwOnError: false
+                    });
+                }
+            }, 300);
+        }
+
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid');
+            grid.innerHTML = '';
+            questions.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = `nav-btn w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-200 cursor-pointer shadow-sm`;
+                btn.id = `nav-btn-${i}`;
+                btn.textContent = i + 1;
+                btn.addEventListener('click', () => showQuestion(i));
+                grid.appendChild(btn);
+            });
+            updateNavStyles();
+        }
+
+        function updateNavStyles() {
+            questions.forEach((_, i) => {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(!btn) return;
+                btn.classList.remove('nav-answered', 'nav-flagged', 'nav-active', 'bg-slate-50', 'text-slate-500', 'border-slate-200');
+                if (userState[i].flagged) btn.classList.add('nav-flagged');
+                else if (userState[i].answered) btn.classList.add('nav-answered');
+                else btn.classList.add('bg-slate-50', 'text-slate-500', 'border-slate-200');
+
+                if (i === currentQuestion) btn.classList.add('nav-active');
+            });
+        }
+
+        function renderAllQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = `q-card hidden flex flex-col h-full`;
+                card.id = `q-card-${index}`;
+
+                let html = `
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-slate-800 leading-relaxed"><span class="text-emerald-600 mr-2 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">${index + 1}.</span> ${q.text}</h3>
+                        <div id="feedback-icon-${index}" class="hidden shrink-0 mt-1"></div>
+                    </div><div class="flex-grow">`;
+
+                if (q.type === 'mcq') {
+                    html += `<div class="space-y-3 mt-4">`;
+                    q.options.forEach((opt, i) => {
+                        html += `
+                        <label class="flex items-center space-x-4 p-4 border border-slate-200 rounded-xl hover:bg-emerald-50 hover:border-emerald-300 cursor-pointer transition-all group shadow-sm">
+                            <input type="radio" name="q${index}" value="${i}" class="h-5 w-5 text-emerald-600 border-gray-300 focus:ring-emerald-500 q-input cursor-pointer">
+                            <span class="text-slate-700 text-[1.05rem] group-hover:text-emerald-900">${opt}</span>
+                        </label>`;
+                    });
+                    html += `</div>`;
+                } 
+                else if (q.type === 'fill' || q.type === 'equation') {
+                    const ph = q.type === 'fill' ? "Ej: mallas, paralelo..." : "Expresión algebraica (Ej: I^2*R)";
+                    html += `
+                    <div class="mt-6 flex flex-col max-w-sm">
+                        <input type="text" id="input-q${index}" autocomplete="off" class="q-input math-input text-xl border-2 border-slate-300 rounded-xl px-4 py-3 focus:ring-4 focus:ring-emerald-200 focus:border-emerald-500 outline-none transition-all text-center text-slate-700 font-bold shadow-sm" placeholder="${ph}">
+                        ${q.type === 'equation' ? '<p class="text-sm text-slate-500 mt-3 text-center bg-slate-50 p-2 rounded-lg border border-slate-200">Usa variables directas y notación plana. Ej: <code class="bg-white px-1 py-0.5 rounded text-emerald-600">I^2*R</code> o <code class="bg-white px-1 py-0.5 rounded text-emerald-600">V/R</code></p>' : ''}
+                    </div>`;
+                }
+                else if (q.type === 'drag') {
+                    html += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6"><div class="space-y-4">
+                                <h4 class="font-bold text-slate-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-target"></i> Concepto / Instrumento</h4>`;
+                    q.pairs.forEach((p) => {
+                        html += `
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm">
+                            <span class="font-semibold text-slate-700 text-base">${p.question}</span>
+                            <div class="dropzone min-h-[70px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-sm text-slate-400 transition-colors relative" data-target="${p.question}">
+                                <span>Soltar definición aquí</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div><div class="space-y-4 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-50">
+                                <h4 class="font-bold text-emerald-600 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-lightning"></i> Definición Físcia</h4>`;
+                    
+                    let shuffled = [...q.pairs].sort(() => Math.random() - 0.5);
+                    let dragHtml = `<div class="flex flex-col gap-3" id="drag-source-${index}">`;
+                    shuffled.forEach((p) => {
+                        dragHtml += `
+                        <div class="draggable bg-white border-2 border-emerald-200 text-emerald-800 p-4 rounded-xl font-semibold shadow-sm hover:border-emerald-400 hover:shadow-md transition-all flex items-center gap-3 cursor-grab active:scale-95" draggable="true" data-id="${p.answer}">
+                            <i class="ph ph-dots-six-vertical text-emerald-400 text-xl"></i> <span class="text-sm leading-tight">${p.answer}</span>
+                        </div>`;
+                    });
+                    html += dragHtml + `</div></div></div>`;
+                }
+                else if (q.type === 'canvas') {
+                    html += `
+                    <div class="w-full max-w-2xl mx-auto aspect-video md:aspect-[16/9] bg-[#1e293b] border-2 border-slate-700 rounded-2xl overflow-hidden mt-6 relative shadow-inner touch-none select-none">
+                        <canvas id="ohmCanvas" class="w-full h-full cursor-pointer touch-none"></canvas>
+                        
+                        <!-- Pantalla del Amperímetro -->
+                        <div class="absolute top-6 left-1/2 -translate-x-1/2 bg-[#0f172a] border-4 border-slate-600 px-6 py-3 rounded-lg shadow-2xl font-mono text-center flex flex-col pointer-events-none z-10">
+                            <span class="text-[0.65rem] text-amber-500 uppercase font-black tracking-[0.2em] mb-1">Amperímetro Digital</span>
+                            <span id="canvas-amps" class="font-bold text-cyan-400 text-3xl tracking-wider">0.00 A</span>
+                        </div>
+
+                        <!-- Info Reóstato -->
+                        <div class="absolute bottom-6 right-6 bg-slate-800/80 backdrop-blur px-4 py-2 rounded-lg border border-slate-600 font-mono text-sm pointer-events-none text-emerald-400 z-10">
+                            Resistencia: <span id="canvas-ohms" class="font-bold text-white text-lg">20 Ω</span>
+                        </div>
+
+                        <div class="absolute bottom-4 left-6 flex justify-center pointer-events-none z-10">
+                            <div class="bg-emerald-600/90 text-white text-xs px-4 py-2 rounded-full flex items-center gap-2 shadow-sm font-bold border border-emerald-400">
+                                <i class="ph ph-arrows-left-right text-lg animate-pulse"></i> Arrastra la perilla roja
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="input-q${index}" class="q-input" value="false">`;
+                }
+                html += `</div>`; 
+
+                html += `
+                    <div class="mt-8 pt-6 border-t border-slate-100 shrink-0 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <button onclick="document.getElementById('tip-${index}').classList.toggle('hidden')" class="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-2 transition-colors bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 hover:border-amber-200">
+                            <i class="ph-fill ph-lightbulb text-lg"></i> Mostrar Tip Metodológico
+                        </button>
+                        
+                        <div class="flex items-center gap-2 text-sm font-medium text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
+                            <i class="ph ph-chart-bar text-lg"></i> Nivel de dificultad:
+                            <div class="flex gap-1" id="diff-group-${index}">
+                                <button class="diff-btn px-3 py-1 rounded-md border border-slate-300 hover:bg-emerald-50 transition-colors bg-white text-slate-600 shadow-sm text-xs font-bold" data-level="facil" onclick="setDifficulty(${index}, 'facil')">Fácil</button>
+                                <button class="diff-btn px-3 py-1 rounded-md border border-slate-300 hover:bg-amber-50 transition-colors bg-white text-slate-600 shadow-sm text-xs font-bold" data-level="medio" onclick="setDifficulty(${index}, 'medio')">Medio</button>
+                                <button class="diff-btn px-3 py-1 rounded-md border border-slate-300 hover:bg-red-50 transition-colors bg-white text-slate-600 shadow-sm text-xs font-bold" data-level="dificil" onclick="setDifficulty(${index}, 'dificil')">Difícil</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tip-${index}" class="hidden mt-4 bg-amber-50 border-l-4 border-amber-400 text-amber-900 text-[0.95rem] p-4 rounded-r-xl shadow-sm fade-in leading-relaxed">
+                        <strong>Pista de resolución:</strong> ${q.tip}
+                        </div>
+                    </div>
+                `;
+
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+
+            // Input handlers
+            document.querySelectorAll('.q-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const match = (e.target.name || e.target.id).match(/q(\d+)/);
+                    if(match) {
+                        userState[parseInt(match[1])].answered = true;
+                        userState[parseInt(match[1])].value = e.target.value;
+                        updateNavStyles();
+                    }
+                });
+                if (input.type === 'text') {
+                    input.addEventListener('input', (e) => {
+                        const match = e.target.id.match(/q(\d+)/);
+                        if(match) {
+                            userState[parseInt(match[1])].answered = (e.target.value.trim() !== '');
+                            userState[parseInt(match[1])].value = e.target.value;
+                            updateNavStyles();
+                        }
+                    });
+                }
+            });
+
+            initDragAndDrop();
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.q-card').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.remove('hidden');
+                    const txt = el.querySelector('input[type="text"]');
+                    if(txt && !examSubmitted) setTimeout(() => txt.focus(), 100);
+                    
+                    if (questions[i].type === 'canvas' && !window.canvasInitialized) {
+                        setTimeout(initCircuitCanvas, 100); 
+                        window.canvasInitialized = true;
+                    }
+                } else el.classList.add('hidden');
+            });
+            
+            currentQuestion = index;
+            updateNavStyles();
+            if(index !== 0) document.getElementById('instructions-panel').style.display = 'none';
+
+            document.getElementById('btn-prev').disabled = index === 0;
+            document.getElementById('btn-next').disabled = index === questions.length - 1;
+            
+            const flagBtn = document.getElementById('btn-flag');
+            if (userState[index].flagged) {
+                flagBtn.classList.replace('text-amber-600', 'text-white');
+                flagBtn.classList.replace('bg-white', 'bg-amber-500');
+                flagBtn.querySelector('i').classList.replace('ph-flag', 'ph-check');
+            } else {
+                flagBtn.classList.replace('text-white', 'text-amber-600');
+                flagBtn.classList.replace('bg-amber-500', 'bg-white');
+                flagBtn.querySelector('i').classList.replace('ph-check', 'ph-flag');
+            }
+        }
+
+        function toggleFlag(index) { userState[index].flagged = !userState[index].flagged; showQuestion(index); }
+
+        function initDragAndDrop() {
+            document.querySelectorAll('.draggable').forEach(draggable => {
+                draggable.addEventListener('dragstart', (e) => {
+                    draggable.classList.add('opacity-50', 'scale-95');
+                    e.dataTransfer.setData('text/plain', draggable.getAttribute('data-id'));
+                    setTimeout(() => draggable.classList.add('invisible'), 0);
+                });
+                draggable.addEventListener('dragend', () => draggable.classList.remove('opacity-50', 'scale-95', 'invisible'));
+            });
+
+            document.querySelectorAll('.dropzone').forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault(); zone.classList.remove('dragover');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    const draggable = document.querySelector(`.draggable[data-id="${draggedId}"]`);
+                    
+                    if (draggable) {
+                        // Return existing item to source
+                        if (zone.children.length > 0 && !zone.children[0].tagName.toLowerCase().includes('span')) {
+                            const qCard = zone.closest('.q-card');
+                            const sourceContainer = qCard.querySelector(`[id^='drag-source']`);
+                            if(sourceContainer) sourceContainer.appendChild(zone.children[0]);
+                        }
+                        if(zone.querySelector('span')) zone.innerHTML = '';
+                        
+                        zone.appendChild(draggable);
+                        zone.classList.add('bg-emerald-50', 'border-solid', 'border-emerald-400');
+                        zone.classList.remove('border-dashed', 'text-slate-400');
+                        
+                        // Dynamic Validation
+                        const qCard = zone.closest('.q-card');
+                        const qIndex = parseInt(qCard.id.split('-')[2]);
+                        const allZones = qCard.querySelectorAll('.dropzone');
+                        let fullZones = 0;
+                        allZones.forEach(z => { if(z.querySelector('.draggable')) fullZones++; });
+                        if(fullZones === allZones.length) { 
+                            userState[qIndex].answered = true; 
+                            updateNavStyles(); 
+                        }
+                    }
+                });
+            });
+        }
+
+        // Circuit Simulator Logic
+        function initCircuitCanvas() {
+            const canvas = document.getElementById('ohmCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const ampDisplay = document.getElementById('canvas-amps');
+            const ohmDisplay = document.getElementById('canvas-ohms');
+            
+            let cw = canvas.parentElement.clientWidth;
+            let ch = canvas.parentElement.clientHeight;
+            canvas.width = cw; canvas.height = ch;
+            
+            const V_source = 12.0; // Battery voltage
+            let R_current = 20;    // Ohms
+            
+            // Slider geometry
+            const slider = { 
+                y: ch * 0.7, 
+                width: cw * 0.4, 
+                xStart: cw * 0.5, 
+                knobR: 16,
+                knobX: cw * 0.5, // Initial position
+                isDragging: false 
+            };
+
+            function updatePhysics() {
+                // Map slider pos to Resistance (10 to 120 ohms)
+                const percent = (slider.knobX - slider.xStart) / slider.width;
+                R_current = Math.round(10 + percent * 110); 
+                
+                // I = V/R
+                const I_current = V_source / R_current;
+                
+                ampDisplay.innerHTML = `${I_current.toFixed(2)} A`;
+                ohmDisplay.innerHTML = `${R_current} Ω`;
+
+                // Update input if condition is met (Exactly 0.15 A means R = 80 ohms)
+                const canvasInput = document.querySelector('input[type="hidden"].q-input');
+                if (canvasInput && !examSubmitted) {
+                    if (Math.abs(I_current - 0.15) < 0.005) {
+                        canvasInput.value = "true";
+                        ampDisplay.classList.replace('text-cyan-400', 'text-green-400');
+                        ampDisplay.classList.add('animate-pulse');
+                    } else {
+                        canvasInput.value = "false";
+                        ampDisplay.classList.replace('text-green-400', 'text-cyan-400');
+                        ampDisplay.classList.remove('animate-pulse');
+                    }
+                    canvasInput.dispatchEvent(new Event('change'));
+                }
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw Grid
+                ctx.strokeStyle = '#334155'; ctx.lineWidth = 1;
+                for(let i=0; i<cw; i+=40){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,ch); ctx.stroke(); }
+                for(let i=0; i<ch; i+=40){ ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(cw,i); ctx.stroke(); }
+
+                // Draw Circuit Wires (Thick cyan)
+                ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 6; ctx.lineJoin = 'round';
+                
+                const leftX = cw * 0.2;
+                const rightX = slider.xStart + slider.width;
+                const topY = ch * 0.3;
+                const bottomY = slider.y;
+
+                ctx.beginPath();
+                // Battery to top wire
+                ctx.moveTo(leftX, bottomY - 30);
+                ctx.lineTo(leftX, topY);
+                // Top wire across
+                ctx.lineTo(rightX, topY);
+                // Down to resistor
+                ctx.lineTo(rightX, bottomY);
+                // Resistor track to battery bottom
+                ctx.moveTo(slider.xStart, bottomY);
+                ctx.lineTo(leftX, bottomY);
+                ctx.stroke();
+
+                // Draw Battery
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(leftX - 25, bottomY - 30, 50, 60);
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#cbd5e1';
+                // Long plate (+)
+                ctx.beginPath(); ctx.moveTo(leftX - 20, bottomY - 15); ctx.lineTo(leftX + 20, bottomY - 15); ctx.stroke();
+                // Short plate (-)
+                ctx.beginPath(); ctx.moveTo(leftX - 10, bottomY + 15); ctx.lineTo(leftX + 10, bottomY + 15); ctx.lineWidth=8; ctx.stroke();
+                ctx.fillStyle = '#ef4444'; ctx.font = 'bold 20px monospace'; ctx.fillText('+', leftX - 40, bottomY - 10);
+                ctx.fillStyle = '#cbd5e1'; ctx.font = '16px monospace'; ctx.fillText('12V', leftX - 50, bottomY + 25);
+
+                // Draw Resistor Coil (Slider track)
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.moveTo(slider.xStart, bottomY);
+                ctx.lineTo(slider.xStart + slider.width, bottomY);
+                ctx.stroke();
+
+                // Draw zigzag over coil based on resistance length
+                ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(slider.xStart, bottomY);
+                for(let x = slider.xStart; x < slider.knobX; x += 10) {
+                    ctx.lineTo(x + 5, bottomY - 8);
+                    ctx.lineTo(x + 10, bottomY);
+                }
+                ctx.stroke();
+
+                // Connection from slider knob to the main wire
+                ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 6;
+                ctx.beginPath(); ctx.moveTo(slider.knobX, bottomY); ctx.lineTo(slider.knobX, topY); ctx.stroke();
+
+                // Draw Slider Knob
+                ctx.beginPath(); ctx.arc(slider.knobX, bottomY, slider.knobR, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444'; ctx.shadowColor = '#ef4444'; ctx.shadowBlur = 10; ctx.fill();
+                ctx.shadowBlur = 0; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
+                
+                // Draw Ammeter node
+                ctx.beginPath(); ctx.arc(cw * 0.5, topY, 20, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a'; ctx.fill();
+                ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 4; ctx.stroke();
+                ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 20px Inter'; ctx.textAlign = 'center'; ctx.textBaseline='middle'; ctx.fillText('A', cw*0.5, topY);
+            }
+
+            const startDrag = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                const mx = clientX - rect.left;
+                const my = clientY - rect.top;
+                
+                // Distance to knob
+                if (Math.sqrt((mx - slider.knobX)**2 + (my - slider.y)**2) < slider.knobR * 2.5) { 
+                    slider.isDragging = true; e.preventDefault(); canvas.style.cursor = 'grabbing';
+                }
+            };
+
+            const doDrag = (e) => {
+                if (slider.isDragging) {
+                    e.preventDefault();
+                    const rect = canvas.getBoundingClientRect();
+                    let mx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    
+                    // Constrain to track
+                    if (mx < slider.xStart) mx = slider.xStart;
+                    if (mx > slider.xStart + slider.width) mx = slider.xStart + slider.width;
+                    
+                    slider.knobX = mx;
+                    updatePhysics();
+                    draw();
+                }
+            };
+            
+            const stopDrag = () => { slider.isDragging = false; canvas.style.cursor = 'pointer'; };
+
+            canvas.addEventListener('mousedown', startDrag); 
+            canvas.addEventListener('mousemove', doDrag); 
+            window.addEventListener('mouseup', stopDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive: false}); 
+            canvas.addEventListener('touchmove', doDrag, {passive: false}); 
+            window.addEventListener('touchend', stopDrag);
+
+            window.addEventListener('resize', () => {
+                cw = canvas.parentElement.clientWidth; ch = canvas.parentElement.clientHeight;
+                canvas.width = cw; canvas.height = ch; 
+                slider.y = ch * 0.7; slider.width = cw * 0.4; slider.xStart = cw * 0.4;
+                slider.knobX = slider.xStart + (slider.width * ((R_current - 10) / 110)); // Maintain relative pos
+                draw();
+            });
+
+            updatePhysics();
+            draw();
+        }
+
+        // Evaluation Logic
+        function cleanString(str) {
+            if(!str) return "";
+            return str.toLowerCase().replace(/\s+/g, '').replace(/[\(\)]/g, '').replace(/\*/g, '').replace(/\\/g, '').replace(/[{}]/g, '');
+        }
+
+        function showConfirmModal() {
+            let unanswered = userState.filter(s => !s.answered).length;
+            const msg = document.getElementById('confirm-message');
+            msg.textContent = unanswered > 0 ? `Tienes ${unanswered} pregunta(s) sin responder. ¿Seguro que deseas evaluar ahora?` : `¿Deseas enviar tus respuestas para su evaluación final?`;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function evaluateExam() {
+            examSubmitted = true;
+            stopTimer(); // Detener reloj al evaluar
+            let score = 0; let total = questions.length;
+
+            questions.forEach((q, index) => {
+                const card = document.getElementById(`q-card-${index}`);
+                const icon = document.getElementById(`feedback-icon-${index}`);
+                let isCorrect = false;
+
+                card.querySelectorAll('input, button.draggable').forEach(el => { el.disabled = true; if(el.draggable) el.draggable = false; el.classList.remove('cursor-pointer'); });
+
+                if (q.type === 'mcq') {
+                    if (userState[index].value !== null && parseInt(userState[index].value) === q.answer) isCorrect = true;
+                } else if (q.type === 'fill' || q.type === 'equation') {
+                    if (userState[index].value) {
+                        const uVal = cleanString(userState[index].value); const aVal = cleanString(q.answer.toString());
+                        if (uVal === aVal || uVal.includes(aVal)) isCorrect = true;
+                        if (q.type === 'equation') {
+                             // Special cases for equation formats
+                             if ((uVal.includes('i^2') || uVal.includes('i2')) && uVal.includes('r')) isCorrect = true;
+                             if (uVal.includes('r1') && uVal.includes('r2') && uVal.includes('+')) isCorrect = true;
+                        }
+
+                        if(!isCorrect) {
+                            const inpCont = card.querySelector('input[type="text"]').parentElement;
+                            const ansDiv = document.createElement('div');
+                            ansDiv.className = "mt-2 text-sm text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200";
+                            ansDiv.innerHTML = `Solución esperada: $$${q.answer}$$`;
+                            inpCont.appendChild(ansDiv);
+                            if(window.renderMathInElement) renderMathInElement(ansDiv);
+                        }
+                    }
+                } else if (q.type === 'drag') {
+                    let correctCount = 0;
+                    card.querySelectorAll('.dropzone').forEach(zone => {
+                        const target = zone.getAttribute('data-target'); const child = zone.querySelector('.draggable');
+                        if (child) {
+                            const pair = q.pairs.find(p => p.question === target);
+                            if (pair && pair.answer === child.getAttribute('data-id')) { correctCount++; zone.classList.add('border-green-400', 'bg-green-50'); } 
+                            else { zone.classList.add('border-red-400', 'bg-red-50'); }
+                        }
+                    });
+                    if (correctCount === q.pairs.length) isCorrect = true;
+                } else if (q.type === 'canvas') {
+                    if (userState[index].value === "true") isCorrect = true;
+                }
+
+                // Guardamos el estado de si la tuvo correcta para las estadísticas globales
+                userState[index].isCorrect = isCorrect;
+
+                icon.classList.remove('hidden');
+                if (isCorrect) {
+                    score++; card.classList.add('correct-card');
+                    icon.innerHTML = `<div class="bg-green-100 p-2 rounded-full text-green-600 shadow-sm border border-green-200"><i class="ph-bold ph-check text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#10b981'; // Emerald
+                } else {
+                    card.classList.add('incorrect-card');
+                    icon.innerHTML = `<div class="bg-red-100 p-2 rounded-full text-red-600 shadow-sm border border-red-200"><i class="ph-bold ph-x text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#ef4444';
+                }
+                document.getElementById(`nav-btn-${index}`).style.color = '#fff';
+                document.getElementById(`nav-btn-${index}`).style.borderColor = 'transparent';
+                document.getElementById(`tip-${index}`).classList.remove('hidden');
+            });
+
+            const percentage = Math.round((score / total) * 100);
+            document.getElementById('score-display').textContent = `${percentage}% (${score}/${total})`;
+            document.getElementById('results-panel').classList.remove('hidden');
+            
+            setTimeout(() => {
+                const bar = document.getElementById('score-bar');
+                bar.style.width = `${percentage}%`;
+                bar.className = `h-full rounded-full transition-all duration-1000 ease-out ${percentage >= 70 ? 'bg-emerald-500' : 'bg-red-500'}`;
+            }, 300);
+
+            const msg = document.getElementById('feedback-message');
+            if (percentage >= 70) {
+                msg.textContent = "¡Aprobado! Demuestras una excelente capacidad para analizar redes eléctricas y teoremas fundamentales.";
+                msg.className = "text-xl font-bold text-emerald-700 mb-6 text-center max-w-lg";
+                document.getElementById('btn-save').classList.remove('hidden');
+            } else {
+                msg.textContent = "Reprobado. Repasa los métodos de reducción, divisores y las Leyes de Kirchhoff. Requiere mínimo 70%.";
+                msg.className = "text-xl font-bold text-red-600 mb-6 text-center max-w-lg";
+            }
+            
+            window.lastScore = percentage;
+            document.getElementById('btn-export').classList.remove('hidden');
+            document.getElementById('btn-evaluate').classList.add('hidden');
+            
+            if(window.renderMathInElement) {
+                renderMathInElement(document.getElementById('questions-container'), {
+                    delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+                });
+            }
+        }
+
+        function hideResultsPanel() { document.getElementById('results-panel').classList.add('hidden'); }
+
+        // --- FUNCIONES DE ACCIÓN FINAL ---
+        async function saveProgress() {
+            if (!isInIframe && !userId) return showToast("Inicia sesión en la plataforma principal para guardar.", "error");
+            if (window.lastScore < 70) return showToast("Solo se guardan calificaciones aprobatorias (>70%).", "warning");
+
+            try {
+                const btn = document.getElementById('btn-save');
+                btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Guardando...`;
+                
+                // 1. Guardar progreso individual
+                const difficultiesMap = {};
+                userState.forEach((state, idx) => {
+                    difficultiesMap[`q${idx + 1}`] = state.difficulty || 'no_evaluado';
+                });
+                
+                // Ejecutamos la función asíncrona de marcado
+                const exito = await window.marcarActividadCompletada(window.lastScore, elapsedSeconds, difficultiesMap);
+                
+                if (exito !== false) {
+                    // 2. ACTUALIZAR ESTADÍSTICAS GLOBALES AGREGADAS (Increment)
+                    await updateAndLoadGlobalStats();
+
+                    showToast("¡Progreso sincronizado con tu Plataforma!", "success");
+                    btn.innerHTML = `<i class="ph ph-check-circle text-lg"></i> Guardado en la plataforma`;
+                    btn.classList.replace('bg-green-600', 'bg-slate-700');
+                    btn.classList.replace('hover:bg-green-700', 'hover:bg-slate-800');
+                    btn.disabled = true;
+                } else {
+                    throw new Error("Sin autorización para guardar");
+                }
+            } catch (error) {
+                console.error("Save err:", error);
+                showToast("Error de conexión al guardar el progreso.", "error");
+                document.getElementById('btn-save').innerHTML = `<i class="ph ph-cloud-arrow-up text-lg"></i> Reintentar`;
+            }
+        }
+
+        // --- NUEVO: FUNCIÓN PARA AGREGAR Y RENDERIZAR ESTADÍSTICAS GLOBALES ---
+        async function updateAndLoadGlobalStats() {
+            if (!db) return;
+            try {
+                // Referencia a UN ÚNICO documento público de estadísticas para no saturar la base de datos
+                const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'exam_stats', MI_ID_DE_LECCION);
+                
+                // 1. Preparamos el objeto de incrementos
+                const statsUpdate = {
+                    total_attempts: increment(1),
+                    total_passed: increment(window.lastScore >= 70 ? 1 : 0),
+                    total_time_seconds: increment(elapsedSeconds)
+                };
+                
+                // Sumar si la pregunta fue correcta
+                userState.forEach((state, idx) => {
+                    statsUpdate[`q${idx}_correct`] = increment(state.isCorrect ? 1 : 0);
+                });
+
+                // 2. Guardamos haciendo Merge y usando Increment()
+                await setDoc(statsRef, statsUpdate, { merge: true });
+
+                // 3. Descargamos el documento ya actualizado para crear la gráfica
+                const snap = await getDoc(statsRef);
+                if (!snap.exists()) return;
+
+                const data = snap.data();
+                const total = data.total_attempts || 1;
+                const passed = data.total_passed || 0;
+                const avgTime = Math.round((data.total_time_seconds || 0) / total);
+
+                // Pintamos los números
+                document.getElementById('stat-total').textContent = total;
+                document.getElementById('stat-passrate').textContent = Math.round((passed / total) * 100) + '%';
+                document.getElementById('stat-avgtime').textContent = `${Math.floor(avgTime / 60)}m ${avgTime % 60}s`;
+
+                // Hacemos visible el contenedor de stats
+                document.getElementById('stats-container').classList.remove('hidden');
+
+                // Preparamos datos para Chart.js
+                const labels = [];
+                const chartData = [];
+                for (let i = 0; i < questions.length; i++) {
+                    labels.push(`P${i+1}`);
+                    const corrects = data[`q${i}_correct`] || 0;
+                    chartData.push(Math.round((corrects / total) * 100)); // Porcentaje de acierto por pregunta
+                }
+
+                // Generamos la gráfica
+                const ctx = document.getElementById('statsChart').getContext('2d');
+                if (window.myChart) window.myChart.destroy(); // Limpiar gráfica anterior si existe
+                window.myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: '% de Estudiantes que acertaron',
+                            data: chartData,
+                            backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue
+                            borderColor: 'rgba(37, 99, 235, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, max: 100 }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error al generar estadísticas de comunidad:", error);
+            }
+        }
+
+        async function loadProgress() {
+            if (!userId || !db) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'progress', 'data');
+                const snapshot = await getDoc(docRef);
+                if (snapshot.exists() && snapshot.data()[`${MI_ID_DE_LECCION}_score`]) {
+                    showToast(`¡Bienvenido de nuevo! Tu récord en Circuitos es: ${snapshot.data()[`${MI_ID_DE_LECCION}_score`]}%`, "success");
+                }
+            } catch (e) { /* ignore silently */ }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-blue-600';
+            toast.className = `${bg} text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 fade-in border border-white/20`;
+            const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
+            toast.innerHTML = `<i class="ph ${icon} text-2xl"></i> <span class="font-medium text-[0.95rem]">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'; 
+                setTimeout(() => toast.remove(), 400); 
+            }, 4000);
+        }
+
+        function exportToPDF() {
+            document.querySelectorAll('.q-card').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('instructions-panel').style.display = 'none';
+            document.getElementById('results-panel').classList.add('hidden');
+            
+            const element = document.getElementById('questions-container');
+            showToast("Generando PDF detallado... Esto puede tardar unos segundos.", "info");
+            
+            const titleHTML = `<div id="pdf-header" class="mb-8 border-b-2 border-emerald-200 pb-4">
+                                  <h1 class="text-3xl font-black text-emerald-900">Resultados: Circuitos Eléctricos y Kirchhoff</h1>
+                                  <p class="text-lg text-slate-600 font-bold mt-2">Puntaje obtenido: ${window.lastScore}%</p>
+                               </div>`;
+            element.insertAdjacentHTML('afterbegin', titleHTML);
+
+            html2pdf().set({
+                margin: [15, 10, 15, 10], 
+                filename: 'Examen_Circuitos.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save().then(() => {
+                const h = document.getElementById('pdf-header');
+                if(h) h.remove();
+                
+                showQuestion(currentQuestion);
+                document.getElementById('results-panel').classList.remove('hidden');
+                showToast("¡PDF exportado exitosamente!", "success");
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>

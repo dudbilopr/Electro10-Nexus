@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Universitaria: Potencial Eléctrico</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- KaTeX for Beautiful Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f8fafc; }
+        
+        /* Draggable items styles */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone.dragover { background-color: #ede9fe; border-color: #8b5cf6; }
+        .math-input { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; }
+        
+        /* Navigation Grid Styles */
+        .nav-btn { transition: all 0.2s ease; }
+        .nav-answered { background-color: #8b5cf6; color: white; border-color: #7c3aed; }
+        .nav-flagged { background-color: #f59e0b; color: white; border-color: #d97706; }
+        .nav-active { box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.4); transform: scale(1.1); z-index: 10; }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        .correct-card { border: 2px solid #22c55e !important; background-color: #f0fdf4 !important; }
+        .incorrect-card { border: 2px solid #ef4444 !important; background-color: #fef2f2 !important; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center border border-slate-200">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-warning text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">¿Evaluar examen?</h3>
+            <p class="text-slate-600 mb-6" id="confirm-message">Aún tienes preguntas sin responder.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-cancel-eval" class="px-5 py-2.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button id="btn-confirm-eval" class="px-5 py-2.5 rounded-lg font-bold text-white bg-violet-600 hover:bg-violet-700 transition-colors">Sí, evaluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm shrink-0 z-40 relative border-b-2 border-violet-100">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-violet-600 p-2 rounded-lg text-white shadow-md">
+                    <i class="ph ph-wave-sine text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">Física Electromagnética</h1>
+                    <p class="text-xs md:text-sm text-violet-600 font-bold tracking-wide uppercase">Módulo 3: Potencial Eléctrico</p>
+                </div>
+            </div>
+            <div class="flex gap-3 items-center">
+                <div id="auth-status" class="text-sm font-medium text-slate-500 hidden md:flex items-center gap-1 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                    <i class="ph ph-spinner animate-spin"></i> Conectando plataforma...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <!-- Sidebar: Navigation Panel -->
+        <aside class="w-full md:w-1/4 lg:w-1/5 flex flex-col gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-full max-h-[calc(100vh-120px)] overflow-y-auto">
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="ph ph-squares-four text-violet-600"></i> Navegación
+                </h3>
+                
+                <div id="nav-grid" class="grid grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-6">
+                    <!-- Buttons injected via JS -->
+                </div>
+
+                <!-- Legend -->
+                <div class="text-xs text-slate-600 space-y-2 mb-6 border-t border-slate-100 pt-4">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded border border-slate-300 bg-slate-50"></div> Sin responder</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-violet-500 shadow-sm"></div> Respondida</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-amber-500 shadow-sm"></div> Bandera (Revisar)</div>
+                </div>
+
+                <div class="mt-auto space-y-3">
+                    <button id="btn-export" class="w-full hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200">
+                        <i class="ph ph-file-pdf text-lg text-red-500"></i> Exportar PDF
+                    </button>
+                    <button id="btn-evaluate" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="ph ph-check-circle text-lg"></i> Evaluar Examen
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Area: Question Display -->
+        <section class="w-full md:w-3/4 lg:w-4/5 flex flex-col h-full max-h-[calc(100vh-120px)]">
+            
+            <!-- Instructions -->
+            <div id="instructions-panel" class="bg-violet-50 border border-violet-200 rounded-xl p-6 mb-4 shadow-sm shrink-0 fade-in">
+                <h2 class="text-lg font-bold text-violet-900 mb-2 flex items-center gap-2">
+                    <i class="ph ph-info text-xl"></i> Instrucciones de la Evaluación
+                </h2>
+                <p class="text-sm text-violet-800 mb-2 leading-relaxed">Resuelve los 20 problemas sobre Energía Potencial, Potencial Eléctrico de partículas puntuales y superficies equipotenciales. Utiliza los <strong>tips metodológicos</strong> si necesitas apoyo para recordar las fórmulas como $V = kq/r$ o $U = qV$.</p>
+                <p class="text-sm text-violet-800 font-semibold bg-violet-100/50 p-2 rounded inline-block">Tu progreso se respaldará automáticamente en el Módulo 3 de Firebase si tu nota supera el 70%.</p>
+            </div>
+
+            <!-- Question Container -->
+            <div id="questions-container" class="flex-grow overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 relative p-6 md:p-10">
+                <!-- Questions injected here via JS -->
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="mt-4 flex justify-between items-center shrink-0">
+                <button id="btn-prev" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    <i class="ph ph-caret-left text-lg"></i> Anterior
+                </button>
+                
+                <button id="btn-flag" class="px-4 py-2.5 bg-white border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="ph-fill ph-flag"></i> <span class="hidden sm:inline">Marcar con Bandera</span>
+                </button>
+
+                <button id="btn-next" class="px-5 py-2.5 bg-violet-600 border border-violet-600 text-white rounded-lg hover:bg-violet-700 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    Siguiente <i class="ph ph-caret-right text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="results-panel" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-8 rounded-xl border border-slate-200 shadow-2xl fade-in">
+                <div class="bg-violet-100 text-violet-600 p-4 rounded-full mb-4">
+                    <i class="ph ph-medal text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Resultados Finales</h2>
+                <div class="text-6xl font-black mb-4 tracking-tighter text-violet-900" id="score-display">0%</div>
+                <p id="feedback-message" class="text-lg font-medium mb-8 text-center max-w-lg"></p>
+                
+                <div class="w-full max-w-md bg-slate-200 rounded-full h-4 mb-10 shadow-inner overflow-hidden">
+                  <div id="score-bar" class="bg-violet-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="btn-review" class="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+                        <i class="ph ph-magnifying-glass"></i> Revisar Respuestas
+                    </button>
+                    <button id="btn-save" class="hidden px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                        <i class="ph ph-cloud-arrow-up text-lg"></i> Guardar en la Nube
+                    </button>
+                </div>
+            </div>
+            
+        </section>
+    </main>
+
+    <script type="module">
+        // =========================================================================
+        // === INTEGRACIÓN FIREBASE (COMPATIBLE CON DASHBOARD UNAB) ===
+        // =========================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+        import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+            authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+            databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",
+            projectId: "laboratorio-de-coulomb",
+            storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+            messagingSenderId: "525944850850",
+            appId: "1:525944850850:web:eca9c0b79809358e8d8afb",
+            measurementId: "G-SZECJNG25E"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const statusEl = document.getElementById('auth-status');
+            if (user) {
+                const userName = user.email ? user.email.split('@')[0] : 'Estudiante';
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></div> <span class="truncate max-w-[100px]">${userName}</span>`;
+                statusEl.classList.remove('hidden');
+                loadProgress();
+            } else {
+                statusEl.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Debes iniciar sesión en la plataforma`;
+                statusEl.classList.remove('hidden');
+            }
+        });
+
+        // --- 2. DATA DEL EXAMEN: POTENCIAL ELÉCTRICO (INCLUYE PREGUNTAS DEL PDF) ---
+        const questions = [
+            { 
+                type: 'mcq', 
+                text: "El potencial eléctrico $V$ en un punto del espacio se define formalmente como:", 
+                options: ["La fuerza ejercida sobre una carga unitaria.", "El trabajo por unidad de carga de prueba para traerla desde el infinito hasta ese punto.", "La energía cinética máxima que puede alcanzar un electrón.", "El producto de la carga por el campo eléctrico."], 
+                answer: 1, 
+                tip: "Recuerda la fórmula $V = U/q$. Es la energía potencial ($U$, equivalente al trabajo externo) almacenada por cada Coulomb de carga que colocamos en ese punto." 
+            },
+            { 
+                type: 'mcq', 
+                text: "(Extraído del PDF) Un conductor esférico de $20 \\text{ cm}$ de diámetro tiene una carga superficial uniforme de $3 \\times 10^{-9} \\text{ C}$. Sabiendo que $k = 9 \\times 10^9 \\text{ Nm}^2/\\text{C}^2$, ¿cuánto vale el potencial eléctrico en la superficie de la esfera?", 
+                options: ["270 V", "135 V", "540 V", "67.5 V"], 
+                answer: 0, 
+                tip: "¡Precaución! El problema te da el diámetro. El radio es $r = 10 \\text{ cm} = 0.1 \\text{ m}$. Aplica $V = k \\frac{q}{r}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "(Extraído del PDF) Para el mismo conductor esférico anterior (radio $10 \\text{ cm}$, carga $3 \\text{ nC}$), ¿cuánto vale el potencial eléctrico a una distancia de $30 \\text{ cm}$ **de su superficie**?", 
+                options: ["270 V", "90 V", "67.5 V", "135 V"], 
+                answer: 2, 
+                tip: "La distancia total $r$ debe medirse desde el centro de la esfera. $r = 10\\text{cm (radio)} + 30\\text{cm} = 40 \\text{cm} = 0.4 \\text{m}$. Evalúa $V = k \\frac{q}{0.4}$." 
+            },
+            { 
+                type: 'fill', 
+                text: "(Extraído del PDF) Una carga de $7 \\; \\mu\\text{C}$ se coloca en un punto de un campo eléctrico y adquiere una energía potencial de $63 \\times 10^{-6} \\text{ J}$. ¿Cuál es el valor del potencial eléctrico en dicho punto (en Voltios)?", 
+                answer: "9", 
+                tip: "El potencial es la energía por unidad de carga: $V = \\frac{U}{q}$. Divide $63 \\mu\\text{J}$ entre $7 \\mu\\text{C}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "¿Qué sucede con la energía potencial eléctrica de un sistema compuesto por dos cargas positivas idénticas cuando se acercan entre sí?", 
+                options: ["Disminuye, ya que la fuerza de repulsión realiza trabajo positivo.", "Aumenta, porque una fuerza externa debe realizar trabajo para vencer la repulsión.", "Permanece constante si la velocidad es constante.", "Se vuelve negativa."], 
+                answer: 1, 
+                tip: "Como se repelen, acercarlas va en contra de su naturaleza. Es como comprimir un resorte: estás invirtiendo y almacenando energía (aumenta $U$)." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Las superficies equipotenciales siempre tienen una relación geométrica específica con las líneas de campo eléctrico. Esta relación es que son:", 
+                options: ["Paralelas al campo.", "Perpendiculares al campo en todo punto.", "Circulares y tangentes al campo.", "Aleatorias dependiendo de la carga."], 
+                answer: 1, 
+                tip: "Si hubiera un componente del campo paralelo a la superficie, requeriría trabajo mover una carga sobre ella, violando la definición de 'equipotencial' ($W=0$)." 
+            },
+            { 
+                type: 'equation', 
+                text: "El trabajo $W$ realizado por la fuerza eléctrica sobre una partícula de carga $q$ al moverse de un punto $A$ a un punto $B$ equivale a la disminución de su energía potencial. Escribe la expresión para este Trabajo en términos de $q$, $V_A$ y $V_B$. (Ej: q*(VA-VB))", 
+                answer: "q*(VA-VB)", 
+                tip: "El trabajo del campo es $W = -\\Delta U = -(U_B - U_A) = U_A - U_B$. Como $U = qV$, esto es $q(V_A - V_B)$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Si un electrón (carga negativa) es liberado desde el reposo en una región con un campo eléctrico uniforme, ¿hacia dónde se moverá?", 
+                options: ["Hacia regiones de mayor potencial eléctrico.", "Hacia regiones de menor potencial eléctrico.", "Permanecerá en reposo.", "Se moverá a lo largo de una línea equipotencial."], 
+                answer: 0, 
+                tip: "Las líneas de campo apuntan de mayor a menor potencial. Como el electrón es negativo, experimenta una fuerza opuesta al campo, empujándolo 'hacia atrás' contra las líneas, es decir, hacia el potencial más alto." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En un material conductor en equilibrio electrostático, ¿cuál es el comportamiento del potencial eléctrico en su interior y en su superficie?", 
+                options: ["El potencial en el interior es cero.", "El potencial disminuye conforme nos acercamos al centro.", "El potencial es constante e igual en todo su volumen y superficie.", "El potencial es máximo en el centro y cero en la superficie."], 
+                answer: 2, 
+                tip: "Dado que el campo eléctrico dentro de un conductor en equilibrio es cero ($E=0$), la diferencia de potencial ($-\\int E\\cdot dr$) entre dos puntos cualesquiera es cero. Por tanto, es un volumen equipotencial." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En un dipolo eléctrico formado por una carga $+Q$ y otra $-Q$ separadas una distancia $d$, ¿cuánto vale el potencial eléctrico **escalar** neto exactamente en el punto medio de la línea que las une?", 
+                options: ["$2kQ/d$", "$8kQ/d$", "Cero", "Infinito"], 
+                answer: 2, 
+                tip: "A diferencia del campo (vectorial), el potencial es un número escalar. La contribución de la carga positiva es $+V$ y la de la negativa es $-V$. A distancias iguales, suman cero exacto." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Se colocan cuatro partículas con carga $+q$ idénticas en los vértices de un cuadrado de lado $L$. El potencial eléctrico en el centro geométrico del cuadrado es:", 
+                options: ["Cero.", "Un valor positivo distinto de cero.", "Un valor negativo.", "Se anulan entre sí direccionalmente."], 
+                answer: 1, 
+                tip: "El campo vectorial en el centro es cero por simetría, pero el potencial escalar no tiene dirección. Son 4 números positivos sumándose ($4 \\times k \\frac{q}{r}$)." 
+            },
+            { 
+                type: 'fill', 
+                text: "Una unidad fundamental de energía a nivel atómico es el **electrón-voltio** (eV). Define la energía cinética que adquiere un electrón acelerado a través de una diferencia de potencial de exactamente 1 ______.", 
+                answer: "voltio", 
+                tip: "El nombre de la unidad te da la respuesta. Es el trabajo $W = q \\Delta V$. Si $q$ es $1e$ y $\\Delta V$ es $1\\text{V}$, el trabajo es $1\\text{eV}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Si a lo largo del eje x el potencial eléctrico es constante (es decir, $V(x) = 50\\text{V}$ en todo punto), ¿cuánto vale el componente en $x$ del campo eléctrico ($E_x$) en esa región?", 
+                options: ["50 V/m", "-50 V/m", "Cero", "Varía linealmente."], 
+                answer: 2, 
+                tip: "El campo eléctrico es el gradiente negativo del potencial ($E_x = -dV/dx$). La derivada de una constante es cero." 
+            },
+            { 
+                type: 'drag', 
+                text: "Asocia la fórmula geométrica correcta a su dependencia de la distancia $r$ respecto a una carga puntual:", 
+                pairs: [
+                    { id: 'p1', question: "Fuerza de Coulomb ($F$)", answer: "Decae proporcional a $1/r^2$" },
+                    { id: 'p2', question: "Potencial Eléctrico ($V$)", answer: "Decae proporcional a $1/r$" },
+                    { id: 'p3', question: "Energía Potencial de 2 cargas ($U$)", answer: "También depende de $1/r$, pero incluye producto de dos cargas." }
+                ],
+                tip: "Recuerda que Energía y Potencial requieren un producto escalar o integración, reduciendo una potencia del radio en el denominador."
+            },
+            { 
+                type: 'mcq', 
+                text: "¿Cuánto trabajo debe realizar una fuerza externa para mover una carga de prueba $q$ a velocidad constante a lo largo de una sola línea equipotencial de $100\\text{V}$?", 
+                options: ["$100q$ Julios", "$-100q$ Julios", "Cero Julios", "Depende de la distancia recorrida."], 
+                answer: 2, 
+                tip: "El trabajo externo es $\\Delta U = q(V_f - V_i)$. Si la línea es equipotencial, $V_f = V_i = 100$, por lo que $\\Delta V = 0$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "La relación matemática integral general entre la diferencia de potencial y el campo eléctrico a lo largo de un camino $s$ se expresa como:", 
+                options: ["$V = E \\cdot s$", "$\\Delta V = -\\int \\vec{E} \\cdot d\\vec{s}$", "$\\Delta V = \\oint \\vec{E} \\cdot d\\vec{A}$", "$V = \\nabla E$"], 
+                answer: 1, 
+                tip: "Es el trabajo negativo realizado por el campo eléctrico. Se integra el producto punto entre el vector campo y el diferencial de desplazamiento." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Un catión de carbono (carga positiva) cruza entre dos placas paralelas. La placa izquierda está a $-10\\text{V}$ y la derecha a $+10\\text{V}$. Si se deja libre desde el reposo cerca de la placa derecha, ganará energía cinética al moverse hacia:", 
+                options: ["La placa derecha (+10V).", "La placa izquierda (-10V).", "Se quedará en el centro (0V).", "Saldrá proyectado hacia arriba."], 
+                answer: 1, 
+                tip: "Las cargas positivas espontáneamente se mueven de regiones de ALTO potencial (+10V) a BAJO potencial (-10V), perdiendo energía potencial y ganando cinética." 
+            },
+            { 
+                type: 'fill', 
+                text: "Al sumar potenciales de un sistema de muchas cargas puntuales, se suman los valores directamente sin importar los ángulos. Esto ocurre porque el potencial eléctrico no es un vector, sino una magnitud ______.", 
+                answer: "escalar", 
+                tip: "Tienen magnitud y signo algebraico, pero no dirección en el espacio. Ejemplos: masa, temperatura, energía, voltaje." 
+            },
+            { 
+                type: 'equation', 
+                text: "Escribe la ecuación para hallar el potencial $V$ a una distancia $r$ de una partícula con carga $Q$, asumiendo que el potencial en el infinito es cero. Usa $k$, $Q$, $r$. (Ej: k*Q/r)", 
+                answer: "k*Q/r", 
+                tip: "Proviene de integrar el campo $kQ/r^2$ desde infinito hasta $r$." 
+            },
+            { 
+                type: 'canvas', 
+                text: "Simulador de Equipotenciales: En el centro hay una carga $+Q$ con sus líneas equipotenciales circulares. **Arrastra la carga de prueba azul ($+q$) sobre la línea punteada de 50V**. El trabajo realizado al moverla a través de *esa misma línea* será cero.", 
+                tip: "Alinea exactamente el centro de la carga azul con la línea orbital punteada central (50V). Observa cómo el indicador cambia a 'Equilibrio Alcanzado' al estar en la equipotencial objetivo." 
+            }
+        ];
+
+        let currentQuestion = 0;
+        let userState = questions.map(() => ({ answered: false, flagged: false, value: null }));
+        let examSubmitted = false;
+
+        function initUI() {
+            renderNavGrid();
+            renderAllQuestions();
+            showQuestion(0);
+            
+            document.getElementById('btn-prev').addEventListener('click', () => { if(currentQuestion > 0) showQuestion(currentQuestion - 1); });
+            document.getElementById('btn-next').addEventListener('click', () => { if(currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1); });
+            document.getElementById('btn-flag').addEventListener('click', () => toggleFlag(currentQuestion));
+            
+            document.getElementById('btn-evaluate').addEventListener('click', showConfirmModal);
+            document.getElementById('btn-cancel-eval').addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden'));
+            document.getElementById('btn-confirm-eval').addEventListener('click', () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                evaluateExam();
+            });
+
+            document.getElementById('btn-review').addEventListener('click', hideResultsPanel);
+            document.getElementById('btn-export').addEventListener('click', exportToPDF);
+            document.getElementById('btn-save').addEventListener('click', saveProgress);
+
+            renderMathInElement(document.body, {
+              delimiters: [
+                  {left: '$$', right: '$$', display: true},
+                  {left: '$', right: '$', display: false},
+                  {left: '\\(', right: '\\)', display: false},
+                  {left: '\\[', right: '\\]', display: true}
+              ],
+              throwOnError: false
+            });
+        }
+
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid');
+            grid.innerHTML = '';
+            questions.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = `nav-btn w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-200 cursor-pointer shadow-sm`;
+                btn.id = `nav-btn-${i}`;
+                btn.textContent = i + 1;
+                btn.addEventListener('click', () => showQuestion(i));
+                grid.appendChild(btn);
+            });
+            updateNavStyles();
+        }
+
+        function updateNavStyles() {
+            questions.forEach((_, i) => {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(!btn) return;
+                btn.classList.remove('nav-answered', 'nav-flagged', 'nav-active', 'bg-slate-50', 'text-slate-500', 'border-slate-200');
+                if (userState[i].flagged) btn.classList.add('nav-flagged');
+                else if (userState[i].answered) btn.classList.add('nav-answered');
+                else btn.classList.add('bg-slate-50', 'text-slate-500', 'border-slate-200');
+
+                if (i === currentQuestion) btn.classList.add('nav-active');
+            });
+        }
+
+        function renderAllQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = `q-card hidden flex flex-col h-full`;
+                card.id = `q-card-${index}`;
+
+                let html = `
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-slate-800 leading-relaxed"><span class="text-violet-600 mr-2 bg-violet-50 px-2 py-1 rounded-md border border-violet-100">${index + 1}.</span> ${q.text}</h3>
+                        <div id="feedback-icon-${index}" class="hidden shrink-0 mt-1"></div>
+                    </div><div class="flex-grow">`;
+
+                if (q.type === 'mcq') {
+                    html += `<div class="space-y-3 mt-4">`;
+                    q.options.forEach((opt, i) => {
+                        html += `
+                        <label class="flex items-center space-x-4 p-4 border border-slate-200 rounded-xl hover:bg-violet-50 hover:border-violet-300 cursor-pointer transition-all group shadow-sm">
+                            <input type="radio" name="q${index}" value="${i}" class="h-5 w-5 text-violet-600 border-gray-300 focus:ring-violet-500 q-input cursor-pointer">
+                            <span class="text-slate-700 text-[1.05rem] group-hover:text-violet-900">${opt}</span>
+                        </label>`;
+                    });
+                    html += `</div>`;
+                } 
+                else if (q.type === 'fill' || q.type === 'equation') {
+                    const ph = q.type === 'fill' ? "Escribe tu respuesta aquí" : "Expresión algebraica (Ej: k*Q/r)";
+                    html += `
+                    <div class="mt-6 flex flex-col max-w-sm">
+                        <input type="text" id="input-q${index}" autocomplete="off" class="q-input math-input text-xl border-2 border-slate-300 rounded-xl px-4 py-3 focus:ring-4 focus:ring-violet-200 focus:border-violet-500 outline-none transition-all text-center text-slate-700 font-bold shadow-sm" placeholder="${ph}">
+                        ${q.type === 'equation' ? '<p class="text-sm text-slate-500 mt-3 text-center bg-slate-50 p-2 rounded-lg border border-slate-200">Usa notación simple sin LaTeX. Ej: <code class="bg-white px-1 py-0.5 rounded text-violet-600">k*Q/r</code></p>' : ''}
+                    </div>`;
+                }
+                else if (q.type === 'drag') {
+                    html += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6"><div class="space-y-4">
+                                <h4 class="font-bold text-slate-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-target"></i> Concepto Físico</h4>`;
+                    q.pairs.forEach((p) => {
+                        html += `
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm">
+                            <span class="font-semibold text-slate-700 text-base">${p.question}</span>
+                            <div class="dropzone min-h-[70px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-sm text-slate-400 transition-colors relative" data-target="${p.question}">
+                                <span>Soltar dependencia aquí</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div><div class="space-y-4 bg-violet-50/50 p-4 rounded-2xl border border-violet-50">
+                                <h4 class="font-bold text-violet-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-wave-sine"></i> Dependencia ($r$)</h4>`;
+                    
+                    let shuffled = [...q.pairs].sort(() => Math.random() - 0.5);
+                    let dragHtml = `<div class="flex flex-col gap-3" id="drag-source-${index}">`;
+                    shuffled.forEach((p) => {
+                        dragHtml += `
+                        <div class="draggable bg-white border-2 border-violet-200 text-violet-800 p-4 rounded-xl font-semibold shadow-sm hover:border-violet-400 hover:shadow-md transition-all flex items-center gap-3 cursor-grab active:scale-95" draggable="true" data-id="${p.answer}">
+                            <i class="ph ph-dots-six-vertical text-violet-400 text-xl"></i> <span class="text-sm leading-tight">${p.answer}</span>
+                        </div>`;
+                    });
+                    html += dragHtml + `</div></div></div>`;
+                }
+                else if (q.type === 'canvas') {
+                    html += `
+                    <div class="w-full max-w-lg mx-auto aspect-video md:aspect-[4/3] bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden mt-6 relative shadow-inner touch-none select-none">
+                        <canvas id="simCanvas" class="w-full h-full cursor-pointer touch-none"></canvas>
+                        <div class="absolute top-4 left-4 bg-white/95 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-slate-200 font-mono text-sm pointer-events-none flex flex-col gap-1 z-10">
+                            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Potencial (V)</span>
+                            <span id="canvas-potential" class="font-bold text-slate-600 text-lg">0 V</span>
+                        </div>
+                        <div class="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-10">
+                            <div class="bg-violet-600/90 text-white text-xs px-4 py-2 rounded-full flex items-center gap-2 shadow-sm font-bold">
+                                <i class="ph ph-hand-swipe-left text-lg animate-pulse"></i> Arrastra a la línea de 50V
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="input-q${index}" class="q-input" value="false">`;
+                }
+                html += `</div>`; 
+
+                html += `
+                    <div class="mt-8 pt-6 border-t border-slate-100 shrink-0">
+                        <button onclick="document.getElementById('tip-${index}').classList.toggle('hidden')" class="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-2 transition-colors bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 hover:border-amber-200">
+                            <i class="ph-fill ph-lightbulb text-lg"></i> Mostrar Tip Metodológico
+                        </button>
+                        <div id="tip-${index}" class="hidden mt-4 bg-amber-50 border-l-4 border-amber-400 text-amber-900 text-[0.95rem] p-4 rounded-r-xl shadow-sm fade-in leading-relaxed">
+                            <strong>Pista de resolución:</strong> ${q.tip}
+                        </div>
+                    </div>
+                `;
+
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+
+            document.querySelectorAll('.q-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const match = (e.target.name || e.target.id).match(/q(\d+)/);
+                    if(match) {
+                        userState[parseInt(match[1])].answered = true;
+                        userState[parseInt(match[1])].value = e.target.value;
+                        updateNavStyles();
+                    }
+                });
+                if (input.type === 'text') {
+                    input.addEventListener('input', (e) => {
+                        const match = e.target.id.match(/q(\d+)/);
+                        if(match) {
+                            userState[parseInt(match[1])].answered = (e.target.value.trim() !== '');
+                            userState[parseInt(match[1])].value = e.target.value;
+                            updateNavStyles();
+                        }
+                    });
+                }
+            });
+
+            initDragAndDrop();
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.q-card').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.remove('hidden');
+                    const txt = el.querySelector('input[type="text"]');
+                    if(txt && !examSubmitted) setTimeout(() => txt.focus(), 100);
+                    if (questions[i].type === 'canvas' && !window.canvasInitialized) {
+                        setTimeout(initCanvas, 100); window.canvasInitialized = true;
+                    }
+                } else el.classList.add('hidden');
+            });
+            
+            currentQuestion = index;
+            updateNavStyles();
+            if(index !== 0) document.getElementById('instructions-panel').style.display = 'none';
+
+            document.getElementById('btn-prev').disabled = index === 0;
+            document.getElementById('btn-next').disabled = index === questions.length - 1;
+            
+            const flagBtn = document.getElementById('btn-flag');
+            if (userState[index].flagged) {
+                flagBtn.classList.replace('text-amber-600', 'text-white');
+                flagBtn.classList.replace('bg-white', 'bg-amber-500');
+                flagBtn.querySelector('i').classList.replace('ph-flag', 'ph-check');
+            } else {
+                flagBtn.classList.replace('text-white', 'text-amber-600');
+                flagBtn.classList.replace('bg-amber-500', 'bg-white');
+                flagBtn.querySelector('i').classList.replace('ph-check', 'ph-flag');
+            }
+        }
+
+        function toggleFlag(index) { userState[index].flagged = !userState[index].flagged; showQuestion(index); }
+
+        function initDragAndDrop() {
+            document.querySelectorAll('.draggable').forEach(draggable => {
+                draggable.addEventListener('dragstart', (e) => {
+                    draggable.classList.add('opacity-50', 'scale-95');
+                    e.dataTransfer.setData('text/plain', draggable.getAttribute('data-id'));
+                    setTimeout(() => draggable.classList.add('invisible'), 0);
+                });
+                draggable.addEventListener('dragend', () => draggable.classList.remove('opacity-50', 'scale-95', 'invisible'));
+            });
+
+            document.querySelectorAll('.dropzone').forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault(); zone.classList.remove('dragover');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    const draggable = document.querySelector(`.draggable[data-id="${draggedId}"]`);
+                    
+                    if (draggable) {
+                        if (zone.children.length > 0 && !zone.children[0].tagName.toLowerCase().includes('span')) {
+                            const sourceContainer = document.querySelector(`[id^='drag-source']`);
+                            if(sourceContainer) sourceContainer.appendChild(zone.children[0]);
+                        }
+                        if(zone.querySelector('span')) zone.innerHTML = '';
+                        zone.appendChild(draggable);
+                        zone.classList.add('bg-violet-50', 'border-solid', 'border-violet-400');
+                        zone.classList.remove('border-dashed', 'text-slate-400');
+                        
+                        const qIndex = 13; 
+                        const allZones = document.getElementById(`q-card-${qIndex}`).querySelectorAll('.dropzone');
+                        let fullZones = 0;
+                        allZones.forEach(z => { if(z.querySelector('.draggable')) fullZones++; });
+                        if(fullZones === allZones.length) { userState[qIndex].answered = true; updateNavStyles(); }
+                    }
+                });
+            });
+        }
+
+        function initCanvas() {
+            const canvas = document.getElementById('simCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const potDisplay = document.getElementById('canvas-potential');
+            
+            let cw = canvas.parentElement.clientWidth;
+            let ch = canvas.parentElement.clientHeight;
+            canvas.width = cw; canvas.height = ch;
+            
+            const Q_fija = { x: cw / 2, y: ch / 2, r: 20 };
+            let q_prueba = { x: cw * 0.85, y: ch / 2, r: 12, isDragging: false };
+            
+            // Constantes simuladas
+            const k_sim = 5000; 
+            const targetPot = 50; // V objetivo
+            const targetRadius = k_sim / targetPot; // Radio donde el potencial es 50V
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Fondo oscuro espacial sutil
+                ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, cw, ch);
+                
+                // Líneas equipotenciales
+                const pots = [100, 50, 25];
+                pots.forEach(v => {
+                    let r = k_sim / v;
+                    ctx.beginPath(); ctx.arc(Q_fija.x, Q_fija.y, r, 0, Math.PI * 2);
+                    ctx.strokeStyle = v === targetPot ? '#8b5cf6' : '#cbd5e1'; 
+                    ctx.setLineDash(v === targetPot ? [8, 4] : [4, 4]); 
+                    ctx.lineWidth = v === targetPot ? 2 : 1;
+                    ctx.stroke();
+                    
+                    // Etiqueta del equipotencial
+                    ctx.fillStyle = v === targetPot ? '#8b5cf6' : '#94a3b8'; 
+                    ctx.font = 'bold 12px Inter'; ctx.textAlign = 'center'; 
+                    ctx.fillText(`${v}V`, Q_fija.x, Q_fija.y - r - 5);
+                });
+                ctx.setLineDash([]);
+
+                // Carga Fuente
+                ctx.beginPath(); ctx.arc(Q_fija.x, Q_fija.y, Q_fija.r, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444'; ctx.shadowColor = 'rgba(239, 68, 68, 0.6)'; ctx.shadowBlur = 15; ctx.fill();
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 20px Inter'; ctx.textBaseline = 'middle';
+                ctx.fillText('+Q', Q_fija.x, Q_fija.y); ctx.shadowBlur = 0;
+
+                // Calcular Potencial V
+                const dx = q_prueba.x - Q_fija.x; const dy = q_prueba.y - Q_fija.y;
+                let dist = Math.max(Math.sqrt(dx*dx + dy*dy), Q_fija.r + q_prueba.r);
+                let currentV = Math.round(k_sim / dist);
+
+                // Dibujar línea desde el centro a la carga prueba
+                ctx.beginPath(); ctx.moveTo(Q_fija.x, Q_fija.y); ctx.lineTo(q_prueba.x, q_prueba.y);
+                ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)'; ctx.lineWidth = 1; ctx.stroke();
+
+                // Carga Prueba
+                ctx.beginPath(); ctx.arc(q_prueba.x, q_prueba.y, q_prueba.r, 0, Math.PI * 2);
+                ctx.fillStyle = '#3b82f6'; ctx.shadowColor = 'rgba(59, 130, 246, 0.6)'; ctx.shadowBlur = 10; ctx.fill();
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 12px Inter'; ctx.fillText('+q', q_prueba.x, q_prueba.y); ctx.shadowBlur = 0;
+                
+                // Lógica de validación
+                if (currentV >= targetPot - 2 && currentV <= targetPot + 2) {
+                    potDisplay.innerHTML = `${currentV} V (Equilibrio 50V)`; potDisplay.className = "font-black text-violet-600 text-2xl mt-1";
+                    const inputH = document.getElementById('input-q19'); 
+                    if(inputH) { inputH.value = "true"; inputH.dispatchEvent(new Event('change')); }
+                } else {
+                    potDisplay.innerHTML = `${currentV} V`; potDisplay.className = "font-bold text-slate-600 text-xl mt-1";
+                    const inputH = document.getElementById('input-q19'); 
+                    if(inputH && !examSubmitted) { inputH.value = "false"; }
+                }
+            }
+
+            const startDrag = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                if (Math.sqrt((clientX - rect.left - q_prueba.x)**2 + (clientY - rect.top - q_prueba.y)**2) < q_prueba.r * 3) { 
+                    q_prueba.isDragging = true; e.preventDefault(); canvas.style.cursor = 'grabbing';
+                }
+            };
+
+            const doDrag = (e) => {
+                if (q_prueba.isDragging) {
+                    e.preventDefault();
+                    const rect = canvas.getBoundingClientRect();
+                    q_prueba.x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    q_prueba.y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                    draw();
+                }
+            };
+            
+            const stopDrag = () => { q_prueba.isDragging = false; canvas.style.cursor = 'pointer'; };
+
+            canvas.addEventListener('mousedown', startDrag); canvas.addEventListener('mousemove', doDrag); window.addEventListener('mouseup', stopDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive: false}); canvas.addEventListener('touchmove', doDrag, {passive: false}); window.addEventListener('touchend', stopDrag);
+
+            window.addEventListener('resize', () => {
+                cw = canvas.parentElement.clientWidth; ch = canvas.parentElement.clientHeight;
+                canvas.width = cw; canvas.height = ch; Q_fija.x = cw / 2; Q_fija.y = ch/2; draw();
+            });
+
+            draw();
+        }
+
+        function cleanString(str) {
+            if(!str) return "";
+            return str.toLowerCase().replace(/\s+/g, '').replace(/[\(\)]/g, '').replace(/\*/g, '').replace(/\\/g, '').replace(/[{}]/g, '');
+        }
+
+        function showConfirmModal() {
+            let unanswered = userState.filter(s => !s.answered).length;
+            const msg = document.getElementById('confirm-message');
+            msg.textContent = unanswered > 0 ? `Tienes ${unanswered} pregunta(s) sin responder. ¿Seguro que deseas evaluar ahora?` : `¿Deseas enviar tus respuestas para su evaluación final?`;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function evaluateExam() {
+            examSubmitted = true;
+            let score = 0; let total = questions.length;
+
+            questions.forEach((q, index) => {
+                const card = document.getElementById(`q-card-${index}`);
+                const icon = document.getElementById(`feedback-icon-${index}`);
+                let isCorrect = false;
+
+                card.querySelectorAll('input, button.draggable').forEach(el => { el.disabled = true; if(el.draggable) el.draggable = false; el.classList.remove('cursor-pointer'); });
+
+                if (q.type === 'mcq') {
+                    if (userState[index].value !== null && parseInt(userState[index].value) === q.answer) isCorrect = true;
+                } else if (q.type === 'fill' || q.type === 'equation') {
+                    if (userState[index].value) {
+                        const uVal = cleanString(userState[index].value); const aVal = cleanString(q.answer.toString());
+                        if (uVal === aVal || (uVal.includes(aVal))) isCorrect = true;
+                        if(q.type === 'equation') {
+                            if(index === 6 && (uVal.includes('qva') || uVal.includes('qv_a') || uVal.includes('vavb'))) isCorrect = true;
+                            if(index === 18 && (uVal.includes('kq/r') || uVal.includes('kq/d'))) isCorrect = true;
+                        }
+
+                        if(!isCorrect) {
+                            const inpCont = card.querySelector('input[type="text"]').parentElement;
+                            const ansDiv = document.createElement('div');
+                            ansDiv.className = "mt-2 text-sm text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200";
+                            ansDiv.innerHTML = `Solución esperada: $$${q.answer}$$`;
+                            inpCont.appendChild(ansDiv);
+                            if(window.renderMathInElement) renderMathInElement(ansDiv);
+                        }
+                    }
+                } else if (q.type === 'drag') {
+                    let correctCount = 0;
+                    card.querySelectorAll('.dropzone').forEach(zone => {
+                        const target = zone.getAttribute('data-target'); const child = zone.querySelector('.draggable');
+                        if (child) {
+                            const pair = q.pairs.find(p => p.question === target);
+                            if (pair && pair.answer === child.getAttribute('data-id')) { correctCount++; zone.classList.add('border-green-400', 'bg-green-50'); } 
+                            else { zone.classList.add('border-red-400', 'bg-red-50'); }
+                        }
+                    });
+                    if (correctCount === q.pairs.length) isCorrect = true;
+                } else if (q.type === 'canvas') {
+                    if (userState[index].value === "true") isCorrect = true;
+                }
+
+                icon.classList.remove('hidden');
+                if (isCorrect) {
+                    score++; card.classList.add('correct-card');
+                    icon.innerHTML = `<div class="bg-green-100 p-2 rounded-full text-green-600 shadow-sm border border-green-200"><i class="ph-bold ph-check text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#22c55e';
+                } else {
+                    card.classList.add('incorrect-card');
+                    icon.innerHTML = `<div class="bg-red-100 p-2 rounded-full text-red-600 shadow-sm border border-red-200"><i class="ph-bold ph-x text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#ef4444';
+                }
+                document.getElementById(`nav-btn-${index}`).style.color = '#fff';
+                document.getElementById(`nav-btn-${index}`).style.borderColor = 'transparent';
+                document.getElementById(`tip-${index}`).classList.remove('hidden');
+            });
+
+            const percentage = Math.round((score / total) * 100);
+            document.getElementById('score-display').textContent = `${percentage}% (${score}/${total})`;
+            document.getElementById('results-panel').classList.remove('hidden');
+            
+            setTimeout(() => {
+                const bar = document.getElementById('score-bar');
+                bar.style.width = `${percentage}%`;
+                bar.className = `h-full rounded-full transition-all duration-1000 ease-out ${percentage >= 70 ? 'bg-green-500' : 'bg-red-500'}`;
+            }, 300);
+
+            const msg = document.getElementById('feedback-message');
+            if (percentage >= 70) {
+                msg.textContent = "¡Aprobado! Excelente comprensión del trabajo, energía y potencial eléctrico.";
+                msg.className = "text-xl font-bold text-green-700 mb-6 text-center max-w-lg";
+                document.getElementById('btn-save').classList.remove('hidden');
+            } else {
+                msg.textContent = "Reprobado. Repasa la diferencia entre escalar (potencial) y vector (campo). Requiere mínimo 70%.";
+                msg.className = "text-xl font-bold text-red-600 mb-6 text-center max-w-lg";
+            }
+            
+            window.lastScore = percentage;
+            document.getElementById('btn-export').classList.remove('hidden');
+            document.getElementById('btn-evaluate').classList.add('hidden');
+            
+            renderMathInElement(document.getElementById('questions-container'), {
+                delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+            });
+        }
+
+        function hideResultsPanel() { document.getElementById('results-panel').classList.add('hidden'); }
+
+        // --- 7. GUARDAR EN LA BASE DE DATOS (MÓDULO 3) ---
+        async function saveProgress() {
+            if (!currentUser) return showToast("Inicia sesión en la plataforma principal para guardar.", "error");
+            if (window.lastScore < 70) return showToast("Solo se guardan calificaciones aprobatorias (>70%).", "warning");
+
+            try {
+                const btn = document.getElementById('btn-save');
+                btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Guardando...`;
+                
+                // Actualizando variables para el Módulo 3
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                await update(progresoRef, {
+                    'm3-q1': true, // Chulito verde para el Cuestionario del Módulo 3
+                    'examen_potencial_score': window.lastScore
+                });
+                
+                showToast("¡Progreso sincronizado con tu Plataforma UNAB!", "success");
+                btn.innerHTML = `<i class="ph ph-check-circle text-lg"></i> Guardado en la plataforma`;
+                btn.classList.replace('bg-green-600', 'bg-slate-700');
+                btn.classList.replace('hover:bg-green-700', 'hover:bg-slate-800');
+                btn.disabled = true;
+            } catch (error) {
+                console.error("Save err:", error);
+                showToast("Error de conexión al guardar el progreso.", "error");
+                document.getElementById('btn-save').innerHTML = `<i class="ph ph-cloud-arrow-up text-lg"></i> Reintentar`;
+            }
+        }
+
+        async function loadProgress() {
+            if (!currentUser) return;
+            try {
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                const snapshot = await get(progresoRef);
+                if (snapshot.exists() && snapshot.val().examen_potencial_score) {
+                    showToast(`¡Bienvenido! Tu récord anterior en Potencial Eléctrico es: ${snapshot.val().examen_potencial_score}%`, "success");
+                }
+            } catch (e) { /* ignore silently */ }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-violet-600';
+            toast.className = `${bg} text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 fade-in border border-white/20`;
+            const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
+            toast.innerHTML = `<i class="ph ${icon} text-2xl"></i> <span class="font-medium text-[0.95rem]">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'; 
+                setTimeout(() => toast.remove(), 400); 
+            }, 4000);
+        }
+
+        function exportToPDF() {
+            document.querySelectorAll('.q-card').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('instructions-panel').style.display = 'none';
+            document.getElementById('results-panel').classList.add('hidden');
+            
+            const element = document.getElementById('questions-container');
+            showToast("Generando PDF detallado... Esto puede tardar unos segundos.", "info");
+            
+            const titleHTML = `<div id="pdf-header" class="mb-8 border-b-2 border-violet-200 pb-4">
+                                  <h1 class="text-3xl font-black text-violet-900">Resultados: Potencial Eléctrico</h1>
+                                  <p class="text-lg text-slate-600 font-bold mt-2">Puntaje obtenido: ${window.lastScore}%</p>
+                               </div>`;
+            element.insertAdjacentHTML('afterbegin', titleHTML);
+
+            html2pdf().set({
+                margin: [15, 10, 15, 10], 
+                filename: 'Examen_Potencial_Electrico.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save().then(() => {
+                const h = document.getElementById('pdf-header');
+                if(h) h.remove();
+                
+                showQuestion(currentQuestion);
+                document.getElementById('results-panel').classList.remove('hidden');
+                showToast("¡PDF exportado exitosamente!", "success");
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>

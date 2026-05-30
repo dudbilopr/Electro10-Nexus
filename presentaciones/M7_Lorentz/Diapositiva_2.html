@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Análisis de Circuitos, Mallas y Nodos</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- KaTeX para Renderizado Matemático Fiel -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(13px, 1.2vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(14px, 1.3vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #1e293b, #020617);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden;
+        }
+        .canvas-wrapper canvas { cursor: grab; }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+
+        input[type=range] { accent-color: #3b82f6; width: 100%; cursor: pointer; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1.2vmin; display: flex; flex-direction: column; gap: 1vmin; border: 1px solid #cbd5e1; font-size: clamp(11px, 1vw, 14px); }
+        .control-group { display: flex; align-items: center; gap: 1vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 280px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1.5vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(12px, 1vw, 15px); color: #92400e; line-height: 1.5; }
+        .tip-wrapper:hover .tip-content { display: block; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; }
+
+        .btn-ui { padding: 0.3rem 0.6rem; border-radius: 0.25rem; font-size: 0.9em; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem;}
+        .btn-ui:hover { opacity: 0.8; transform: scale(1.02); }
+
+        .floating-label {
+            position: absolute;
+            font-family: monospace;
+            font-weight: 900;
+            font-size: clamp(12px, 1.2vw, 18px);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            z-index: 50;
+            transition: all 0.2s ease;
+            background: transparent; 
+            padding: 0;
+            border: none;
+            color: #0f172a;
+            white-space: nowrap;
+            text-shadow: 
+                -2px -2px 4px rgba(255,255,255,1),  
+                 2px -2px 4px rgba(255,255,255,1),
+                -2px  2px 4px rgba(255,255,255,1),
+                 2px  2px 4px rgba(255,255,255,1),
+                 0 0 10px rgba(255,255,255,1),
+                 0 0 15px rgba(255,255,255,1);
+        }
+        .polarity-pos { color: #ef4444; font-size: 2em; text-shadow: 0 0 8px rgba(255,255,255,1), 0 0 15px rgba(255,255,255,0.8); }
+        .polarity-neg { color: #3b82f6; font-size: 2em; text-shadow: 0 0 8px rgba(255,255,255,1), 0 0 15px rgba(255,255,255,0.8); }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-500">
+                <h1 class="font-bold tracking-wide flex items-center gap-3" style="font-size: clamp(18px, 1.8vw, 32px);">
+                    <i data-lucide="cpu" class="w-7 h-7 text-blue-400"></i>
+                    Análisis de Circuitos: Topologías, Caídas de Tensión y Conversiones
+                </h1>
+                <p class="text-blue-300 flex items-center gap-2" style="font-size: clamp(11px, 0.9vw, 16px);">
+                    <i data-lucide="zap" class="w-4 h-4"></i>
+                    Simulación Física de Leyes de Kirchhoff, Resistencias Equivalentes y Redes Complejas.
+                </p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[1.5vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA Y DEMOSTRACIONES -->
+                <div class="w-[35%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 font-bold text-slate-800 flex items-center gap-2">
+                            <i data-lucide="book-open" class="w-4 h-4 text-blue-600"></i> Circuitos Serie y Paralelo
+                        </p>
+                        <p class="text-sm">
+                            En <strong>serie</strong>, la corriente es constante y los voltajes se suman. En <strong>paralelo</strong>, el voltaje es constante en todas las ramas y la corriente total se bifurca.
+                        </p>
+                        <div class="math-display">
+                            $$R_{serie} = R_1 + R_2 + R_3$$
+                        </div>
+                        <div class="math-display">
+                            $$R_{paralelo} = \left(\frac{1}{R_1} + \frac{1}{R_2} + \frac{1}{R_3}\right)^{-1}$$
+                        </div>
+                        <!-- NUEVA SECCIÓN: Demostración Serie/Paralelo -->
+                        <details class="mt-2 text-xs cursor-pointer group bg-white rounded p-1 shadow-sm">
+                            <summary class="font-semibold text-blue-700 hover:text-blue-900 select-none outline-none">Ver Demostración Matemática (Kirchhoff)</summary>
+                            <div class="mt-2 text-slate-700 px-2 pb-1 cursor-text">
+                                <strong>En Serie (LVK):</strong> El voltaje de la fuente se divide en la suma de las caídas de tensión de cada resistencia.<br>
+                                $V = V_1 + V_2 \Rightarrow I \cdot R_{eq} = I \cdot R_1 + I \cdot R_2$<br>
+                                Como la corriente $I$ es la misma en toda la línea, la cancelamos dividiendo ambos lados, obteniendo:<br>
+                                $R_{eq} = R_1 + R_2$
+                                <hr class="my-2 border-slate-200">
+                                <strong>En Paralelo (LCK):</strong> La corriente total se divide en las ramas, pero el voltaje se mantiene constante en todas ellas.<br>
+                                $I = I_1 + I_2 \Rightarrow \frac{V}{R_{eq}} = \frac{V}{R_1} + \frac{V}{R_2}$<br>
+                                Al dividir todo por el voltaje común $V$, obtenemos:<br>
+                                $\frac{1}{R_{eq}} = \frac{1}{R_1} + \frac{1}{R_2}$
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg relative mb-[1vmin]">
+                        <p class="font-bold text-indigo-800 flex items-center gap-2">
+                            <i data-lucide="triangle" class="w-4 h-4"></i> Red Delta ($\Delta$) y Puente
+                        </p>
+                        <p class="mt-1 text-sm">
+                            En una malla $\Delta$, los elementos forman un bucle cerrado. Al conectarla a otras mallas (como en un <strong>Puente de Wheatstone</strong>), las corrientes se dividen creando flujos cruzados. 
+                        </p>
+                        <p class="text-[11px] text-indigo-600 mt-1 italic">Dentro del puente conviven tanto figuras Delta (ej. parte superior) como figuras Estrella (ej. nodo lateral). ¡Usa los botones del panel para resaltarlas!</p>
+                        <div class="math-display">
+                            $$R_A = \frac{R_{AB} \cdot R_{AC}}{R_{AB} + R_{BC} + R_{CA}}$$
+                        </div>
+                        <!-- NUEVA SECCIÓN: Demostración Delta-Estrella -->
+                        <details class="mt-2 text-xs cursor-pointer group bg-white rounded p-1 shadow-sm">
+                            <summary class="font-semibold text-indigo-700 hover:text-indigo-900 select-none outline-none">Demostración Conversión $\Delta \leftrightarrow Y$</summary>
+                            <div class="mt-2 text-slate-700 px-2 pb-1 cursor-text">
+                                Se basa en igualar la resistencia equivalente medida entre dos terminales (ej. A y B), manteniendo el tercero (C) abierto o desconectado:<br><br>
+                                En <strong>Estrella ($Y$)</strong>, la corriente entra por A y sale por B sin pasar por C:<br>
+                                $R_{A-B(Y)} = R_A + R_B$<br><br>
+                                En <strong>Delta ($\Delta$)</strong>, se tiene $R_{AB}$ en paralelo con la serie $(R_{AC} + R_{BC})$:<br>
+                                $R_{A-B(\Delta)} = \frac{R_{AB}(R_{AC}+R_{BC})}{R_{AB}+R_{BC}+R_{CA}}$<br><br>
+                                Al igualar $R_{A-B(Y)} = R_{A-B(\Delta)}$ y repetir el proceso para los pares B-C y C-A, se obtiene un sistema de 3 ecuaciones. Al resolverlo sumando y restando, se despejan $R_A, R_B, R_C$ obteniendo las fórmulas definitivas de transformación directa.
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="bg-emerald-50 p-[1.5vmin] border border-emerald-200 shadow-sm rounded-lg relative mb-[1vmin]">
+                        <p class="font-bold text-emerald-800 flex items-center gap-2">
+                            <i data-lucide="share-2" class="w-4 h-4"></i> Red Estrella ($Y$) Multimalla
+                        </p>
+                        <p class="mt-1 text-sm">
+                            Cuenta con un nodo central común. Al conectar las otras ramas a diferentes lazos de retorno (múltiples mallas), la corriente total de la fuente se distribuye en el nodo central, actuando como un centro distribuidor de carga.
+                        </p>
+                        <div class="math-display">
+                            $$R_{AB} = \frac{R_A R_B + R_B R_C + R_C R_A}{R_C}$$
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50 p-[1.5vmin] border border-amber-200 shadow-sm rounded-lg relative">
+                        <p class="font-bold text-amber-800 flex items-center gap-2">
+                            <i data-lucide="activity" class="w-4 h-4"></i> Convención vs Físico
+                        </p>
+                        <p class="text-sm mt-1">
+                            Físicamente, los electrones ($-$) viajan hacia el polo ($+$). Por convención, dibujamos el flujo de ($+$ a $-$). Independientemente, la caída de tensión marca $+$ por donde "entra" la corriente convencional.
+                        </p>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA: INTERACCIÓN Y VISUALIZACIÓN -->
+                <div class="w-[65%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL AVANZADO -->
+                    <div class="control-panel shadow-sm relative z-20 flex-none">
+                        
+                        <!-- Controles Topología y Flujo -->
+                        <div class="flex w-full gap-[1.5vmin] border-b border-slate-300 pb-2 items-center justify-between flex-wrap">
+                            <div class="control-group flex-wrap">
+                                <label class="font-bold text-slate-800 flex items-center gap-1">
+                                    <i data-lucide="layout-template" class="w-4 h-4"></i> Topología:
+                                    <span class="relative tip-wrapper inline-block z-50">
+                                        <span class="tip-btn">?</span>
+                                        <span class="tip-content"><strong>Estructura del Circuito:</strong> Selecciona diferentes conexiones. Las redes Delta y Estrella ahora incluyen mallas adicionales para demostrar flujos realistas y cruzados (Ej. Puente de Wheatstone).</span>
+                                    </span>
+                                </label>
+                                <select id="circuit-selector" class="bg-white border border-slate-300 rounded px-2 py-1 font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer">
+                                    <option value="series">Circuito en Serie</option>
+                                    <option value="parallel">Circuito en Paralelo</option>
+                                    <option value="mixed">Circuito Mixto</option>
+                                    <option value="delta">Topología Delta ($\Delta$) - Puente</option>
+                                    <option value="star">Topología Estrella (Y) - Multimalla</option>
+                                </select>
+
+                                <!-- NUEVO: Controles de Resaltado Dinámicos para el Puente -->
+                                <div id="bridge-highlights" class="hidden flex gap-1 ml-2 border-l-2 pl-2 border-slate-300 items-center">
+                                    <span class="text-[10px] font-bold text-slate-600 mr-1">Analizar:</span>
+                                    <button id="btn-hl-delta" class="btn-ui bg-indigo-50 text-indigo-700 border-indigo-300 text-[10px] px-1.5 py-0.5" title="Resalta la Malla Triangular Superior (R1, R2, R3)">Ver $\Delta$</button>
+                                    <button id="btn-hl-star" class="btn-ui bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px] px-1.5 py-0.5" title="Resalta el Nodo Estrella Izquierdo (R1, R4, R3)">Ver $Y$</button>
+                                    <button id="btn-hl-none" class="btn-ui bg-slate-50 text-slate-600 border-slate-300 text-[10px] px-1.5 py-0.5" title="Quitar Resaltado"><i data-lucide="x" class="w-3 h-3"></i></button>
+                                </div>
+                            </div>
+
+                            <div class="control-group mt-1 sm:mt-0">
+                                <button id="btn-labels" class="btn-ui bg-amber-100 text-amber-800 border-amber-300" title="Ocultar Valores">
+                                    <i data-lucide="eye-off" class="w-4 h-4"></i> Valores
+                                </button>
+                                <button id="btn-view" class="btn-ui bg-emerald-100 text-emerald-800 border-emerald-300" title="Cambiar Vista">
+                                    <i data-lucide="monitor" class="w-4 h-4"></i> Vista 2D
+                                </button>
+                                <button id="flow-toggle" class="btn-ui bg-indigo-100 text-indigo-800 border-indigo-300" title="Cambiar dirección de corriente">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Flujo Conv.
+                                </button>
+                                <span class="relative tip-wrapper inline-block z-50 -ml-1">
+                                    <span class="tip-btn bg-indigo-500">?</span>
+                                    <span class="tip-content"><strong>Flujo de Cargas:</strong> Alterna entre el modelo convencional (+ a -) y el modelo real físico de electrones (- a +). Notarás que el nodo de entrada a la resistencia se mantiene como polo positivo de caída de potencial en ambas convenciones.</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Controles Físicos en Tiempo Real -->
+                        <div class="grid grid-cols-4 gap-4 w-full items-center">
+                            <label class="flex flex-col text-xs font-bold text-slate-700">
+                                <span class="flex justify-between items-center w-full">
+                                    <span>FEM Voltaje: <span id="lbl-v-val" class="text-blue-600">12 V</span></span>
+                                    <span class="relative tip-wrapper inline-block z-50">
+                                        <span class="tip-btn scale-75 bg-blue-500">?</span>
+                                        <span class="tip-content"><strong>Voltaje de la Fuente:</strong> Altera la tensión. Un mayor voltaje acelera las partículas y aumenta proporcionalmente la caída de tensión en cada elemento.</span>
+                                    </span>
+                                </span>
+                                <input type="range" id="slider-v" min="1" max="24" value="12">
+                            </label>
+                            <label class="flex flex-col text-xs font-bold text-slate-700">
+                                <span class="flex justify-between items-center w-full">
+                                    <span>R1: <span id="lbl-r1-val" class="text-emerald-600">10 Ω</span></span>
+                                    <span class="relative tip-wrapper inline-block z-50">
+                                        <span class="tip-btn scale-75 bg-emerald-500">?</span>
+                                        <span class="tip-content"><strong>Bandas de Color:</strong> Al mover el valor, las bandas sobre la resistencia cambiarán automáticamente simulando el código de colores universal (Negro=0, Marrón=1, Rojo=2...).</span>
+                                    </span>
+                                </span>
+                                <input type="range" id="slider-r1" min="1" max="100" value="10">
+                            </label>
+                            <label class="flex flex-col text-xs font-bold text-slate-700">
+                                <span class="flex justify-between items-center w-full">
+                                    <span>R2: <span id="lbl-r2-val" class="text-emerald-600">10 Ω</span></span>
+                                </span>
+                                <input type="range" id="slider-r2" min="1" max="100" value="10">
+                            </label>
+                            <label class="flex flex-col text-xs font-bold text-slate-700">
+                                <span class="flex justify-between items-center w-full">
+                                    <span>R3: <span id="lbl-r3-val" class="text-emerald-600">10 Ω</span></span>
+                                </span>
+                                <input type="range" id="slider-r3" min="1" max="100" value="10">
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL 3D INTERACTIVA -->
+                    <div class="flex-1 w-full canvas-wrapper relative" id="canvas-wrapper-3d">
+                        <div id="labels-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
+                        <div class="absolute top-2 left-2 bg-white/90 p-1.5 rounded shadow text-[10px] font-semibold text-slate-700 z-10 border-l-4 border-blue-500">
+                            👆 Arrastra: Orbitar | 📜 Rueda: Zoom
+                        </div>
+                        <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                    </div>
+
+                    <!-- PANELES DE ANÁLISIS: GRÁFICOS Y EQUIVALENTE -->
+                    <div class="flex-none h-[28%] w-full flex gap-[1vmin]">
+                        
+                        <!-- Gráfico de Caídas de Tensión -->
+                        <div class="w-1/2 bg-white rounded-lg border border-slate-300 p-2 flex flex-col relative shadow-inner">
+                            <h3 class="text-xs font-bold text-center text-slate-700 mb-1 border-b pb-1 flex items-center justify-center gap-1">
+                                Caídas de Tensión (V)
+                                <span class="relative tip-wrapper inline-block z-50">
+                                    <span class="tip-btn scale-50 bg-slate-500">?</span>
+                                    <span class="tip-content"><strong>Gráfico Dinámico:</strong> Representa la Ley de Kirchhoff de Voltajes. Muestra la porción del voltaje total que es consumida por cada resistencia principal.</span>
+                                </span>
+                            </h3>
+                            <div class="flex-1 flex items-end justify-around pb-5 relative pt-4">
+                                <!-- Eje Y -->
+                                <div class="absolute left-1 top-4 bottom-5 flex flex-col justify-between text-[9px] text-slate-400 font-mono">
+                                    <span id="chart-max">24V</span>
+                                    <span>0V</span>
+                                </div>
+                                <!-- Barras -->
+                                <div class="w-[15%] bg-blue-50 rounded-t relative flex flex-col justify-end h-full border-b border-slate-300">
+                                    <div id="bar-v1" class="w-full bg-blue-500 rounded-t transition-all duration-300" style="height: 50%;"></div>
+                                    <span class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-600">V1</span>
+                                    <span id="chart-val-1" class="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-blue-700">12.0</span>
+                                </div>
+                                <div class="w-[15%] bg-indigo-50 rounded-t relative flex flex-col justify-end h-full border-b border-slate-300">
+                                    <div id="bar-v2" class="w-full bg-indigo-500 rounded-t transition-all duration-300" style="height: 50%;"></div>
+                                    <span class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-600">V2</span>
+                                    <span id="chart-val-2" class="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-indigo-700">12.0</span>
+                                </div>
+                                <div class="w-[15%] bg-purple-50 rounded-t relative flex flex-col justify-end h-full border-b border-slate-300">
+                                    <div id="bar-v3" class="w-full bg-purple-500 rounded-t transition-all duration-300" style="height: 50%;"></div>
+                                    <span class="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-600">V3</span>
+                                    <span id="chart-val-3" class="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-purple-700">12.0</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Circuito Equivalente -->
+                        <div class="w-1/2 bg-slate-50 rounded-lg border border-slate-300 p-2 flex flex-col items-center justify-center relative shadow-inner">
+                            <h3 class="text-xs font-bold text-center text-slate-700 absolute top-2 left-0 w-full border-b pb-1 flex items-center justify-center gap-1">
+                                Equivalente ($R_{eq}$)
+                                <span class="relative tip-wrapper inline-block z-50">
+                                    <span class="tip-btn scale-50 bg-slate-500">?</span>
+                                    <span class="tip-content"><strong>Resistencia Equivalente:</strong> Todo el circuito superior puede ser reemplazado matemáticamente por esta única resistencia que consume la misma energía total.</span>
+                                </span>
+                            </h3>
+                            
+                            <svg viewBox="0 0 120 70" class="w-full h-[80%] mt-4">
+                                <!-- Cables -->
+                                <path d="M 30 35 L 30 15 L 90 15 L 90 28" stroke="#334155" fill="none" stroke-width="2"/>
+                                <path d="M 30 45 L 30 60 L 90 60 L 90 42" stroke="#334155" fill="none" stroke-width="2"/>
+                                
+                                <!-- Resistencia Equivalente -->
+                                <path d="M 90 28 L 86 30 L 94 33 L 86 36 L 94 39 L 86 42 L 90 44 L 90 42" stroke="#047857" fill="none" stroke-width="2.5" stroke-linejoin="round"/>
+                                
+                                <!-- Batería (Símbolo Clásico) -->
+                                <line x1="20" y1="35" x2="40" y2="35" stroke="#ef4444" stroke-width="2"/> <!-- Polo + -->
+                                <line x1="15" y1="40" x2="45" y2="40" stroke="#1e293b" stroke-width="4"/> <!-- Polo - -->
+                                <line x1="25" y1="45" x2="35" y2="45" stroke="#1e293b" stroke-width="2"/> <!-- Interno -->
+                                
+                                <!-- Textos -->
+                                <text x="15" y="30" id="svg-v" fill="#2563eb" font-size="7" font-weight="bold" font-family="monospace">12V</text>
+                                <text x="98" y="38" id="svg-req" fill="#047857" font-size="7" font-weight="bold" font-family="monospace">Req=10Ω</text>
+                                <text x="50" y="12" id="svg-i" fill="#b45309" font-size="7" font-weight="bold" font-family="monospace">I = 1.2A</text>
+                                
+                                <!-- Flecha Corriente -->
+                                <path id="svg-arrow" d="M 45 15 L 60 15 M 56 12 L 60 15 L 56 18" stroke="#b45309" fill="none" stroke-width="1.5"/>
+                            </svg>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE TOOLTIPS (INMUTABLE) -->
+    <script>
+        (function () {
+            let globalTip = document.createElement("div");
+            globalTip.className = "tip-content";
+            globalTip.style.position = "fixed";
+            globalTip.style.zIndex = "999999";
+            globalTip.style.pointerEvents = "none";
+            globalTip.style.opacity = "0";
+            globalTip.style.visibility = "hidden";
+            document.body.appendChild(globalTip);
+
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                const localTip = wrapper.querySelector(".tip-content");
+                wrapper.addEventListener("mouseenter", () => {
+                    const rect = wrapper.getBoundingClientRect();
+                    globalTip.innerHTML = localTip.innerHTML;
+                    globalTip.style.top = rect.top + "px";
+                    globalTip.style.left = (rect.right + 10) + "px";
+                    globalTip.style.opacity = "1";
+                    globalTip.style.visibility = "visible";
+                });
+                wrapper.addEventListener("mouseleave", () => {
+                    globalTip.style.opacity = "0";
+                    globalTip.style.visibility = "hidden";
+                });
+            });
+        })();
+    </script>
+
+    <!-- MOTOR FÍSICO, THREE.JS Y ACTUALIZACIONES UI -->
+    <script>
+        // 0. Inicialización UI
+        document.addEventListener("DOMContentLoaded", () => {
+            renderMathInElement(document.body, {
+                delimiters: [ {left: "$$", right: "$$", display: true}, {left: "\\[", right: "\\]", display: true}, {left: "$", right: "$", display: false}, {left: "\\(", right: "\\)", display: false} ],
+                throwOnError: false
+            });
+            lucide.createIcons();
+            
+            // Inicializar visibilidad de controles puente
+            document.getElementById('bridge-highlights').classList.toggle('hidden', params.topo !== 'delta');
+        });
+
+        // 1. Setup Three.js
+        const container = document.getElementById('canvas-3d');
+        const labelsContainer = document.getElementById('labels-container');
+        const scene = new THREE.Scene();
+        
+        const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // Luces y Grid
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 30, 20);
+        scene.add(dirLight);
+
+        const gridHelper = new THREE.GridHelper(80, 80, 0x3b82f6, 0x1e293b);
+        gridHelper.material.opacity = 0.15;
+        gridHelper.material.transparent = true;
+        gridHelper.position.y = -0.5;
+        scene.add(gridHelper);
+
+        // 2. Estado Global de Simulación
+        let params = {
+            topo: 'series', // series, parallel, mixed, delta, star
+            V: 12,
+            R1: 10,
+            R2: 10,
+            R3: 10,
+            R4: 15, // Resistencias adicionales fijas para las nuevas mallas
+            R5: 22
+        };
+        
+        let calc = { Req: 10, I: 1.2, V1: 0, V2: 0, V3: 0, I1: 0, I2: 0, I3: 0 };
+        let flowConvention = 1; // 1 = Convencional, -1 = Electrones
+        let is2DView = false;
+        let showLabels = true;
+        let highlightedResistors = []; // Para resaltar Delta/Estrella
+        
+        let circuitMeshes = []; 
+        let chargePaths = []; // Rutas lógicas para partículas
+        let uiLabels3D = [];  // Datos para etiquetas HTML proyectadas
+        window.resistorRings = {}; // Almacena mallas de los anillos de color
+        
+        // Materiales
+        const matWire = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.4 });
+        const matResistor = new THREE.MeshStandardMaterial({ color: 0xe4e4e7, roughness: 0.9 });
+        const matTerminalPos = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3 });
+        const matTerminalNeg = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3 });
+        const matChargeConv = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+        const matChargeElec = new THREE.MeshBasicMaterial({ color: 0x3b82f6 });
+
+        // Función para resolver código de colores según el estándar internacional
+        function getResistorColor(digit) {
+            const colors = {
+                '-2': 0xc0c0c0, // Plata
+                '-1': 0xd4af37, // Oro
+                '0': 0x000000,  // Negro
+                '1': 0x8b4513,  // Marrón
+                '2': 0xff0000,  // Rojo
+                '3': 0xff8c00,  // Naranja
+                '4': 0xffff00,  // Amarillo
+                '5': 0x008000,  // Verde
+                '6': 0x0000ff,  // Azul
+                '7': 0x8a2be2,  // Violeta
+                '8': 0x808080,  // Gris
+                '9': 0xffffff   // Blanco
+            };
+            return colors[digit.toString()] !== undefined ? colors[digit.toString()] : 0x000000;
+        }
+
+        // 3. Constructores Físicos
+        function createWire(p1, p2) {
+            const dist = p1.distanceTo(p2);
+            if(dist < 0.01) return;
+            const geo = new THREE.CylinderGeometry(0.15, 0.15, dist, 12);
+            const mesh = new THREE.Mesh(geo, matWire);
+            mesh.position.copy(p1).lerp(p2, 0.5);
+            mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+            scene.add(mesh);
+            circuitMeshes.push(mesh);
+        }
+
+        function createResistor(p1, p2, nameId) {
+            const dist = p1.distanceTo(p2);
+            const dir = p2.clone().sub(p1).normalize();
+            const bodyLen = 2.5;
+            const wireLen = (dist - bodyLen) / 2;
+
+            const pStartBody = p1.clone().add(dir.clone().multiplyScalar(wireLen));
+            const pEndBody = p2.clone().sub(dir.clone().multiplyScalar(wireLen));
+            
+            createWire(p1, pStartBody);
+            createWire(pEndBody, p2);
+
+            const geoBody = new THREE.CylinderGeometry(0.6, 0.6, bodyLen, 16);
+            const meshBody = new THREE.Mesh(geoBody, matResistor.clone()); // Clonar para resaltados individuales
+            meshBody.position.copy(pStartBody).lerp(pEndBody, 0.5);
+            meshBody.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+            meshBody.userData = { id: nameId, isResistor: true }; // Identificador para resaltado
+            scene.add(meshBody);
+            circuitMeshes.push(meshBody);
+
+            // Anillos estéticos - 4 Bandas
+            const ringMeshes = [];
+            const ringOffsets = [-0.8, -0.3, 0.2, 0.8]; 
+            for(let i=0; i<4; i++) {
+                const geoRing = new THREE.CylinderGeometry(0.62, 0.62, 0.2, 16);
+                const meshRing = new THREE.Mesh(geoRing, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }));
+                meshRing.position.copy(meshBody.position).add(dir.clone().multiplyScalar(ringOffsets[i]));
+                meshRing.quaternion.copy(meshBody.quaternion);
+                scene.add(meshRing);
+                circuitMeshes.push(meshRing);
+                ringMeshes.push(meshRing);
+            }
+            window.resistorRings[nameId] = ringMeshes;
+
+            // Datos para etiquetas UI
+            uiLabels3D.push({ 
+                type: 'resistor', 
+                id: nameId, 
+                posA: p1.clone(), 
+                posB: p2.clone(), 
+                center: meshBody.position.clone()
+            });
+        }
+
+        // Batería realista
+        function createBattery(p1, p2) {
+            const dist = p1.distanceTo(p2);
+            const dir = p2.clone().sub(p1).normalize();
+            const mid = p1.clone().lerp(p2, 0.5);
+            const bodyLen = dist * 0.7;
+
+            // Cuerpo principal
+            const geoBody = new THREE.CylinderGeometry(1.5, 1.5, bodyLen, 32);
+            const matBody = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.6 });
+            const meshBody = new THREE.Mesh(geoBody, matBody);
+            meshBody.position.copy(mid);
+            meshBody.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+            // Polo Positivo
+            const geoPos = new THREE.CylinderGeometry(1.52, 1.52, bodyLen * 0.2, 32);
+            const meshPos = new THREE.Mesh(geoPos, matTerminalPos);
+            meshPos.position.copy(mid).add(dir.clone().multiplyScalar(bodyLen/2 - bodyLen*0.1));
+            meshPos.quaternion.copy(meshBody.quaternion);
+
+            // Nub
+            const geoNub = new THREE.CylinderGeometry(0.5, 0.5, 0.5, 16);
+            const meshNub = new THREE.Mesh(geoNub, matTerminalPos);
+            meshNub.position.copy(mid).add(dir.clone().multiplyScalar(bodyLen/2 + 0.25));
+            meshNub.quaternion.copy(meshBody.quaternion);
+            
+            createWire(p1, mid.clone().sub(dir.clone().multiplyScalar(bodyLen/2)));
+            createWire(p2, mid.clone().add(dir.clone().multiplyScalar(bodyLen/2 + 0.5)));
+
+            scene.add(meshBody); scene.add(meshPos); scene.add(meshNub);
+            circuitMeshes.push(meshBody, meshPos, meshNub);
+        }
+
+        // Sistema de Rutas para Cargas
+        function addChargePath(nodes, currentVarName) {
+            chargePaths.push({ path: nodes, iVar: currentVarName, charges: [] });
+        }
+
+        function clearScene() {
+            circuitMeshes.forEach(m => { scene.remove(m); if(m.geometry) m.geometry.dispose(); });
+            chargePaths.forEach(po => po.charges.forEach(c => { scene.remove(c.mesh); c.mesh.geometry.dispose(); }));
+            circuitMeshes = []; chargePaths = []; uiLabels3D = []; window.resistorRings = {}; labelsContainer.innerHTML = '';
+        }
+
+        // 4. Topologías Dinámicas
+        function buildCircuit() {
+            clearScene();
+            const t = params.topo;
+
+            if (t === 'series') {
+                const nBatN = new THREE.Vector3(-8, 0, 5); const nBatP = new THREE.Vector3(8, 0, 5);
+                const n1 = new THREE.Vector3(8, 0, -5);    const n2 = new THREE.Vector3(2.5, 0, -5);
+                const n3 = new THREE.Vector3(-2.5, 0, -5);   const n4 = new THREE.Vector3(-8, 0, -5);
+                
+                createBattery(nBatN, nBatP);
+                createWire(nBatP, n1);
+                createResistor(n1, n2, 'r1');
+                createResistor(n2, n3, 'r2');
+                createResistor(n3, n4, 'r3');
+                createWire(n4, nBatN);
+
+                addChargePath([nBatP, n1, n2, n3, n4, nBatN], 'I1');
+            }
+            else if (t === 'parallel') {
+                const nBatN = new THREE.Vector3(-8, 0, 6); const nBatP = new THREE.Vector3(8, 0, 6);
+                const nL1 = new THREE.Vector3(-8, 0, 2);   const nR1 = new THREE.Vector3(8, 0, 2);
+                const nL2 = new THREE.Vector3(-8, 0, -2);  const nR2 = new THREE.Vector3(8, 0, -2);
+                const nL3 = new THREE.Vector3(-8, 0, -6);  const nR3 = new THREE.Vector3(8, 0, -6);
+                
+                createBattery(nBatN, nBatP);
+                createWire(nBatP, nR1); createWire(nR1, nR2); createWire(nR2, nR3);
+                createWire(nBatN, nL1); createWire(nL1, nL2); createWire(nL2, nL3);
+
+                createResistor(nR1, nL1, 'r1');
+                createResistor(nR2, nL2, 'r2');
+                createResistor(nR3, nL3, 'r3');
+
+                addChargePath([nBatP, nR1, nL1, nBatN], 'I1');
+                addChargePath([nBatP, nR1, nR2, nL2, nL1, nBatN], 'I2');
+                addChargePath([nBatP, nR1, nR2, nR3, nL3, nL2, nL1, nBatN], 'I3');
+            }
+            else if (t === 'mixed') {
+                const nBatN = new THREE.Vector3(-8, 0, 5); const nBatP = new THREE.Vector3(8, 0, 5);
+                const nTL = new THREE.Vector3(-8, 0, -5);  const nTR = new THREE.Vector3(8, 0, -5);
+                const nMidL = new THREE.Vector3(-2, 0, -5);const nMidR = new THREE.Vector3(3, 0, -5);
+                const pTL = new THREE.Vector3(-2, 0, -8);  const pTR = new THREE.Vector3(3, 0, -8);
+                const pBL = new THREE.Vector3(-2, 0, -2);  const pBR = new THREE.Vector3(3, 0, -2);
+
+                createBattery(nBatN, nBatP);
+                createWire(nBatP, nTR);
+                createResistor(nTR, nMidR, 'r1'); 
+                createWire(nMidR, pTR); createWire(nMidR, pBR);
+                createResistor(pTR, pTL, 'r2'); 
+                createResistor(pBR, pBL, 'r3'); 
+                createWire(pTL, nMidL); createWire(pBL, nMidL);
+                createWire(nMidL, nTL); createWire(nTL, nBatN);
+
+                addChargePath([nBatP, nTR, nMidR, pTR, pTL, nMidL, nTL, nBatN], 'I2');
+                addChargePath([nBatP, nTR, nMidR, pBR, pBL, nMidL, nTL, nBatN], 'I3');
+            }
+            else if (t === 'delta') {
+                // Delta Multi-Malla: Puente de Wheatstone Realista - Ruteo perimetral (sin cruces)
+                const nBatN = new THREE.Vector3(-4, 0, 16); 
+                const nBatP = new THREE.Vector3(4, 0, 16);
+                
+                const nTop = new THREE.Vector3(0, 0, -8);
+                const nLeft = new THREE.Vector3(-8, 0, 0);
+                const nRight = new THREE.Vector3(8, 0, 0);
+                const nBot = new THREE.Vector3(0, 0, 8);
+
+                createBattery(nBatN, nBatP); 
+                
+                // Ruteo Positivo perimetral (Por la derecha y hacia arriba)
+                const pC1 = new THREE.Vector3(14, 0, 16);
+                const pC2 = new THREE.Vector3(14, 0, -12);
+                const pC3 = new THREE.Vector3(0, 0, -12);
+                createWire(nBatP, pC1); createWire(pC1, pC2); createWire(pC2, pC3); createWire(pC3, nTop);
+                
+                // Ruteo Negativo perimetral (Por la izquierda y hacia abajo)
+                const nC1 = new THREE.Vector3(0, 0, 12);
+                const nC2 = new THREE.Vector3(-14, 0, 12);
+                const nC3 = new THREE.Vector3(-14, 0, 16);
+                createWire(nBot, nC1); createWire(nC1, nC2); createWire(nC2, nC3); createWire(nC3, nBatN);
+
+                // Malla Delta superior (Top-Left-Right)
+                createResistor(nTop, nLeft, 'r1'); 
+                createResistor(nTop, nRight, 'r2'); 
+                createResistor(nLeft, nRight, 'r3'); // Galvanómetro central
+                
+                // Mallas adicionales inferiores para completar el puente
+                createResistor(nLeft, nBot, 'r4'); 
+                createResistor(nRight, nBot, 'r5'); 
+
+                // Flujos
+                const pathPos = [nBatP, pC1, pC2, pC3, nTop];
+                const pathNeg = [nBot, nC1, nC2, nC3, nBatN];
+
+                addChargePath([...pathPos, nLeft, ...pathNeg], 'I4'); // Rama izquierda principal
+                addChargePath([...pathPos, nRight, ...pathNeg], 'I5'); // Rama derecha principal
+                addChargePath([...pathPos, nLeft, nRight, ...pathNeg], 'I3_LR'); // Flujo cruzado L->R
+                addChargePath([...pathPos, nRight, nLeft, ...pathNeg], 'I3_RL'); // Flujo cruzado R->L
+            }
+            else if (t === 'star') {
+                // Estrella Multi-Malla con cargas distribuidas - Ruteo perimetral (sin cruces)
+                const nBatN = new THREE.Vector3(-4, 0, 16); 
+                const nBatP = new THREE.Vector3(4, 0, 16);
+                
+                const nA = new THREE.Vector3(0, 0, -8);
+                const nCenter = new THREE.Vector3(0, 0, -2);
+                const nB = new THREE.Vector3(-8, 0, 4);
+                const nC = new THREE.Vector3(8, 0, 4);
+
+                createBattery(nBatN, nBatP);
+                
+                // Ruteo Positivo perimetral (Hacia la punta superior)
+                const pC1 = new THREE.Vector3(14, 0, 16);
+                const pC2 = new THREE.Vector3(14, 0, -12);
+                const pC3 = new THREE.Vector3(0, 0, -12);
+                createWire(nBatP, pC1); createWire(pC1, pC2); createWire(pC2, pC3); createWire(pC3, nA);
+                
+                // Retornos inferiores
+                const nRetB = new THREE.Vector3(-8, 0, 10);
+                const nRetC = new THREE.Vector3(8, 0, 10);
+                
+                // Ruteo Negativo para B
+                const nC1 = new THREE.Vector3(-8, 0, 16);
+                createWire(nRetB, nC1); createWire(nC1, nBatN);
+                
+                // Ruteo Negativo para C (Une de forma limpia al retorno de B)
+                const nC2 = new THREE.Vector3(8, 0, 14);
+                const nC3 = new THREE.Vector3(-8, 0, 14);
+                createWire(nRetC, nC2); createWire(nC2, nC3); createWire(nC3, nC1);
+
+                createResistor(nA, nCenter, 'r1'); // Brazo Principal
+                createResistor(nCenter, nB, 'r2'); // Brazo B
+                createResistor(nCenter, nC, 'r3'); // Brazo C
+                
+                createResistor(nB, nRetB, 'r4');
+                createResistor(nC, nRetC, 'r5');
+                
+                const pathPos = [nBatP, pC1, pC2, pC3, nA];
+                addChargePath([...pathPos, nCenter, nB, nRetB, nC1, nBatN], 'I2');
+                addChargePath([...pathPos, nCenter, nC, nRetC, nC2, nC3, nC1, nBatN], 'I3');
+            }
+
+            // Inyectar HTML Labels
+            uiLabels3D.forEach((l) => {
+                labelsContainer.insertAdjacentHTML('beforeend', `
+                    <div id="lbl-pos-${l.id}" class="floating-label polarity-pos">+</div>
+                    <div id="lbl-neg-${l.id}" class="floating-label polarity-neg">-</div>
+                    <div id="lbl-val-${l.id}" class="floating-label">R</div>
+                `);
+            });
+
+            resetCamera();
+            recalculateMath();
+            highlightResistors(highlightedResistors); // Re-aplicar resaltado si existe
+        }
+
+        // Lógica de Resaltado de Delta y Estrella
+        function highlightResistors(ids) {
+            highlightedResistors = ids;
+            scene.traverse((child) => {
+                if (child.isMesh && child.userData && child.userData.isResistor) {
+                    if (ids.length === 0) {
+                        child.material.color.setHex(0xe4e4e7); 
+                        child.material.emissive.setHex(0x000000);
+                        child.material.transparent = false;
+                        child.material.opacity = 1.0;
+                    } else if (ids.includes(child.userData.id)) {
+                        child.material.color.setHex(0xfef08a); // Amarillo resaltado
+                        child.material.emissive.setHex(0x854d0e); 
+                        child.material.transparent = false;
+                        child.material.opacity = 1.0;
+                    } else {
+                        child.material.color.setHex(0x94a3b8); 
+                        child.material.emissive.setHex(0x000000);
+                        child.material.transparent = true;
+                        child.material.opacity = 0.15; // Atenuar drásticamente
+                    }
+                }
+            });
+            // Atenuar también los anillos de color
+            Object.keys(window.resistorRings).forEach(rId => {
+                let rings = window.resistorRings[rId];
+                let isDimmed = ids.length > 0 && !ids.includes(rId);
+                rings.forEach(ring => {
+                    if(ring) {
+                        ring.material.transparent = isDimmed;
+                        ring.material.opacity = isDimmed ? 0.15 : 1.0;
+                    }
+                });
+            });
+        }
+
+        // Función para actualizar bandas de colores de resistencias
+        function updateResistorColors() {
+            if(!window.resistorRings) return;
+            Object.keys(window.resistorRings).forEach(id => {
+                let rings = window.resistorRings[id];
+                if(!rings) return;
+                
+                let val = params[id.toUpperCase()]; 
+                if(val === undefined) val = 10; 
+
+                let d1 = 0, d2 = 0, mult = 0;
+                if(val < 10) {
+                    let base = Math.floor(val * 10);
+                    d1 = Math.floor(base / 10);
+                    d2 = base % 10;
+                    mult = -1; // x0.1 oro
+                } else {
+                    let exp = Math.floor(Math.log10(val));
+                    let base = Math.floor(val / Math.pow(10, exp - 1)); 
+                    d1 = Math.floor(base / 10);
+                    d2 = base % 10;
+                    mult = exp - 1; 
+                }
+                
+                if(rings[0]) rings[0].material.color.setHex(getResistorColor(d1));
+                if(rings[1]) rings[1].material.color.setHex(getResistorColor(d2));
+                if(rings[2]) rings[2].material.color.setHex(getResistorColor(mult));
+                if(rings[3]) rings[3].material.color.setHex(0xd4af37); // Tolerancia 5% Oro
+            });
+        }
+
+        // 5. Cálculos Matemáticos en Tiempo Real
+        function recalculateMath() {
+            const V = params.V, R1 = params.R1, R2 = params.R2, R3 = params.R3, R4 = params.R4, R5 = params.R5;
+            let Req = 0, I = 0;
+            let v1=0, v2=0, v3=0, i1=0, i2=0, i3=0;
+
+            if (params.topo === 'series') {
+                Req = R1 + R2 + R3; I = V / Req;
+                v1 = I*R1; v2 = I*R2; v3 = I*R3;
+                i1 = I; i2 = I; i3 = I;
+            } else if (params.topo === 'parallel') {
+                Req = 1 / ((1/R1) + (1/R2) + (1/R3)); I = V / Req;
+                v1 = V; v2 = V; v3 = V;
+                i1 = V/R1; i2 = V/R2; i3 = V/R3;
+            } else if (params.topo === 'mixed') {
+                let rp = 1 / ((1/R2) + (1/R3));
+                Req = R1 + rp; I = V / Req;
+                v1 = I*R1; v2 = I*rp; v3 = I*rp;
+                i1 = I; i2 = v2/R2; i3 = v3/R3;
+            } else if (params.topo === 'delta') {
+                // Solución Puente de Wheatstone (Transformación Delta-Estrella)
+                let Ra = (R1 * R2) / (R1 + R2 + R3); // Conectado a Top
+                let Rb = (R1 * R3) / (R1 + R2 + R3); // Conectado a Left
+                let Rc = (R2 * R3) / (R1 + R2 + R3); // Conectado a Right
+                
+                let Rp = 1 / (1 / (Rb + R4) + 1 / (Rc + R5));
+                Req = Ra + Rp;
+                I = V / Req;
+                
+                let V_cen = V - (I * Ra);
+                let I4 = V_cen / (Rb + R4);
+                let I5 = V_cen / (Rc + R5);
+                
+                let V_left = I4 * R4;
+                let V_right = I5 * R5;
+                
+                i3 = (V_left - V_right) / R3; // >0 si Left->Right
+                i1 = (V - V_left) / R1;
+                i2 = (V - V_right) / R2;
+                
+                v1 = i1 * R1; v2 = i2 * R2; v3 = Math.abs(i3 * R3);
+                
+                calc.I4 = I4; calc.I5 = I5;
+                calc.I3_LR = i3 > 0 ? i3 : 0;
+                calc.I3_RL = i3 < 0 ? Math.abs(i3) : 0;
+            } else if (params.topo === 'star') {
+                let Rb_branch = R2 + R4;
+                let Rc_branch = R3 + R5;
+                let Rp = 1 / (1 / Rb_branch + 1 / Rc_branch);
+                Req = R1 + Rp; 
+                I = V / Req;
+                
+                let V_cen = I * Rp;
+                i2 = V_cen / Rb_branch;
+                i3 = V_cen / Rc_branch;
+                i1 = I;
+                
+                v1 = i1 * R1; v2 = i2 * R2; v3 = i3 * R3;
+            }
+
+            calc = { ...calc, Req, I, V1: v1, V2: v2, V3: v3, I1: i1, I2: i2, I3: Math.abs(i3) };
+            updateResistorColors();
+            updateUIPanels();
+        }
+
+        // 6. Actualización de Interfaz y Gráficos
+        function updateUIPanels() {
+            document.getElementById('lbl-v-val').innerText = `${params.V} V`;
+            document.getElementById('lbl-r1-val').innerText = `${params.R1} Ω`;
+            document.getElementById('lbl-r2-val').innerText = `${params.R2} Ω`;
+            document.getElementById('lbl-r3-val').innerText = `${params.R3} Ω`;
+
+            document.getElementById('chart-max').innerText = `${params.V}V`;
+            
+            const p1 = (calc.V1 / params.V) * 100;
+            const p2 = (calc.V2 / params.V) * 100;
+            const p3 = (calc.V3 / params.V) * 100;
+
+            document.getElementById('bar-v1').style.height = `${p1}%`;
+            document.getElementById('bar-v2').style.height = `${p2}%`;
+            document.getElementById('bar-v3').style.height = `${p3}%`;
+
+            document.getElementById('chart-val-1').innerText = calc.V1.toFixed(1);
+            document.getElementById('chart-val-2').innerText = calc.V2.toFixed(1);
+            document.getElementById('chart-val-3').innerText = calc.V3.toFixed(1);
+
+            document.getElementById('svg-v').textContent = `${params.V}V`;
+            document.getElementById('svg-req').textContent = `Req=${calc.Req.toFixed(1)}Ω`;
+            document.getElementById('svg-i').textContent = `I=${calc.I.toFixed(2)}A`;
+            
+            const arr = document.getElementById('svg-arrow');
+            if(flowConvention === 1) arr.setAttribute('d', 'M 45 15 L 60 15 M 56 12 L 60 15 L 56 18');
+            else arr.setAttribute('d', 'M 60 15 L 45 15 M 49 12 L 45 15 L 49 18');
+        }
+
+        function update3DLabels() {
+            const rect = renderer.domElement.getBoundingClientRect();
+            
+            uiLabels3D.forEach(l => {
+                const elPos = document.getElementById(`lbl-pos-${l.id}`);
+                const elNeg = document.getElementById(`lbl-neg-${l.id}`);
+                const elVal = document.getElementById(`lbl-val-${l.id}`);
+                if(!elPos) return;
+
+                let pHigh = l.posA, pLow = l.posB;
+
+                // Adaptar polaridad real en flujos cruzados
+                if (params.topo === 'delta' && l.id === 'r3' && calc.I3_RL > 0) {
+                    pHigh = l.posB; pLow = l.posA;
+                }
+
+                const toPx = (pos3D) => {
+                    const proj = pos3D.clone().project(camera);
+                    return { x: (proj.x*.5+.5)*rect.width, y: (proj.y*-.5+.5)*rect.height, z: proj.z };
+                };
+                
+                const c1 = toPx(pHigh); 
+                const c2 = toPx(pLow); 
+                const cC = toPx(l.center);
+
+                // Determinar estado de atenuación según resaltado
+                let isDimmed = highlightedResistors.length > 0 && !highlightedResistors.includes(l.id);
+                let isHighlighted = highlightedResistors.includes(l.id);
+
+                // Ocultar si está detrás de cámara o si showLabels está apagado
+                if(c1.z > 1 || cC.z > 1 || (!showLabels && !isHighlighted)) {
+                    elPos.style.display = 'none'; elNeg.style.display = 'none'; elVal.style.display = 'none';
+                    // Nota: Si el usuario desactiva etiquetas, igual permitimos ver el "+" y "-" si está resaltando la malla
+                    if (showLabels) return;
+                }
+                
+                if (!showLabels && isHighlighted) {
+                    elVal.style.display = 'none';
+                    elPos.style.display = 'block'; elNeg.style.display = 'block';
+                } else if (showLabels) {
+                    elVal.style.display = 'block';
+                    elPos.style.display = 'block'; elNeg.style.display = 'block';
+                }
+
+                elPos.style.left = `${c1.x}px`; elPos.style.top = `${c1.y - 20}px`;
+                elNeg.style.left = `${c2.x}px`; elNeg.style.top = `${c2.y - 20}px`;
+                elVal.style.left = `${cC.x + 45}px`; elVal.style.top = `${cC.y}px`;
+                
+                let rval = params[l.id.toUpperCase()] || "-";
+                
+                let vval = 0;
+                if(l.id==='r1') vval = calc.V1;
+                else if(l.id==='r2') vval = calc.V2;
+                else if(l.id==='r3') vval = calc.V3;
+                else if(l.id==='r4' && params.topo==='delta') vval = calc.I4 * params.R4;
+                else if(l.id==='r5' && params.topo==='delta') vval = calc.I5 * params.R5;
+                else if(l.id==='r4' && params.topo==='star') vval = calc.I2 * params.R4;
+                else if(l.id==='r5' && params.topo==='star') vval = calc.I3 * params.R5;
+
+                elVal.innerHTML = `<strong>${l.id.toUpperCase()}:</strong> ${rval}Ω <br> <span class="text-blue-700 font-bold">${vval.toFixed(1)}V</span>`;
+
+                // Aplicar atenuación / resaltado a HTML
+                if (isDimmed) {
+                    elVal.style.opacity = '0.2'; elPos.style.opacity = '0.2'; elNeg.style.opacity = '0.2';
+                    elVal.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                } else {
+                    elVal.style.opacity = '1'; elPos.style.opacity = '1'; elNeg.style.opacity = '1';
+                    elVal.style.transform = isHighlighted ? 'translate(-50%, -50%) scale(1.15)' : 'translate(-50%, -50%) scale(1)';
+                    if (isHighlighted) elVal.style.zIndex = '60'; else elVal.style.zIndex = '50';
+                }
+            });
+        }
+
+        // 7. Render Loop y Animaciones
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            controls.update();
+
+            // Partículas
+            chargePaths.forEach(po => {
+                const totalNodes = po.path.length;
+                let speedMult = calc[po.iVar] * 1.5; 
+                if (speedMult === undefined) return;
+                if (speedMult < 0.1 && speedMult > 0) speedMult = 0.4; 
+
+                if(speedMult > 0 && Math.random() < speedMult * 0.08) {
+                    const material = flowConvention === 1 ? matChargeConv : matChargeElec;
+                    const m = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), material);
+                    scene.add(m);
+                    po.charges.push({ mesh: m, progress: 0 });
+                }
+
+                for(let i = po.charges.length - 1; i >= 0; i--) {
+                    let c = po.charges[i];
+                    
+                    if (flowConvention === 1) c.progress += speedMult * delta * 0.8;
+                    else c.progress -= speedMult * delta * 0.8;
+
+                    let effProg = c.progress;
+                    if (flowConvention === -1) {
+                        if(c.progress <= 0) c.progress = totalNodes - 1.01;
+                        effProg = c.progress;
+                    }
+
+                    if(effProg >= totalNodes - 1 || effProg < 0) {
+                        scene.remove(c.mesh); c.mesh.geometry.dispose();
+                        po.charges.splice(i, 1); continue;
+                    }
+
+                    const idx = Math.floor(effProg);
+                    const fract = effProg - idx;
+                    c.mesh.position.copy(po.path[idx]).lerp(po.path[idx+1], fract);
+                    c.mesh.material = flowConvention === 1 ? matChargeConv : matChargeElec;
+                }
+            });
+
+            update3DLabels();
+            renderer.render(scene, camera);
+        }
+
+        // 8. Eventos UI y Controles
+        function resetCamera() {
+            controls.reset();
+            if(is2DView) {
+                camera.position.set(0, 35, 0); 
+                controls.target.set(0,0,0);
+            } else {
+                if(params.topo === 'delta' || params.topo === 'star') {
+                    camera.position.set(0, 25, 25); controls.target.set(0,0,0);
+                } else {
+                    camera.position.set(0, 16, 16); controls.target.set(0,0,0);
+                }
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        document.getElementById('circuit-selector').addEventListener('change', (e) => {
+            params.topo = e.target.value;
+            highlightResistors([]); // Limpiar resaltados al cambiar topología
+            document.getElementById('bridge-highlights').classList.toggle('hidden', params.topo !== 'delta');
+            buildCircuit();
+        });
+
+        // Controles de Resaltado del Puente
+        document.getElementById('btn-hl-delta').addEventListener('click', () => { highlightResistors(['r1', 'r2', 'r3']); });
+        document.getElementById('btn-hl-star').addEventListener('click', () => { highlightResistors(['r1', 'r4', 'r3']); });
+        document.getElementById('btn-hl-none').addEventListener('click', () => { highlightResistors([]); });
+
+        ['v', 'r1', 'r2', 'r3'].forEach(id => {
+            document.getElementById(`slider-${id}`).addEventListener('input', (e) => {
+                params[id.toUpperCase()] = parseFloat(e.target.value);
+                recalculateMath();
+            });
+        });
+
+        document.getElementById('btn-labels').addEventListener('click', (e) => {
+            showLabels = !showLabels;
+            const btn = e.currentTarget;
+            if(showLabels) {
+                btn.innerHTML = `<i data-lucide="eye-off" class="w-4 h-4"></i> Valores`;
+                btn.className = "btn-ui bg-amber-100 text-amber-800 border-amber-300";
+            } else {
+                btn.innerHTML = `<i data-lucide="eye" class="w-4 h-4"></i> Valores`;
+                btn.className = "btn-ui bg-slate-100 text-slate-500 border-slate-300";
+            }
+            lucide.createIcons();
+            update3DLabels();
+        });
+
+        document.getElementById('flow-toggle').addEventListener('click', (e) => {
+            flowConvention *= -1;
+            const btn = e.currentTarget;
+            if(flowConvention === 1) {
+                btn.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i> Flujo Conv.`;
+                btn.className = "btn-ui bg-indigo-100 text-indigo-800 border-indigo-300";
+            } else {
+                btn.innerHTML = `<i data-lucide="zap" class="w-4 h-4"></i> Flujo Electr.`;
+                btn.className = "btn-ui bg-blue-100 text-blue-800 border-blue-300";
+            }
+            lucide.createIcons();
+            recalculateMath();
+            
+            chargePaths.forEach(po => {
+                po.charges.forEach(c => { scene.remove(c.mesh); c.mesh.geometry.dispose(); });
+                po.charges = [];
+            });
+        });
+
+        document.getElementById('btn-view').addEventListener('click', (e) => {
+            is2DView = !is2DView;
+            const btn = e.currentTarget;
+            if(is2DView) {
+                btn.innerHTML = `<i data-lucide="box" class="w-4 h-4"></i> Vista 3D`;
+                btn.className = "btn-ui bg-purple-100 text-purple-800 border-purple-300";
+            } else {
+                btn.innerHTML = `<i data-lucide="monitor" class="w-4 h-4"></i> Vista 2D`;
+                btn.className = "btn-ui bg-emerald-100 text-emerald-800 border-emerald-300";
+            }
+            lucide.createIcons();
+            resetCamera();
+        });
+
+        // Start
+        buildCircuit();
+        animate();
+
+    </script>
+</body>
+</html>

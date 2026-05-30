@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Interactivo: Potencial y Trabajo Eléctrico</title>
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls para interacción manual -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .math-tex { font-size: 1.1em; color: #2563eb; }
+        .canvas-container { position: relative; width: 100%; height: 280px; background: #000; border-radius: 0.75rem; overflow: hidden; cursor: grab; }
+        .canvas-container:active { cursor: grabbing; }
+        .drawing-layer { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 30; width: 100vw; height: 100vh; }
+        .drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+        
+        /* Cargas y SVG Específicos */
+        .charge-pos { fill: #ef4444; stroke: #b91c1c; stroke-width: 1.5; transition: transform 0.2s; cursor: pointer; }
+        .charge-neg { fill: #3b82f6; stroke: #1d4ed8; stroke-width: 1.5; transition: transform 0.2s; cursor: pointer; }
+        .point-p { fill: #10b981; stroke: #059669; stroke-width: 2.5; transition: transform 0.2s; cursor: pointer; }
+        .charge-pos:hover, .charge-neg:hover, .point-p:hover { transform: scale(1.2); }
+        .svg-container { display: flex; justify-content: center; align-items: center; padding: 1.5rem; background: #ffffff; border-radius: 1rem; border: 1px solid #e2e8f0; min-height: 180px; box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
+        .case-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            body { background: white; padding: 0; }
+            .problem-card { border: 1px solid #e2e8f0; break-inside: avoid; box-shadow: none; margin-bottom: 1rem; }
+            main { display: block !important; }
+            .svg-container { border: 1px solid #ccc; box-shadow: none; }
+        }
+        .toolbar-btn { transition: all 0.2s; }
+        .toolbar-btn:hover { transform: translateY(-1px); }
+        input[type="number"], input[type="range"] { border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 5px; width: 100%; accent-color: #2563eb; }
+        .hint-content { display: none; margin-top: 0.5rem; }
+        .hint-content.show { display: block; }
+        .compact-text { font-size: 0.85rem; line-height: 1.5; color: #334155; }
+        .problem-text { margin-bottom: 0.75rem; padding-left: 0.5rem; border-left: 3px solid #cbd5e1; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Capa de Dibujo Global -->
+    <canvas id="globalDrawingCanvas" class="drawing-layer"></canvas>
+
+    <!-- Toolbar Superior Fija -->
+    <nav class="no-print sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 mb-6 px-4 py-3 flex flex-wrap gap-3 items-center justify-between rounded-xl shadow-sm">
+        <div class="flex items-center gap-3">
+            <h1 class="font-bold text-slate-800 text-sm md:text-base">Physics.10easy Workshop</h1>
+            <div class="h-6 w-px bg-slate-300 hidden md:block"></div>
+            <button onclick="exportToPDF()" class="toolbar-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-blue-700">Exportar PDF</button>
+            <button onclick="toggleAllHints()" class="toolbar-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-200">Tips Didácticos</button>
+            <button onclick="toggleAllRotations()" class="toolbar-btn bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-emerald-600">Pausar Vista 3D</button>
+        </div>
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button id="penBtn" onclick="setDrawingMode('pen')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Lápiz">✏️</button>
+            <button id="eraserBtn" onclick="setDrawingMode('eraser')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Borrador">🧽</button>
+            <button onclick="clearCanvas()" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Limpiar todo">🗑️</button>
+            <button id="toggleDrawBtn" onclick="toggleDrawing()" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 border-l border-slate-300 ml-1">Dibujo OFF</button>
+        </div>
+    </nav>
+
+    <!-- Header Principal -->
+    <header class="text-center mb-8 border-b border-blue-100 pb-6">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Taller Completo: Potencial y Trabajo Eléctrico</h2>
+        <p class="text-slate-500 mt-2 text-sm">Física II • Electromagnetismo • Energía Electrostática</p>
+        <div class="flex flex-wrap justify-center gap-4 md:gap-8 mt-4 text-[10px] md:text-xs font-mono text-slate-400 uppercase tracking-widest">
+            <span>Grupo: 10E-PHYS</span>
+            <span>Docente: Physics.10easy Builder</span>
+            <span>Unidad 2</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto space-y-6" id="taller-content">
+        
+        <!-- PROBLEMA 1: CONFIGURACIONES ESCALARES -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex items-start gap-4 mb-6">
+                <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0">1</span>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Potencial Eléctrico en el Punto P (Suma Escalar)</h3>
+                    <p class="text-slate-500 text-sm">Determine si el potencial eléctrico neto en el punto \(P\) es positivo, negativo o cero. Indique la expresión algebraica para cada caso.</p>
+                </div>
+            </div>
+
+            <div class="case-grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                <!-- Caso a -->
+                <div class="border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-center">
+                    <span class="text-[9px] font-bold text-slate-400 block mb-2 uppercase tracking-widest">Caso (a): Dipolo</span>
+                    <svg viewBox="0 0 100 50" class="h-16 mx-auto">
+                        <line x1="10" y1="25" x2="90" y2="25" stroke="#cbd5e1" stroke-dasharray="2"/>
+                        <circle cx="20" cy="25" r="4" class="charge-pos"/><text x="20" y="15" font-size="6" text-anchor="middle">+q</text>
+                        <circle cx="50" cy="25" r="2.5" class="point-p"/><text x="50" y="38" font-size="6" text-anchor="middle">P</text>
+                        <circle cx="80" cy="25" r="4" class="charge-neg"/><text x="80" y="15" font-size="6" text-anchor="middle">-q</text>
+                        <text x="35" y="32" font-size="5" fill="#94a3b8">d/2</text><text x="65" y="32" font-size="5" fill="#94a3b8">d/2</text>
+                    </svg>
+                </div>
+                <!-- Caso b -->
+                <div class="border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-center">
+                    <span class="text-[9px] font-bold text-slate-400 block mb-2 uppercase tracking-widest">Caso (b): Dos Positivas</span>
+                    <svg viewBox="0 0 100 50" class="h-16 mx-auto">
+                        <line x1="10" y1="25" x2="90" y2="25" stroke="#cbd5e1" stroke-dasharray="2"/>
+                        <circle cx="20" cy="25" r="4" class="charge-pos"/><text x="20" y="15" font-size="6" text-anchor="middle">+q</text>
+                        <circle cx="50" cy="25" r="2.5" class="point-p"/><text x="50" y="38" font-size="6" text-anchor="middle">P</text>
+                        <circle cx="80" cy="25" r="4" class="charge-pos"/><text x="80" y="15" font-size="6" text-anchor="middle">+q</text>
+                        <text x="35" y="32" font-size="5" fill="#94a3b8">r</text><text x="65" y="32" font-size="5" fill="#94a3b8">r</text>
+                    </svg>
+                </div>
+                <!-- Caso c -->
+                <div class="border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-center">
+                    <span class="text-[9px] font-bold text-slate-400 block mb-2 uppercase tracking-widest">Caso (c): Cuadrado</span>
+                    <svg viewBox="0 0 100 60" class="h-16 mx-auto">
+                        <rect x="35" y="10" width="30" height="30" fill="none" stroke="#e2e8f0" stroke-dasharray="2"/>
+                        <circle cx="35" cy="10" r="3.5" class="charge-pos"/><text x="25" y="12" font-size="5">+Q</text>
+                        <circle cx="65" cy="10" r="3.5" class="charge-neg"/><text x="75" y="12" font-size="5">-Q</text>
+                        <circle cx="35" cy="40" r="3.5" class="charge-neg"/><text x="25" y="42" font-size="5">-Q</text>
+                        <circle cx="65" cy="40" r="3.5" class="charge-pos"/><text x="75" y="42" font-size="5">+Q</text>
+                        <circle cx="50" cy="25" r="2.5" class="point-p"/>
+                    </svg>
+                </div>
+                <!-- Caso d -->
+                <div class="border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-center">
+                    <span class="text-[9px] font-bold text-slate-400 block mb-2 uppercase tracking-widest">Caso (d): Asimétrico</span>
+                    <svg viewBox="0 0 100 50" class="h-16 mx-auto">
+                        <line x1="10" y1="25" x2="90" y2="25" stroke="#cbd5e1"/>
+                        <circle cx="20" cy="25" r="4" class="charge-pos"/><text x="20" y="15" font-size="6" text-anchor="middle">+3q</text>
+                        <circle cx="50" cy="25" r="2.5" class="point-p"/><text x="50" y="38" font-size="6" text-anchor="middle">P</text>
+                        <circle cx="80" cy="25" r="5" class="charge-neg"/><text x="80" y="15" font-size="6" text-anchor="middle">-q</text>
+                        <text x="35" y="22" font-size="5" fill="#94a3b8">x</text><text x="65" y="22" font-size="5" fill="#94a3b8">x</text>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Didáctica</button>
+                <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                    A diferencia del campo eléctrico, <strong>el potencial eléctrico es una magnitud escalar</strong>. Se calcula simplemente como la suma algebraica \( V = \sum \frac{k \cdot q_i}{r_i} \). Presta especial atención a los signos de las cargas, ya que no hay descomposición vectorial.
+                </div>
+            </div>
+        </section>
+
+        <!-- GRUPO 2: PROBLEMAS CON SVG (GRID) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            
+            <!-- PROBLEMA 2: POTENCIAL EN RECTÁNGULO -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">2</span>
+                    <h3 class="text-lg font-bold">Potencial Neto en un Rectángulo</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Cuatro cargas puntuales se ubican en las esquinas de un rectángulo (\(15 \times 20\text{ cm}\)):</p>
+                    <div class="grid grid-cols-2 gap-2 font-mono text-[10px] bg-slate-50 p-3 rounded-lg border border-slate-100 mt-2 mb-2 text-slate-700">
+                        <div>\(q_1 = +5.0\ \mu\text{C}\)</div>
+                        <div>\(q_2 = -2.0\ \mu\text{C}\)</div>
+                        <div>\(q_3 = +4.0\ \mu\text{C}\)</div>
+                        <div>\(q_4 = -7.0\ \mu\text{C}\)</div>
+                    </div>
+                    <p class="font-bold text-primary">Calcule el Potencial Eléctrico total en el centro (P).</p>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 200 150" class="w-full max-w-[260px]">
+                        <rect x="40" y="30" width="120" height="90" fill="none" stroke="#94a3b8" stroke-dasharray="4" />
+                        <circle cx="40" cy="30" r="8" class="charge-pos"/><text x="25" y="25" font-size="10">q₁</text>
+                        <circle cx="160" cy="30" r="8" class="charge-neg"/><text x="175" y="25" font-size="10">q₂</text>
+                        <circle cx="40" cy="120" r="8" class="charge-neg"/><text x="25" y="135" font-size="10">q₄</text>
+                        <circle cx="160" cy="120" r="8" class="charge-pos"/><text x="175" y="135" font-size="10">q₃</text>
+                        <circle cx="100" cy="75" r="5" class="point-p"/><text x="110" y="85" font-weight="bold" font-size="12">P</text>
+                        <line x1="40" y1="30" x2="160" y2="120" stroke="#cbd5e1" stroke-dasharray="2" />
+                        <line x1="40" y1="120" x2="160" y2="30" stroke="#cbd5e1" stroke-dasharray="2" />
+                        <text x="100" y="25" font-size="9" text-anchor="middle">20.0 cm</text>
+                        <text x="180" y="75" font-size="9" transform="rotate(90, 180, 75)">15.0 cm</text>
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        Puesto que el punto P está en el centro, la distancia \(r\) a cada una de las cuatro cargas es idéntica. Calcule \(r\) (la mitad de la diagonal) y luego factorice: \(V_p = \frac{k}{r}(q_1 + q_2 + q_3 + q_4)\). Note cómo las cargas se anulan algebraicamente.
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 3: TRABAJO ELÉCTRICO -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">3</span>
+                    <h3 class="text-lg font-bold">Trabajo para Mover una Carga</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Una carga fija \(Q = +12.0\ \mu\text{C}\) genera un campo en el espacio. Una carga de prueba \(q_0 = -3.0\ \mu\text{C}\) se mueve desde el punto \(A\) hasta el punto \(B\) a lo largo de una trayectoria curva.</p>
+                    <ul class="space-y-1 mt-2 text-xs">
+                        <li><strong>(a)</strong> Determine la diferencia de potencial \(\Delta V = V_B - V_A\).</li>
+                        <li><strong>(b)</strong> ¿Cuánto trabajo realiza el <em>campo eléctrico</em> sobre \(q_0\)?</li>
+                        <li><strong>(c)</strong> ¿Depende este trabajo de la trayectoria dibujada?</li>
+                    </ul>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 300 160" class="w-full">
+                        <circle cx="80" cy="80" r="12" class="charge-pos"/><text x="65" y="105" font-weight="bold" font-size="12">Q</text>
+                        
+                        <!-- Puntos A y B -->
+                        <circle cx="150" cy="30" r="4" fill="#3b82f6"/><text x="160" y="35" font-weight="bold" font-size="12">A</text>
+                        <circle cx="240" cy="110" r="4" fill="#3b82f6"/><text x="250" y="115" font-weight="bold" font-size="12">B</text>
+                        
+                        <!-- Trayectoria -->
+                        <path d="M 150 30 C 200 10, 280 40, 240 110" fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5"/>
+                        
+                        <!-- Radios -->
+                        <line x1="80" y1="80" x2="150" y2="30" stroke="#cbd5e1" stroke-width="1.5" />
+                        <text x="100" y="45" font-size="10">r_A = 10 cm</text>
+                        
+                        <line x1="80" y1="80" x2="240" y2="110" stroke="#cbd5e1" stroke-width="1.5" />
+                        <text x="140" y="110" font-size="10">r_B = 25 cm</text>
+                        
+                        <!-- Particula movil q0 en A -->
+                        <circle cx="150" cy="30" r="6" class="charge-neg"/><text x="135" y="20" font-size="10">q₀</text>
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        El trabajo realizado por el campo eléctrico conservativo se define como \(W_{campo} = -\Delta U = -q_0(V_B - V_A)\). Al ser conservativo, la trayectoria (curva) es irrelevante; solo importan los radios inicial \(r_A\) y final \(r_B\).
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 4: ENERGÍA DE UN SISTEMA -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">4</span>
+                    <h3 class="text-lg font-bold">Energía Potencial de un Sistema</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Determine la Energía Potencial Electrostática total \(U\) almacenada en el sistema de tres cargas ubicadas en los vértices de un triángulo equilátero de lado \(a = 10.0\text{ cm}\).</p>
+                    <div class="bg-slate-50 p-3 rounded-lg text-[11px] font-mono grid grid-cols-2 gap-2 text-slate-700 mt-2 border border-slate-100">
+                        <div>\(q_1 = +2.0\ \mu\text{C}\)</div>
+                        <div>\(q_2 = +3.0\ \mu\text{C}\)</div>
+                        <div>\(q_3 = -4.0\ \mu\text{C}\)</div>
+                        <div class="text-blue-600 font-bold">\(a = 0.10\text{ m}\)</div>
+                    </div>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 300 180" class="w-full">
+                        <polygon points="150,30 70,150 230,150" fill="none" stroke="#94a3b8" stroke-width="2" />
+                        
+                        <circle cx="150" cy="30" r="9" class="charge-pos"/><text x="165" y="35" font-size="12">q₁</text>
+                        <circle cx="70" cy="150" r="9" class="charge-pos"/><text x="45" y="155" font-size="12">q₂</text>
+                        <circle cx="230" cy="150" r="9" class="charge-neg"/><text x="245" y="155" font-size="12">q₃</text>
+                        
+                        <text x="90" y="90" font-size="10" transform="rotate(-56, 90, 90)">a = 10 cm</text>
+                        <text x="210" y="90" font-size="10" transform="rotate(56, 210, 90)">a = 10 cm</text>
+                        <text x="150" y="165" font-size="10" text-anchor="middle">a = 10 cm</text>
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        La energía total del sistema es la suma de las energías de interacción de todos los pares únicos posibles. Al haber 3 cargas, hay 3 interacciones: \(U = k \left( \frac{q_1 q_2}{a} + \frac{q_1 q_3}{a} + \frac{q_2 q_3}{a} \right)\). Puedes factorizar \(\frac{k}{a}\).
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 5: CONSERVACIÓN DE LA ENERGÍA -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">5</span>
+                    <h3 class="text-lg font-bold">Conservación de Energía (Aceleración)</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Un protón (\(m = 1.67 \times 10^{-27}\text{ kg}\), \(q = +1.6 \times 10^{-19}\text{ C}\)) se libera desde el reposo en el punto A, a una distancia \(r_A = 2.0\text{ cm}\) de una carga fija \(Q = +5.0\ \mu\text{C}\).</p>
+                    <p class="font-bold text-primary mt-2">¿Cuál es la rapidez del protón cuando alcanza el punto B, a \(r_B = 8.0\text{ cm}\)?</p>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 300 120" class="w-full">
+                        <line x1="40" y1="60" x2="280" y2="60" stroke="#e2e8f0" stroke-dasharray="4" />
+                        
+                        <circle cx="40" cy="60" r="14" class="charge-pos"/><text x="25" y="95" font-size="12" font-weight="bold">Q (Fija)</text>
+                        
+                        <circle cx="120" cy="60" r="5" fill="#10b981"/><text x="115" y="45" font-size="12" font-weight="bold" fill="#059669">A (v=0)</text>
+                        
+                        <circle cx="240" cy="60" r="5" fill="#10b981"/><text x="235" y="45" font-size="12" font-weight="bold" fill="#059669">B (v=?)</text>
+                        
+                        <!-- Flecha de velocidad en B -->
+                        <line x1="240" y1="60" x2="270" y2="60" stroke="#ef4444" stroke-width="2" />
+                        <polygon points="270,60 265,55 265,65" fill="#ef4444" />
+                        
+                        <line x1="40" y1="80" x2="120" y2="80" stroke="#94a3b8" />
+                        <text x="80" y="95" font-size="10" text-anchor="middle">2.0 cm</text>
+                        
+                        <line x1="40" y1="105" x2="240" y2="105" stroke="#94a3b8" />
+                        <text x="140" y="118" font-size="10" text-anchor="middle">8.0 cm</text>
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        Aplica Conservación de la Energía: \(K_A + U_A = K_B + U_B\). <br>
+                        Dado que se libera del reposo, \(K_A = 0\). La ecuación queda: \(0 + q_p V_A = \frac{1}{2}m_p v_B^2 + q_p V_B\). <br>
+                        Despeja \(v_B = \sqrt{\frac{2q_p(V_A - V_B)}{m_p}}\).
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 6: PUNTO DE POTENCIAL NULO -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col md:flex-row gap-6">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">6</span>
+                        <h3 class="text-lg font-bold">Punto de Potencial Nulo (\(V=0\))</h3>
+                    </div>
+                    <div class="problem-text compact-text">
+                        <p>Dos cargas, \(q_1 = +2.0\ \mu\text{C}\) y \(q_2 = -6.0\ \mu\text{C}\), están separadas por una distancia \(d = 20.0\text{ cm}\).</p>
+                        <p class="font-bold text-primary mt-2">Encuentre las coordenadas del punto(s) sobre el segmento de línea que une las cargas donde el potencial eléctrico es exactamente nulo.</p>
+                        <p class="text-[10px] text-slate-400 mt-2">*A diferencia del campo eléctrico, los puntos de potencial cero entre dos cargas de distinto signo suelen existir tanto dentro como fuera del segmento (formando una superficie esférica). Para este ejercicio analice solo el punto INTERNO entre las cargas.</p>
+                    </div>
+                    <div class="mt-4">
+                        <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Analítica</button>
+                        <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                            <strong>Planteamiento escalar:</strong> El potencial total es la suma algebraica. Exige que \(V_1 + V_2 = 0\). Esto implica \(\frac{k \cdot 2\mu C}{x} + \frac{k \cdot (-6\mu C)}{20 - x} = 0\). Puedes cancelar \(k\) y \(\mu C\). Despeja \(x\) algebraicamente, es una simple ecuación lineal, ¡no cuadrática!
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 flex flex-col justify-center">
+                    <div class="svg-container bg-slate-900 border-none rounded-xl h-[160px]">
+                        <svg viewBox="0 0 300 100" class="w-full max-w-[280px]">
+                            <line x1="50" y1="50" x2="250" y2="50" stroke="#475569" stroke-width="2" />
+                            <circle cx="50" cy="50" r="10" class="charge-pos"/><text x="40" y="80" fill="white" font-size="10">q₁ (+2)</text>
+                            <circle cx="250" cy="50" r="12" class="charge-neg"/><text x="240" y="80" fill="white" font-size="10">q₂ (-6)</text>
+                            
+                            <!-- El punto estara más cerca de la carga menor (2uC) -->
+                            <circle cx="100" cy="50" r="5" class="point-p"/><text x="90" y="35" fill="#10b981" font-weight="bold" font-size="11">V=0</text>
+                            
+                            <text x="150" y="65" fill="#94a3b8" font-size="10" text-anchor="middle">20.0 cm</text>
+                            
+                            <line x1="50" y1="40" x2="100" y2="40" stroke="#10b981" stroke-width="1" />
+                            <text x="75" y="35" fill="#10b981" font-size="10" text-anchor="middle">x</text>
+                        </svg>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <!-- VISUALIZACIÓN AVANZADA 3D: SUPERFICIE DE POTENCIAL -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start mb-2">
+                <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">VISUALIZACIÓN AVANZADA 3D - PAISAJE DE POTENCIAL \(V(x,y)\)</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">Three.js Engine</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="problem-text compact-text text-xs md:col-span-1" style="border-left-color: #6366f1;">
+                    <strong>Simulador Topográfico de Potencial (Dipolo):</strong><br><br>
+                    El potencial eléctrico escalar puede visualizarse como un paisaje topográfico de "montañas" (picos positivos) y "pozos" (valles negativos).<br><br>
+                    En el modelo 3D, la altura en el eje vertical representa el valor de \(V\). Observe el pico pronunciado cerca de la carga positiva (roja) y el abismo cerca de la carga negativa (azul).<br><br>
+                    El plano verde claro en el centro representa los puntos donde el potencial es exactamente cero (Plano Equipotencial nulo de un dipolo).
+                </div>
+                
+                <div class="md:col-span-2 flex flex-col gap-2">
+                    <div class="canvas-container h-[300px] w-full" id="container-3dfield">
+                        <div class="absolute top-2 left-2 text-white/70 text-[10px] font-mono">Paisaje de Potencial (Dipolo Eléctrico)</div>
+                        <div class="absolute bottom-2 left-2 z-10 no-print">
+                            <button onclick="toggleRotation('3dfield')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded btn-pause shadow hover:bg-blue-700">Pausar Vista</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-20 border-t border-slate-200 bg-white py-12 text-center">
+        <div class="max-w-4xl mx-auto px-6">
+            <h4 class="text-primary font-black uppercase tracking-widest text-xs mb-4">Taller Didáctico de Física</h4>
+            <p class="text-slate-500 text-[11px] leading-relaxed max-w-xl mx-auto">
+                Taller interactivo de repaso de Electromagnetismo enfocado en el cálculo escalar del Potencial Eléctrico y Trabajo de Partículas.
+            </p>
+            <div class="flex justify-center gap-8 mt-6 grayscale opacity-40">
+                <div class="text-[9px] font-mono">FÍSICA_II_2026</div>
+                <div class="text-[9px] font-mono">ID_DOC: PE-ELECTRO-02</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts de Lógica y Visualización -->
+    <script>
+        const scenes = {};
+
+        // Iniciar Three.js al cargar
+        function init3D() {
+            createScene('3dfield', 'container-3dfield');
+            animate();
+        }
+
+        function createScene(id, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a); // Fondo oscuro
+
+            const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 15, 20); // Cámara viendo desde arriba-lado
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true; 
+            controls.autoRotateSpeed = 1.5;
+
+            // Iluminación
+            const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            const meshGroup = new THREE.Group();
+
+            // 1. Crear el plano base para mapear el potencial
+            const size = 15;
+            const resolution = 120;
+            const geometry = new THREE.PlaneGeometry(size, size, resolution, resolution);
+            
+            // Rotar para que quede plano (XY a XZ)
+            geometry.rotateX(-Math.PI / 2);
+
+            // Modificar vértices para representar el potencial
+            const pos = geometry.attributes.position;
+            const colors = [];
+            const colorPos = new THREE.Color(0xef4444); // Rojo (Alto potencial)
+            const colorNeg = new THREE.Color(0x3b82f6); // Azul (Bajo potencial)
+            const colorZero = new THREE.Color(0x10b981); // Verde esmeralda (Cero potencial)
+
+            const q1Pos = new THREE.Vector3(-3, 0, 0); // Carga +
+            const q2Pos = new THREE.Vector3(3, 0, 0);  // Carga -
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i);
+                let z = pos.getZ(i);
+
+                // Distancias a las cargas
+                let r1 = Math.sqrt(Math.pow(x - q1Pos.x, 2) + Math.pow(z - q1Pos.z, 2));
+                let r2 = Math.sqrt(Math.pow(x - q2Pos.x, 2) + Math.pow(z - q2Pos.z, 2));
+
+                // Evitar picos infinitos dividiendo por 0
+                r1 = Math.max(r1, 0.6);
+                r2 = Math.max(r2, 0.6);
+
+                // Potencial V = k(q1/r1 + q2/r2). Asumimos k=1, q1=5, q2=-5
+                let V = (5 / r1) - (5 / r2);
+                
+                // Limitar la altura extrema para buena visualizacion
+                let h = Math.max(-5, Math.min(5, V));
+                pos.setY(i, h);
+
+                // Color basado en V
+                let vertexColor = new THREE.Color();
+                if (V > 0.1) {
+                    let factor = Math.min(1, V / 5);
+                    vertexColor.lerpColors(colorZero, colorPos, factor);
+                } else if (V < -0.1) {
+                    let factor = Math.min(1, Math.abs(V) / 5);
+                    vertexColor.lerpColors(colorZero, colorNeg, factor);
+                } else {
+                    vertexColor.copy(colorZero);
+                }
+                colors.push(vertexColor.r, vertexColor.g, vertexColor.b);
+            }
+
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.computeVertexNormals(); // Recalcular normales para la luz
+
+            const material = new THREE.MeshPhongMaterial({
+                vertexColors: true,
+                side: THREE.DoubleSide,
+                flatShading: false,
+                shininess: 30,
+                transparent: true,
+                opacity: 0.85
+            });
+
+            const surfaceMesh = new THREE.Mesh(geometry, material);
+            meshGroup.add(surfaceMesh);
+
+            // 2. Agregar esferas visuales flotando sobre los picos
+            const sphereMatPos = new THREE.MeshBasicMaterial({color: 0xff0000});
+            const sphereMatNeg = new THREE.MeshBasicMaterial({color: 0x0088ff});
+            const sphereGeom = new THREE.SphereGeometry(0.5, 32, 32);
+
+            const sphere1 = new THREE.Mesh(sphereGeom, sphereMatPos);
+            sphere1.position.set(-3, 6, 0); // Flotando arriba
+            meshGroup.add(sphere1);
+
+            const sphere2 = new THREE.Mesh(sphereGeom, sphereMatNeg);
+            sphere2.position.set(3, -6, 0); // Debajo
+            meshGroup.add(sphere2);
+
+            // Plano translucido en y=0 para mostrar el V=0
+            const zeroPlane = new THREE.Mesh(
+                new THREE.PlaneGeometry(16, 16),
+                new THREE.MeshBasicMaterial({color: 0x10b981, transparent: true, opacity: 0.15, side: THREE.DoubleSide})
+            );
+            zeroPlane.rotateX(-Math.PI / 2);
+            meshGroup.add(zeroPlane);
+
+            scene.add(meshGroup);
+
+            scenes[id] = { scene, camera, renderer, controls, meshGroup };
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function rotateObject(id, angleDeg) {
+            const config = scenes[id];
+            if (!config) return;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            config.meshGroup.rotation.y = angleRad;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            Object.keys(scenes).forEach(id => {
+                const s = scenes[id];
+                s.controls.update(); 
+                s.renderer.render(s.scene, s.camera);
+            });
+        }
+
+        function toggleRotation(id) {
+            scenes[id].controls.autoRotate = !scenes[id].controls.autoRotate;
+            updatePauseButtons();
+        }
+
+        function toggleAllRotations() {
+            let anyTrue = Object.values(scenes).some(s => s.controls.autoRotate);
+            Object.keys(scenes).forEach(k => scenes[k].controls.autoRotate = !anyTrue);
+            updatePauseButtons();
+        }
+
+        function updatePauseButtons() {
+            document.querySelectorAll('.btn-pause').forEach(btn => {
+                const match = btn.getAttribute('onclick').match(/'([^']+)'/);
+                if(match) {
+                    const id = match[1];
+                    const isRotating = scenes[id].controls.autoRotate;
+                    btn.innerText = isRotating ? "Pausar Vista" : "Reanudar Vista";
+                    btn.className = isRotating 
+                        ? "bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-blue-700" 
+                        : "bg-emerald-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-emerald-700";
+                }
+            });
+        }
+
+        // --- Lógica de Dibujo Global ---
+        const canvas = document.getElementById('globalDrawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let drawMode = 'pen';
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function toggleDrawing() {
+            canvas.classList.toggle('active');
+            const btn = document.getElementById('toggleDrawBtn');
+            if (canvas.classList.contains('active')) {
+                btn.innerText = "Dibujo ON";
+                btn.classList.add('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                btn.innerText = "Dibujo OFF";
+                btn.classList.remove('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'auto';
+            }
+            resizeCanvas();
+        }
+
+        function setDrawingMode(mode) {
+            drawMode = mode;
+            document.getElementById('penBtn').classList.toggle('bg-white', mode === 'pen');
+            document.getElementById('eraserBtn').classList.toggle('bg-white', mode === 'eraser');
+        }
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+        canvas.addEventListener('touchend', endDraw);
+
+        function startDraw(e) {
+            if(!canvas.classList.contains('active')) return;
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.clientX, e.clientY);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.lineWidth = drawMode === 'pen' ? 3 : 40;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = drawMode === 'pen' ? '#dc2626' : '#f8fafc';
+            ctx.globalCompositeOperation = drawMode === 'pen' ? 'source-over' : 'destination-out';
+            ctx.lineTo(e.clientX, e.clientY);
+            ctx.stroke();
+        }
+
+        function endDraw() { isDrawing = false; }
+
+        function toggleHint(btn) { 
+            const hintElement = btn.nextElementSibling;
+            if(hintElement.classList.contains('show')) {
+                hintElement.classList.remove('show');
+            } else {
+                hintElement.classList.add('show');
+            }
+        }
+        
+        function toggleAllHints() { 
+            document.querySelectorAll('.hint-content').forEach(h => h.classList.toggle('show')); 
+        }
+
+        function exportToPDF() {
+            const element = document.body;
+            const opt = {
+                margin: 0.2,
+                filename: 'Taller_Potencial_Electrico.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        window.onload = () => { init3D(); resizeCanvas(); };
+        window.onresize = () => { resizeCanvas(); };
+    </script>
+</body>
+</html>

@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Interactivo: Ley de Coulomb y Fuerzas</title>
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls para interacción manual -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .math-tex { font-size: 1.1em; color: #2563eb; }
+        .canvas-container { position: relative; width: 100%; height: 280px; background: #000; border-radius: 0.75rem; overflow: hidden; cursor: grab; }
+        .canvas-container:active { cursor: grabbing; }
+        .drawing-layer { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 30; width: 100vw; height: 100vh; }
+        .drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+        
+        /* Cargas y SVG */
+        .charge-pos { fill: #ef4444; stroke: #b91c1c; stroke-width: 2; transition: transform 0.2s; cursor: pointer; }
+        .charge-neg { fill: #3b82f6; stroke: #1d4ed8; stroke-width: 2; transition: transform 0.2s; cursor: pointer; }
+        .charge-pos:hover, .charge-neg:hover { transform: scale(1.2); }
+        .svg-container { display: flex; justify-content: center; align-items: center; background: #f8fafc; border-radius: 0.5rem; overflow: hidden; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            body { background: white; padding: 0; }
+            .problem-card { border: 1px solid #e2e8f0; break-inside: avoid; box-shadow: none; margin-bottom: 1rem; }
+            main { display: block !important; }
+            .svg-container { border: 1px solid #ccc; }
+        }
+        .toolbar-btn { transition: all 0.2s; }
+        .toolbar-btn:hover { transform: translateY(-1px); }
+        input[type="number"], input[type="range"] { border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 5px; width: 100%; accent-color: #2563eb; }
+        .hint-content { display: none; margin-top: 0.5rem; }
+        .hint-content.show { display: block; }
+        .compact-text { font-size: 0.85rem; line-height: 1.5; color: #334155; }
+        .problem-text { margin-bottom: 0.75rem; padding-left: 0.5rem; border-left: 3px solid #cbd5e1; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Capa de Dibujo Global -->
+    <canvas id="globalDrawingCanvas" class="drawing-layer"></canvas>
+
+    <!-- Toolbar Superior Fija -->
+    <nav class="no-print sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 mb-6 px-4 py-3 flex flex-wrap gap-3 items-center justify-between rounded-xl shadow-sm">
+        <div class="flex items-center gap-3">
+            <h1 class="font-bold text-slate-800 text-sm md:text-base">Physics.10easy Workshop</h1>
+            <div class="h-6 w-px bg-slate-300 hidden md:block"></div>
+            <button onclick="exportToPDF()" class="toolbar-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-blue-700">Exportar PDF</button>
+            <button onclick="toggleAllHints()" class="toolbar-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-200">Tips Didácticos</button>
+            <button onclick="toggleAllRotations()" class="toolbar-btn bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-amber-600">Pausar Vista 3D</button>
+        </div>
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button id="penBtn" onclick="setDrawingMode('pen')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Lápiz">✏️</button>
+            <button id="eraserBtn" onclick="setDrawingMode('eraser')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Borrador">🧽</button>
+            <button onclick="clearCanvas()" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Limpiar todo">🗑️</button>
+            <button id="toggleDrawBtn" onclick="toggleDrawing()" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 border-l border-slate-300 ml-1">Dibujo OFF</button>
+        </div>
+    </nav>
+
+    <!-- Header Principal -->
+    <header class="text-center mb-8 border-b border-blue-100 pb-6">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Taller Completo: Ley de Coulomb y Fuerzas</h2>
+        <!-- Reemplazado texto prohibido por uno general universitario -->
+        <p class="text-slate-500 mt-2 text-sm">Física II • Electromagnetismo • Ingeniería</p>
+        <div class="flex flex-wrap justify-center gap-4 md:gap-8 mt-4 text-[10px] md:text-xs font-mono text-slate-400 uppercase tracking-widest">
+            <span>Grupo: 10E-PHYS</span>
+            <span>Docente: Physics.10easy Builder</span>
+            <span>Unidad 1</span>
+        </div>
+    </header>
+
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" id="taller-content">
+        
+        <!-- EJERCICIO 1: CUADRADO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 01</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">2D SVG</span>
+            </div>
+            <div class="problem-text compact-text">
+                Se colocan cuatro cargas puntuales como se muestra en la figura, tres de ellas en las esquinas y una en el centro de un cuadrado, con \(a = 48.0 \text{ cm}\) a cada lado. Encuentre la magnitud de la fuerza electrostática neta ejercida sobre la carga puntual \(q_2\). Dejar \(q_1 = q_3 = +29.0\ \mu\text{C}\), \(q_2 = -30\ \mu\text{C}\) y \(q_4 = -51.0\ \mu\text{C}\).
+            </div>
+            
+            <div class="svg-container w-full h-[220px] relative">
+                <svg viewBox="0 0 200 200" class="w-full h-full">
+                    <rect x="50" y="50" width="100" height="100" fill="none" stroke="#94a3b8" stroke-width="1.5" />
+                    <text x="100" y="40" font-family="serif" font-style="italic" font-size="14" fill="#475569" text-anchor="middle" id="lbl-ej1-top">a</text>
+                    <text x="35" y="105" font-family="serif" font-style="italic" font-size="14" fill="#475569" id="lbl-ej1-left">a</text>
+                    <circle cx="50" cy="150" r="8" class="charge-pos" /> <text x="25" y="165" font-family="serif" font-size="14" font-weight="bold">q₁</text>
+                    <circle cx="50" cy="50" r="8" class="charge-neg" />  <text x="25" y="45" font-family="serif" font-size="14" font-weight="bold">q₂</text>
+                    <circle cx="150" cy="50" r="8" class="charge-pos" /> <text x="165" y="45" font-family="serif" font-size="14" font-weight="bold">q₃</text>
+                    <circle cx="100" cy="100" r="8" class="charge-neg" /><text x="115" y="105" font-family="serif" font-size="14" font-weight="bold">q₄</text>
+                </svg>
+            </div>
+            
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 no-print">
+                <label class="block text-xs font-semibold mb-1 text-slate-600">Distancia interactiva (a): <span id="val-ej1" class="text-blue-600">48.0 cm</span></label>
+                <input type="range" min="10" max="100" value="48" oninput="document.getElementById('val-ej1').innerText = this.value + ' cm'; document.getElementById('lbl-ej1-top').innerText = this.value + ' cm'; document.getElementById('lbl-ej1-left').innerText = this.value + ' cm';">
+            </div>
+
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Principio de Superposición:</strong> Calcula las fuerzas vectoriales que \(q_1\), \(q_3\) y \(q_4\) ejercen sobre \(q_2\) por separado usando \( \vec{F} = k_e \frac{q_1 q_2}{r^2} \hat{r} \). La distancia de \(q_4\) a \(q_2\) es la mitad de la diagonal del cuadrado (\(a\sqrt{2}/2\)). Recuerda convertir los centímetros a metros.
+            </div>
+        </section>
+
+        <!-- EJERCICIO 2: CÍRCULO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 02</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">2D SVG</span>
+            </div>
+            <div class="problem-text compact-text">
+                Considere cuatro cargas iguales \(q_1, q_2, q_3\) y \(q_4 = q = +1\ \mu\text{C}\) ubicadas en cuatro puntos diferentes en un círculo de \(1\text{ m}\) de radio, como se muestra en la figura. Calcule la fuerza total que actúa sobre la carga \(q_1\) debido a todas las demás cargas.
+            </div>
+            
+            <div class="svg-container w-full h-[220px] relative overflow-visible">
+                <svg viewBox="0 0 200 200" class="w-full h-full transition-transform duration-300" id="svg-ej2">
+                    <line x1="20" y1="100" x2="180" y2="100" stroke="#cbd5e1" stroke-width="1" />
+                    <line x1="100" y1="20" x2="100" y2="180" stroke="#cbd5e1" stroke-width="1" />
+                    <circle cx="100" cy="100" r="60" fill="none" stroke="#94a3b8" stroke-width="1.5" />
+                    <text x="130" y="95" font-family="serif" font-style="italic" font-size="14" fill="#475569">a</text>
+                    <circle cx="160" cy="100" r="8" class="charge-pos" /> <text x="175" y="105" font-family="serif" font-size="14" font-weight="bold">q₁</text>
+                    <circle cx="100" cy="40" r="8" class="charge-pos" />  <text x="75" y="35" font-family="serif" font-size="14" font-weight="bold">q₂</text>
+                    <circle cx="40" cy="100" r="8" class="charge-pos" />  <text x="15" y="105" font-family="serif" font-size="14" font-weight="bold">q₃</text>
+                    <circle cx="100" cy="160" r="8" class="charge-pos" /> <text x="115" y="175" font-family="serif" font-size="14" font-weight="bold">q₄</text>
+                </svg>
+            </div>
+
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 no-print">
+                <label class="block text-xs font-semibold mb-1 text-slate-600">Rotar Sistema para Análisis</label>
+                <input type="range" min="0" max="360" value="0" oninput="document.getElementById('svg-ej2').style.transform = `rotate(${this.value}deg)`">
+            </div>
+
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Pista de Simetría:</strong> Las fuerzas que ejercen \(q_2\) y \(q_4\) sobre \(q_1\) tienen componentes en el eje Y que son iguales y opuestas, por lo que se cancelan. Solo necesitas sumar sus componentes en el eje X (que apuntan hacia la derecha/afuera) junto con la fuerza que ejerce \(q_3\).
+            </div>
+        </section>
+
+        <!-- EJERCICIO 3: PARALELOGRAMO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 03</span>
+            </div>
+            <div class="problem-text compact-text">
+                Cuatro partículas cargadas están colocadas en las esquinas de un paralelogramo como se muestra a continuación. Si \(q = 5.0\ \mu\text{C}\) y \(Q = 8.0\ \mu\text{C}\), ¿cuál es la fuerza neta sobre la carga \(q\)?
+            </div>
+            
+            <div class="svg-container w-full h-[200px]">
+                <svg viewBox="0 0 320 180" class="w-full h-full">
+                    <line x1="20" y1="130" x2="280" y2="130" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4" />
+                    <line x1="60" y1="20" x2="60" y2="160" stroke="#cbd5e1" stroke-width="1" />
+                    <line x1="20" y1="70" x2="160" y2="70" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4" />
+                    
+                    <polygon points="60,130 200,130 260,70 120,70" fill="none" stroke="#64748b" stroke-width="1.5" />
+                    
+                    <path d="M 90 130 A 30 30 0 0 0 85 105" fill="none" stroke="#64748b" stroke-width="1" />
+                    <text x="95" y="123" font-family="sans-serif" font-size="12" fill="#475569">30°</text>
+
+                    <text x="20" y="100" font-family="sans-serif" font-size="14" fill="#0f172a">1.0 m</text>
+                    <text x="160" y="60" font-family="sans-serif" font-size="14" fill="#0f172a">3.0 m</text>
+
+                    <circle cx="60" cy="130" r="9" class="charge-pos" /> <text x="40" y="150" font-family="serif" font-size="14" font-weight="bold">Q</text>
+                    <circle cx="200" cy="130" r="9" class="charge-pos" /> <text x="190" y="155" font-family="serif" font-size="14" font-weight="bold">2Q</text>
+                    <circle cx="120" cy="70" r="9" class="charge-neg" />  <text x="100" y="50" font-family="serif" font-size="14" font-weight="bold">-3Q</text>
+                    <circle cx="260" cy="70" r="9" class="charge-pos" />  <text x="275" y="65" font-family="serif" font-size="14" font-weight="bold">q</text>
+                </svg>
+            </div>
+
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Coordenadas:</strong> Define las posiciones de cada carga: <br>
+                \(Q\) en (0, 0) | \(2Q\) en (3.0, 0)<br>
+                \(-3Q\) en \((1.0 \cos 30^\circ, 1.0 \sin 30^\circ)\)<br>
+                \(q\) en \((3.0 + 1.0 \cos 30^\circ, 1.0 \sin 30^\circ)\)<br>
+                Calcula los vectores de posición relativos hacia \(q\) para obtener las fuerzas vectoriales.
+            </div>
+        </section>
+
+        <!-- EJERCICIO 4: PLANO XY -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 04</span>
+            </div>
+            <div class="problem-text compact-text">
+                La figura muestra tres cargas puntuales que se encuentran en el plano \(xy\) en el vacío. Encuentre la magnitud y dirección de la fuerza electrostática neta sobre \(q_1\).
+            </div>
+            
+            <div class="svg-container w-full h-[200px]">
+                <svg viewBox="0 0 250 200" class="w-full h-full">
+                    <line x1="30" y1="150" x2="220" y2="150" stroke="#cbd5e1" stroke-width="1" />
+                    <line x1="70" y1="150" x2="190" y2="150" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3" />
+                    <line x1="70" y1="150" x2="110" y2="50" stroke="#94a3b8" stroke-width="1" id="line-ej4" />
+                    
+                    <path d="M 95 150 A 25 25 0 0 0 85 112" fill="none" stroke="#64748b" stroke-width="1" id="arc-ej4" />
+                    <text x="105" y="140" font-family="sans-serif" font-size="14" font-weight="bold" fill="#0f172a" id="txt-ej4">73°</text>
+
+                    <text x="60" y="110" font-family="sans-serif" font-size="12" fill="#475569" transform="rotate(-68, 60, 110)">0.15 m</text>
+                    <text x="120" y="165" font-family="sans-serif" font-size="12" fill="#475569">0.10 m</text>
+
+                    <circle cx="70" cy="150" r="9" class="charge-pos" /> 
+                    <text x="30" y="140" font-family="serif" font-size="14" font-weight="bold">q₁</text>
+                    <text x="25" y="170" font-family="sans-serif" font-size="12">4.0 µC</text>
+
+                    <circle cx="110" cy="50" r="9" class="charge-neg" id="charge-ej4" /> 
+                    <text x="80" y="45" font-family="serif" font-size="14" font-weight="bold" id="lbl-q2-ej4">q₂</text>
+                    <text x="130" y="55" font-family="sans-serif" font-size="12" id="lbl-val-ej4">-6.0 µC</text>
+
+                    <circle cx="190" cy="150" r="9" class="charge-neg" /> 
+                    <text x="205" y="145" font-family="serif" font-size="14" font-weight="bold">q₃</text>
+                    <text x="170" y="170" font-family="sans-serif" font-size="12">-5.0 µC</text>
+                </svg>
+            </div>
+
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Diagrama de Cuerpo Libre:</strong><br>
+                - \(q_3\) (negativa) atrae a \(q_1\) (fuerza hacia la derecha en el eje \(+x\)).<br>
+                - \(q_2\) (negativa) atrae a \(q_1\) (fuerza a \(73^\circ\)).<br>
+                Calcula magnitudes y descompón la fuerza de \(q_2\) en sus componentes ortogonales \(X\) (\(\cos\)) e \(Y\) (\(\sin\)).
+            </div>
+        </section>
+
+        <!-- EJERCICIO 5: TRIÁNGULO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 05</span>
+            </div>
+            <div class="problem-text compact-text">
+                Se colocan tres cargas puntuales en las esquinas de un triángulo equilátero como se muestra en la figura. ¿Cuál es la magnitud y dirección de la fuerza eléctrica neta sobre la carga de \(2\ \mu\text{C}\)?
+            </div>
+            
+            <div class="svg-container w-full h-[200px]">
+                <svg viewBox="0 0 250 200" class="w-full h-full">
+                    <line x1="30" y1="150" x2="220" y2="150" stroke="#cbd5e1" stroke-width="1" />
+                    <polygon points="60,150 180,150 120,46" fill="none" stroke="#94a3b8" stroke-width="1" />
+                    
+                    <text x="60" y="100" font-family="sans-serif" font-size="12" fill="#475569" transform="rotate(-60, 60, 100)">10 cm</text>
+                    <text x="160" y="100" font-family="sans-serif" font-size="12" fill="#475569" transform="rotate(60, 160, 100)">10 cm</text>
+                    <text x="100" y="165" font-family="sans-serif" font-size="12" fill="#475569">10 cm</text>
+
+                    <circle cx="120" cy="46" r="9" class="charge-pos" /> 
+                    <text x="140" y="50" font-family="sans-serif" font-size="14" fill="#0f172a">8.0 µC</text>
+
+                    <circle cx="60" cy="150" r="9" class="charge-pos" /> 
+                    <text x="10" y="170" font-family="sans-serif" font-size="14" fill="#0f172a">2.0 µC</text>
+
+                    <circle cx="180" cy="150" r="9" class="charge-neg" /> 
+                    <text x="160" y="175" font-family="sans-serif" font-size="14" fill="#0f172a">-6.0 µC</text>
+                </svg>
+            </div>
+
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Geometría del triángulo:</strong> Todos los ángulos internos miden \(60^\circ\).<br>
+                - La carga de \(8\ \mu\text{C}\) ejerce una fuerza de repulsión (empuja hacia abajo/izquierda).<br>
+                - La carga de \(-6\ \mu\text{C}\) ejerce una fuerza de atracción (jala hacia la derecha). <br>
+                Descompón los vectores usando senos y cosenos de \(60^\circ\).
+            </div>
+        </section>
+
+        <!-- EJERCICIO 6: CARTESIANAS -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start">
+                <span class="bg-blue-100 text-blue-700 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 06</span>
+            </div>
+            <div class="problem-text compact-text">
+                Considere tres cargas de \(2\ \mu\text{C}\), \(-3\ \mu\text{C}\) y \(4\ \mu\text{C}\) ubicadas en el plano \(xy\) en \((0\text{ cm}, 0\text{ cm})\), \((3\text{ cm}, 1\text{ cm})\) y \((-2\text{ cm}, 4\text{ cm})\) respectivamente. Encuentre la magnitud y dirección de la fuerza neta de Coulomb sobre la carga de \(2\ \mu\text{C}\).
+            </div>
+            
+            <div class="svg-container w-full h-[200px]">
+                <svg viewBox="-100 -50 200 200" class="w-full h-full transform scale-y-[-1]">
+                    <line x1="-90" y1="0" x2="90" y2="0" stroke="#cbd5e1" stroke-width="1" />
+                    <line x1="0" y1="-40" x2="0" y2="140" stroke="#cbd5e1" stroke-width="1" />
+                    
+                    <text x="-40" y="-115" font-family="serif" font-size="14" font-weight="bold" transform="scale(1, -1)">q₃ (4µC)</text>
+                    <text x="50" y="-45" font-family="serif" font-size="14" font-weight="bold" transform="scale(1, -1)">-q₂ (-3µC)</text>
+                    <text x="-35" y="20" font-family="serif" font-size="14" font-weight="bold" transform="scale(1, -1)">q₁ (2µC)</text>
+
+                    <!-- Origen -->
+                    <circle cx="0" cy="0" r="8" class="charge-pos" /> 
+                    <!-- (-2, 4) escalado a (-50, 100) -->
+                    <circle cx="-50" cy="100" r="8" class="charge-pos" /> 
+                    <!-- (3, 1) escalado a (75, 25) -->
+                    <circle cx="75" cy="25" r="8" class="charge-neg" /> 
+                </svg>
+            </div>
+
+            <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Didáctica</button>
+            <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                <strong>Análisis Analítico:</strong> Calcula la distancia \(r = \sqrt{x^2 + y^2}\) desde el origen para cada carga foránea. Los componentes de fuerza se pueden hallar multiplicando la magnitud total por los cosenos directores: \(\cos(\theta) = \frac{x}{r}\) y \(\sin(\theta) = \frac{y}{r}\). No olvides pasar de cm a m.
+            </div>
+        </section>
+
+        <!-- EJERCICIO 7 & 8: ESTRUCTURAS Y EQUILIBRIO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col gap-3">
+            <div class="flex justify-between items-start mb-2">
+                <span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJ 07 & 08 (ESTÁTICA Y CUERDAS)</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- EJ 7 Content -->
+                <div class="flex flex-col gap-2 border-r border-slate-100 pr-4">
+                    <div class="problem-text compact-text text-xs" style="border-left-color: #f59e0b;">
+                        <strong>7.</strong> Una estructura de alambre rígida en forma de triángulo rectángulo se coloca en un plano. Dos esferas de masa \(m\) y cargas \(q_1\) y \(q_2\) están conectadas por una cuerda inelástica de longitud \(L\) y deslizan sin fricción. Determine el ángulo \(\alpha\), la tensión en la cuerda y las reacciones normales.
+                    </div>
+                    <div class="svg-container w-full h-[180px]">
+                        <svg viewBox="0 0 320 200" class="w-full h-full">
+                            <polygon points="20,160 280,160 180,40" fill="none" stroke="#64748b" stroke-width="2" />
+                            <text x="10" y="175" font-family="serif" font-size="16" font-weight="bold">B</text>
+                            <text x="285" y="175" font-family="serif" font-size="16" font-weight="bold">C</text>
+                            <text x="175" y="30" font-family="serif" font-size="16" font-weight="bold">A</text>
+
+                            <path d="M 50 160 A 30 30 0 0 0 45 142" fill="none" stroke="#64748b" stroke-width="1" />
+                            <text x="55" y="155" font-family="sans-serif" font-size="12">30°</text>
+
+                            <path d="M 250 160 A 30 30 0 0 1 255 130" fill="none" stroke="#64748b" stroke-width="1" />
+                            <text x="230" y="155" font-family="sans-serif" font-size="12">60°</text>
+
+                            <line x1="120" y1="85" x2="230" y2="100" stroke="#0f172a" stroke-width="2" />
+                            <text x="170" y="115" font-family="serif" font-style="italic" font-size="14">L</text>
+
+                            <path d="M 145 88 A 20 20 0 0 0 135 68" fill="none" stroke="#64748b" stroke-width="1" />
+                            <text x="150" y="80" font-family="serif" font-style="italic" font-size="14">α</text>
+
+                            <circle cx="120" cy="85" r="9" class="charge-pos" /> 
+                            <text x="95" y="75" font-family="serif" font-size="14" font-weight="bold">q₁</text>
+                            <circle cx="230" cy="100" r="9" class="charge-neg" /> 
+                            <text x="245" y="90" font-family="serif" font-size="14" font-weight="bold">q₂</text>
+                        </svg>
+                    </div>
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-amber-600 hover:text-amber-800 flex items-center gap-1 mt-auto no-print">💡 Pista Ej 7</button>
+                    <div class="hint-content p-2 bg-amber-50 rounded border border-amber-100 text-xs text-slate-700">
+                        La suma de fuerzas tangenciales al alambre debe ser cero. Analiza la componente del peso (\(mg \sin \theta\)), la tensión de la cuerda y la fuerza eléctrica de Coulomb a lo largo de los ejes inclinados.
+                    </div>
+                </div>
+
+                <!-- EJ 8 Content -->
+                <div class="flex flex-col gap-2">
+                    <div class="problem-text compact-text text-xs" style="border-left-color: #f59e0b;">
+                        <strong>8.</strong> Una pequeña esfera de masa \(3\text{ g}\) y carga \(q_1 = 15\text{ nC}\) está conectada mediante cuerdas ligeras sobre una segunda carga de igual masa y carga \(-85\text{ nC}\). Considere cuerdas de \(1.0\text{ m}\) y separación de equilibrio \(4.0\text{ cm}\). Analice las tensiones.
+                    </div>
+                    <div class="svg-container w-full h-[180px]">
+                        <svg viewBox="0 0 250 250" class="w-full h-full">
+                            <line x1="75" y1="30" x2="175" y2="30" stroke="#0f172a" stroke-width="2" />
+                            <line x1="125" y1="30" x2="75" y2="180" stroke="#475569" stroke-width="1.5" />
+                            <line x1="125" y1="30" x2="175" y2="180" stroke="#475569" stroke-width="1.5" />
+                            <line x1="75" y1="180" x2="175" y2="180" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5" />
+
+                            <text x="145" y="100" font-family="sans-serif" font-size="14" fill="#475569" transform="rotate(71, 145, 100)">1.0 m</text>
+                            <text x="105" y="195" font-family="sans-serif" font-size="14" fill="#475569">4.0 cm</text>
+
+                            <circle cx="75" cy="180" r="10" class="charge-pos" /> 
+                            <circle cx="175" cy="180" r="10" class="charge-neg" /> 
+                        </svg>
+                    </div>
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-amber-600 hover:text-amber-800 flex items-center gap-1 mt-auto no-print">💡 Pista Ej 8</button>
+                    <div class="hint-content p-2 bg-amber-50 rounded border border-amber-100 text-xs text-slate-700">
+                        Equilibrio: Las esferas experimentan su peso (\(mg\)) hacia abajo, tensión (\(T\)) diagonal y fuerza eléctrica (\(F_e\)) horizontal de atracción. Plantea \(\sum F_x = 0\) y \(\sum F_y = 0\).
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISUALIZACIÓN AVANZADA 3D: CAMPO VECTORIAL Y FUERZAS -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col gap-3">
+            <div class="flex justify-between items-start mb-2">
+                <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">VISUALIZACIÓN AVANZADA 3D - SUPERPOSICIÓN DE CAMPOS</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">Three.js Engine</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="problem-text compact-text text-xs md:col-span-1" style="border-left-color: #6366f1;">
+                    <strong>Simulador de Cargas e Interacción (Conceptual):</strong><br>
+                    Para comprender la Ley de Coulomb en su forma vectorial profunda, se presenta el modelo 3D de las líneas de fuerza generadas por un dipolo eléctrico y cargas adyacentes.<br><br>
+                    Interactúa con el modelo 3D para evaluar la geometría radial de las fuerzas en \(R^3\) que experimentaría una carga de prueba colocada en cualquier región del espacio mostrada.<br><br>
+                    <em>La visualización confirma por qué las componentes se cancelan o se suman según la simetría del arreglo.</em>
+                </div>
+                
+                <div class="md:col-span-2 flex flex-col gap-2">
+                    <div class="canvas-container h-[250px] w-full" id="container-3dfield">
+                        <div class="absolute top-2 left-2 text-white/70 text-[10px] font-mono">Dipolo - Campo de Fuerzas Vectoriales</div>
+                        <div class="absolute bottom-2 left-2 z-10 no-print">
+                            <button onclick="toggleRotation('3dfield')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded btn-pause shadow hover:bg-blue-700">Pausar Vista</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-xs p-2 bg-indigo-50 rounded-xl border border-indigo-100 no-print">
+                        <div>
+                            <label class="block font-semibold mb-1 text-indigo-800">Rotar Dipolo (Eje Y)</label>
+                            <input type="range" min="0" max="360" value="0" oninput="rotateObject('3dfield', this.value)">
+                        </div>
+                        <div>
+                            <label class="block font-semibold mb-1 text-indigo-800">Densidad Vectorial de Fuerza</label>
+                            <input type="range" id="e9-density" min="2" max="6" step="1" value="3" oninput="updateVolumeField('3dfield', 'e9-density')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-8 mb-4 text-center text-slate-400 text-xs no-print">
+        <p>Generador de Talleres Universitarios • Mode: Builder</p>
+    </footer>
+
+    <!-- Scripts de Lógica y Visualización -->
+    <script>
+        const scenes = {};
+
+        // Iniciar Three.js al cargar
+        function init3D() {
+            createScene('3dfield', 'container-3dfield', createDipoleGeometry, 'dipole_field', 3);
+            animate();
+        }
+
+        function createScene(id, containerId, geometryFunc, fieldType, defaultDensity) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(10, 8, 12);
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true; 
+            controls.autoRotateSpeed = 2.0;
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambient);
+            const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+            directional.position.set(10, 20, 15);
+            scene.add(directional);
+
+            const axes = new THREE.AxesHelper(5);
+            scene.add(axes);
+
+            const meshes = geometryFunc();
+            const group = new THREE.Group();
+            if(Array.isArray(meshes)) { meshes.forEach(m => group.add(m)); } 
+            else { group.add(meshes); }
+            scene.add(group);
+
+            const field = createVolumeField(fieldType, defaultDensity, 5);
+            scene.add(field);
+
+            scenes[id] = { scene, camera, renderer, controls, meshGroup: group, field, fieldType, currentDensity: defaultDensity, fieldVisible: true };
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        // --- Geometrías 3D ---
+        function createDipoleGeometry() {
+            const group = new THREE.Group();
+            // Carga Positiva
+            const chargePos = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), new THREE.MeshPhongMaterial({color: 0xef4444}));
+            chargePos.position.set(-2, 0, 0);
+            
+            // Carga Negativa
+            const chargeNeg = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 32), new THREE.MeshPhongMaterial({color: 0x3b82f6}));
+            chargeNeg.position.set(2, 0, 0);
+            
+            group.add(chargePos);
+            group.add(chargeNeg);
+
+            // Equipotenciales representativos transparentes
+            const equip1 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshBasicMaterial({color: 0xffaa00, wireframe: true, transparent: true, opacity: 0.15}));
+            equip1.position.set(-2, 0, 0);
+            const equip2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16), new THREE.MeshBasicMaterial({color: 0x00aaff, wireframe: true, transparent: true, opacity: 0.15}));
+            equip2.position.set(2, 0, 0);
+            group.add(equip1);
+            group.add(equip2);
+
+            return group;
+        }
+
+        // --- Campo Vectorial 3D ---
+        function createVolumeField(type, densityParam, bounds) {
+            const group = new THREE.Group();
+            const density = parseInt(densityParam); 
+            const step = (bounds * 2) / density;
+            const size = step * 0.5;
+            
+            const addArrow = (dir, pos, color) => {
+                if(dir.lengthSq() < 0.001) return; // Evitar división por cero
+                const arrow = new THREE.ArrowHelper(dir.normalize(), pos, size, color, size*0.3, size*0.15);
+                if(arrow.line && arrow.line.material) { arrow.line.material.transparent = true; arrow.line.material.opacity = 0.6; }
+                if(arrow.cone && arrow.cone.material) { arrow.cone.material.transparent = true; arrow.cone.material.opacity = 0.6; }
+                group.add(arrow);
+            };
+
+            // Campo simulado de Dipolo E = k(q1/r1^2 * r1_hat - q2/r2^2 * r2_hat)
+            if (type === 'dipole_field') {
+                const q1Pos = new THREE.Vector3(-2, 0, 0);
+                const q2Pos = new THREE.Vector3(2, 0, 0);
+                
+                for(let x=-bounds; x<=bounds; x+=step) {
+                    for(let y=-bounds; y<=bounds; y+=step) {
+                        for(let z=-bounds; z<=bounds; z+=step) {
+                            let pos = new THREE.Vector3(x,y,z);
+                            let r1 = new THREE.Vector3().subVectors(pos, q1Pos);
+                            let r2 = new THREE.Vector3().subVectors(pos, q2Pos);
+                            
+                            let dist1 = r1.length();
+                            let dist2 = r2.length();
+                            
+                            // Evitar infinito cerca de cargas
+                            if(dist1 < 0.8 || dist2 < 0.8) continue;
+                            
+                            // Aproximación de fuerza E
+                            let e1 = r1.normalize().multiplyScalar(1 / (dist1 * dist1));
+                            let e2 = r2.normalize().multiplyScalar(-1 / (dist2 * dist2)); // Negativa atrae
+                            
+                            let totalE = new THREE.Vector3().addVectors(e1, e2);
+                            
+                            // Color basado en dirección predominante para visualización
+                            let color = 0xfacc15; // default yellow
+                            if (totalE.x > 0) color = 0x34d399; // green-ish
+                            else color = 0xf472b6; // pink-ish
+                            
+                            addArrow(totalE, pos, color);
+                        }
+                    }
+                }
+            }
+            return group;
+        }
+
+        function updateVolumeField(id, inputId) {
+            const config = scenes[id];
+            if (!config) return;
+            const densityInput = document.getElementById(inputId).value;
+            config.scene.remove(config.field);
+            config.field = createVolumeField(config.fieldType, densityInput, 5);
+            if(config.fieldVisible) config.scene.add(config.field);
+        }
+
+        function rotateObject(id, angleDeg) {
+            const config = scenes[id];
+            if (!config) return;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            config.meshGroup.rotation.y = angleRad;
+            if(config.field) config.field.rotation.y = angleRad;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            Object.keys(scenes).forEach(id => {
+                const s = scenes[id];
+                s.controls.update(); 
+                s.renderer.render(s.scene, s.camera);
+            });
+        }
+
+        function toggleRotation(id) {
+            scenes[id].controls.autoRotate = !scenes[id].controls.autoRotate;
+            updatePauseButtons();
+        }
+
+        function toggleAllRotations() {
+            let anyTrue = Object.values(scenes).some(s => s.controls.autoRotate);
+            Object.keys(scenes).forEach(k => scenes[k].controls.autoRotate = !anyTrue);
+            updatePauseButtons();
+        }
+
+        function updatePauseButtons() {
+            document.querySelectorAll('.btn-pause').forEach(btn => {
+                const match = btn.getAttribute('onclick').match(/'([^']+)'/);
+                if(match) {
+                    const id = match[1];
+                    const isRotating = scenes[id].controls.autoRotate;
+                    btn.innerText = isRotating ? "Pausar Vista" : "Reanudar Vista";
+                    btn.className = isRotating 
+                        ? "bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-blue-700" 
+                        : "bg-emerald-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-emerald-700";
+                }
+            });
+        }
+
+        // --- Lógica de Dibujo Global ---
+        const canvas = document.getElementById('globalDrawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let drawMode = 'pen';
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function toggleDrawing() {
+            canvas.classList.toggle('active');
+            const btn = document.getElementById('toggleDrawBtn');
+            if (canvas.classList.contains('active')) {
+                btn.innerText = "Dibujo ON";
+                btn.classList.add('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                btn.innerText = "Dibujo OFF";
+                btn.classList.remove('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'auto';
+            }
+            resizeCanvas();
+        }
+
+        function setDrawingMode(mode) {
+            drawMode = mode;
+            document.getElementById('penBtn').classList.toggle('bg-white', mode === 'pen');
+            document.getElementById('eraserBtn').classList.toggle('bg-white', mode === 'eraser');
+        }
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+        canvas.addEventListener('touchend', endDraw);
+
+        function startDraw(e) {
+            if(!canvas.classList.contains('active')) return;
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.clientX, e.clientY);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.lineWidth = drawMode === 'pen' ? 3 : 40;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = drawMode === 'pen' ? '#dc2626' : '#f8fafc';
+            ctx.globalCompositeOperation = drawMode === 'pen' ? 'source-over' : 'destination-out';
+            ctx.lineTo(e.clientX, e.clientY);
+            ctx.stroke();
+        }
+
+        function endDraw() { isDrawing = false; }
+
+        function toggleHint(btn) { 
+            const hintElement = btn.nextElementSibling;
+            if(hintElement.classList.contains('show')) {
+                hintElement.classList.remove('show');
+            } else {
+                hintElement.classList.add('show');
+            }
+        }
+        
+        function toggleAllHints() { 
+            document.querySelectorAll('.hint-content').forEach(h => h.classList.toggle('show')); 
+        }
+
+        function exportToPDF() {
+            const element = document.body;
+            const opt = {
+                margin: 0.2,
+                filename: 'Taller_Fuerza_Electrica_Coulomb.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        window.onload = () => { init3D(); resizeCanvas(); };
+        window.onresize = () => { resizeCanvas(); };
+    </script>
+</body>
+</html>

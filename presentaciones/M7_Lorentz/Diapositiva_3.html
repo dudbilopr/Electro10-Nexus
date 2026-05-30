@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Circuitos Resistivos y Análisis de Redes</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- KaTeX para renderizado matemático avanzado -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- FontAwesome para íconos profesionales -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #1e293b, #0f172a);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden;
+        }
+        .canvas-wrapper canvas { cursor: grab; }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+        
+        .math-panel-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+        .matrix-wrapper { background: #1e293b; color: white; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; display: flex; flex-direction: column; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.95);
+            padding: 6px 12px; border-radius: 6px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #1e293b; pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10;
+            border-left: 4px solid #3b82f6;
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; cursor: pointer; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; }
+
+        #paint-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; touch-action: none; pointer-events: none; }
+        .paint-mode-active { cursor: crosshair !important; pointer-events: auto !important; }
+
+        .btn-ui { padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.85em; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .btn-ui:hover { opacity: 0.8; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-500">
+                <h1 class="font-bold tracking-wide flex items-center gap-3" style="font-size: clamp(20px, 2vw, 36px);">
+                    <i class="fas fa-network-wired text-blue-400"></i> Laboratorio: Circuitos Resistivos y Análisis de Redes
+                </h1>
+                <p class="text-blue-300" style="font-size: clamp(12px, 1vw, 18px);">
+                    Leyes de Kirchhoff, Análisis de Nodos/Mallas, Polaridad y Métodos Matriciales
+                </p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BASE COMÚN -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span>Las <strong>Leyes de Kirchhoff</strong> dictan la conservación de energía y carga. En la LVK, analizamos las <strong>caídas de tensión (-)</strong> en resistencias y <strong>subidas (+)</strong> en fuentes.</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn"><i class="fas fa-lightbulb"></i></span>
+                                <span class="tip-content"><strong>Conservación:</strong> LCK es conservación de carga (lo que entra sale). LVK es conservación de energía (la energía entregada por las fuentes iguala a la consumida por las resistencias).</span>
+                            </span>
+                        </p>
+                        <div class="math-display">
+                            $$\text{LCK: } \sum I_{in} = \sum I_{out} \quad ; \quad \text{LVK: } \sum_{malla} V = 0$$
+                        </div>
+                        <p class="text-xs text-slate-600 italic mt-1"><i class="fas fa-info-circle"></i> Aplicando LVK a lazos y LCK a nodos, construimos un sistema $Ax = B$.</p>
+                    </div>
+
+                    <!-- TEORÍA DINÁMICA -->
+                    <div id="teoria-dinamica" class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg relative flex-1 mb-[1vmin] custom-scroll overflow-y-auto">
+                        
+                        <!-- Teoría Mallas -->
+                        <div id="teoria-mallas" class="flex flex-col gap-1">
+                            <p class="font-bold text-indigo-800 flex items-center"><i class="fas fa-project-diagram mr-2"></i> 1. Análisis de Mallas (LVK)</p>
+                            <p class="text-sm">Aplicando LVK a nuestro circuito (sentido horario), establecemos las ecuaciones de caída/subida. La matriz de resistencias $A$ multiplicada por las corrientes $x$ iguala al vector de fuentes $B$:</p>
+                            <div class="math-display">
+                                $$\begin{bmatrix} R_1+R_3 & -R_3 \\ -R_3 & R_2+R_3 \end{bmatrix} \begin{bmatrix} I_1 \\ I_2 \end{bmatrix} = \begin{bmatrix} V_1 \\ -V_2 \end{bmatrix}$$
+                            </div>
+                            <p class="text-xs text-indigo-700">La resistencia compartida $R_3$ experimenta ambas corrientes ($I_1$ e $I_2$), determinando su polaridad real según cuál sea mayor.</p>
+                        </div>
+
+                        <!-- Teoría Nodos -->
+                        <div id="teoria-nodos" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800 flex items-center"><i class="fas fa-dot-circle mr-2"></i> 2. Análisis de Nodos (LCK)</p>
+                            <p class="text-sm">Asumiendo el nodo inferior como Tierra ($0\text{V}$), sumamos las corrientes que salen del nodo superior $A$ igualándolas a cero:</p>
+                            <div class="math-display">
+                                $$\frac{V_A - V_1}{R_1} + \frac{V_A}{R_3} + \frac{V_A - (-V_2)}{R_2} = 0$$
+                            </div>
+                            <p class="text-xs text-indigo-700">Esta ecuación escalar permite despejar directamente el voltaje nodal $V_A$ sin matrices complejas.</p>
+                        </div>
+
+                        <!-- Teoría Cramer -->
+                        <div id="teoria-cramer" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800 flex items-center"><i class="fas fa-square-root-alt mr-2"></i> 3. Regla de Cramer</p>
+                            <p class="text-sm">Resolvemos el sistema $Ax = B$ calculando el determinante general $\Delta$ y los determinantes modificados $\Delta_i$.</p>
+                            <div class="math-display">
+                                $$\Delta = |A| \quad ; \quad I_1 = \frac{\Delta_1}{\Delta} \quad ; \quad I_2 = \frac{\Delta_2}{\Delta}$$
+                            </div>
+                        </div>
+
+                        <!-- Teoría Gauss -->
+                        <div id="teoria-gauss" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800 flex items-center"><i class="fas fa-subscript mr-2"></i> 4. Eliminación de Gauss-Jordan</p>
+                            <p class="text-sm">Aplicamos operaciones elementales a la matriz aumentada $[A | B]$ para obtener la identidad $[I | X]$, revelando las incógnitas directamente.</p>
+                            <div class="math-display">
+                                $$[A | B] \xrightarrow{\text{Operaciones Fila}} [I | X]$$
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ADVERTENCIA Y DCL -->
+                    <div class="bg-emerald-50 p-[1.5vmin] border border-emerald-200 shadow-sm rounded-lg relative mb-[1vmin]">
+                        <p class="font-bold text-sm text-emerald-900 flex items-center">
+                            <i class="fas fa-exclamation-triangle text-amber-500 mr-2"></i> Corriente y Electrones
+                        </p>
+                        <p class="text-xs mt-1">
+                            La <strong>corriente convencional</strong> fluye del terminal (+) al (-) por el circuito exterior. Los <strong>electrones (e⁻)</strong>, al ser negativos, viajan en sentido exactamente opuesto. En una resistencia, la corriente siempre ingresa por el terminal que se polariza como positivo (+).
+                        </p>
+                    </div>
+
+                    <!-- CONCLUSIÓN / DATOS EN TIEMPO REAL -->
+                    <div class="bg-slate-800 text-white p-[1.5vmin] shadow-sm rounded-lg border border-slate-600 mt-auto">
+                        <p class="font-bold text-amber-400 mb-2 text-center text-sm"><i class="fas fa-microchip"></i> Monitoreo en Tiempo Real</p>
+                        <div class="grid grid-cols-3 gap-2 text-sm">
+                            <div class="bg-slate-700 p-2 rounded text-center border-b-2 border-blue-500">
+                                <span class="block text-slate-300 text-xs">I₁ (Malla Izq.)</span>
+                                <span id="ui-i1" class="font-mono font-bold text-white">0.00</span> <span class="text-[10px]">A</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded text-center border-b-2 border-emerald-500">
+                                <span class="block text-slate-300 text-xs">I₃ (Rama Central)</span>
+                                <span id="ui-i3" class="font-mono font-bold text-white">0.00</span> <span class="text-[10px]">A</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded text-center border-b-2 border-purple-500">
+                                <span class="block text-slate-300 text-xs">I₂ (Malla Der.)</span>
+                                <span id="ui-i2" class="font-mono font-bold text-white">0.00</span> <span class="text-[10px]">A</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded col-span-3 flex justify-between items-center text-xs px-3">
+                                <span><i class="fas fa-bolt text-yellow-400"></i> Voltaje Nodo A: <strong id="ui-va" class="text-white font-mono ml-1">0.00 V</strong></span>
+                                <span><i class="fas fa-fire text-red-400"></i> Potencia Total: <strong id="ui-ptot" class="text-white font-mono ml-1">0.00 W</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL -->
+                    <div class="control-panel shadow-sm relative z-20 flex-col !items-start">
+                        
+                        <!-- Fila 1: Menús principales -->
+                        <div class="flex w-full gap-[1.5vmin] border-b border-slate-300 pb-2 mb-1 items-center">
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800 text-sm"><i class="fas fa-book-open"></i> Método:</label>
+                                <select id="select-config" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500 cursor-pointer text-sm">
+                                    <option value="mallas">1. Formulación Mallas</option>
+                                    <option value="nodos">2. Formulación Nodos</option>
+                                    <option value="cramer">3. Solución Cramer</option>
+                                    <option value="gauss">4. Solución Gauss</option>
+                                </select>
+                            </div>
+                            
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800 text-sm"><i class="fas fa-exchange-alt"></i> Flujo:</label>
+                                <select id="select-flow" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-emerald-500 cursor-pointer text-sm">
+                                    <option value="conv">Convencional (I)</option>
+                                    <option value="elec">Electrones (e⁻)</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end gap-2 text-xs font-semibold text-slate-700">
+                                <button id="btn-toggle-3d" class="btn-ui bg-indigo-100 text-indigo-800 border-indigo-300"><i class="fas fa-cube"></i> Vista 3D</button>
+                                <label class="flex items-center cursor-pointer text-indigo-700 border border-indigo-200 bg-indigo-50 px-2 py-1 rounded hover:bg-indigo-100" title="Herramienta Pizarra">
+                                    <input type="checkbox" id="toggle-paint" class="mr-1"> <i class="fas fa-pen"></i> Pizarra
+                                </label>
+                                <button id="btn-clear-paint" class="btn-ui bg-red-100 text-red-700 border-red-300 hidden"><i class="fas fa-eraser"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2: Voltajes -->
+                        <div class="flex w-full gap-[1.5vmin] items-center pb-1">
+                            <div class="control-group border-r border-slate-300 pr-2 flex-1">
+                                <label class="font-bold text-red-700 text-xs w-16">Fuente V₁:</label>
+                                <input type="range" id="slider-v1" min="-24" max="24" step="1" value="12" class="flex-1">
+                                <span id="val-v1" class="font-mono font-bold w-8 text-right text-red-600 text-xs">12V</span>
+                            </div>
+
+                            <div class="control-group pr-2 flex-1">
+                                <label class="font-bold text-blue-700 text-xs w-16">Fuente V₂:</label>
+                                <input type="range" id="slider-v2" min="-24" max="24" step="1" value="5" class="flex-1">
+                                <span id="val-v2" class="font-mono font-bold w-8 text-right text-blue-600 text-xs">5V</span>
+                            </div>
+                        </div>
+
+                        <!-- Fila 3: Resistencias -->
+                        <div class="flex w-full gap-[1.5vmin] items-center border-t border-slate-300 pt-2 mt-1">
+                            <div class="control-group border-r border-slate-300 pr-2 flex-1">
+                                <label class="font-bold text-slate-700 text-[10px] w-12">R₁ (Izq):</label>
+                                <input type="range" id="slider-r1" min="1" max="20" step="1" value="4" class="flex-1">
+                                <span id="val-r1" class="font-mono font-bold w-6 text-right text-slate-600 text-xs">4Ω</span>
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2 flex-1">
+                                <label class="font-bold text-slate-700 text-[10px] w-12">R₂ (Der):</label>
+                                <input type="range" id="slider-r2" min="1" max="20" step="1" value="2" class="flex-1">
+                                <span id="val-r2" class="font-mono font-bold w-6 text-right text-slate-600 text-xs">2Ω</span>
+                            </div>
+                            <div class="control-group flex-1">
+                                <label class="font-bold text-slate-700 text-[10px] w-12">R₃ (Cen):</label>
+                                <input type="range" id="slider-r3" min="1" max="20" step="1" value="6" class="flex-1">
+                                <span id="val-r3" class="font-mono font-bold w-6 text-right text-slate-600 text-xs">6Ω</span>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas / Paint Canvas -->
+                        <div class="w-[50%] h-full canvas-wrapper relative bg-slate-800" id="canvas-wrapper-3d">
+                            <div class="hint-overlay shadow-md flex flex-col gap-1 bg-white/95">
+                                <span id="hint-3d" class="text-xs text-indigo-800"><i class="fas fa-eye"></i> Simulación Dinámica y Polaridad</span>
+                            </div>
+                            
+                            <!-- Contenedor del Motor 3D -->
+                            <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                            
+                            <!-- Pizarra Overlay (Herramienta Paint) -->
+                            <canvas id="paint-canvas"></canvas>
+                        </div>
+
+                        <!-- 2D Solucionadores KaTeX -->
+                        <div class="w-[50%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Matriz Sistema (Renderizada en KaTeX) -->
+                            <div class="h-[35%] matrix-wrapper p-[1.5vmin] flex flex-col bg-slate-900 border-indigo-500">
+                                <div class="text-center font-bold text-indigo-300 mb-1" style="font-size: clamp(12px, 0.9vw, 14px);">
+                                    <i class="fas fa-th"></i> Sistema Matricial $Ax = B$
+                                </div>
+                                <div class="flex-1 relative w-full flex items-center justify-center overflow-auto custom-scroll" id="matrix-container">
+                                    <!-- Aquí se inyecta KaTeX -->
+                                </div>
+                            </div>
+
+                            <!-- Solución Matemática Paso a Paso (Renderizada en KaTeX) -->
+                            <div class="h-[65%] math-panel-wrapper p-[1.5vmin] flex flex-col bg-slate-50 border-emerald-500">
+                                <div id="math-title" class="text-center font-bold text-slate-800 mb-1 border-b border-slate-300 pb-2" style="font-size: clamp(12px, 0.9vw, 14px);">
+                                    <i class="fas fa-calculator"></i> Desarrollo Analítico
+                                </div>
+                                <div class="flex-1 relative w-full custom-scroll overflow-y-auto text-sm text-slate-800 px-2 pt-2" id="math-steps-container">
+                                    <!-- Aquí se inyecta el HTML + KaTeX -->
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS, INTERACCIÓN Y MATEMÁTICAS -->
+    <script>
+        // ==========================================
+        // 1. VARIABLES DE ESTADO Y DATOS FÍSICOS
+        // ==========================================
+        let params = {
+            config: 'mallas',
+            flowType: 'conv', // 'conv' (Convencional) o 'elec' (Electrones)
+            V1: 12.0,
+            V2: 5.0,
+            R1: 4.0,
+            R2: 2.0,
+            R3: 6.0,
+            is3D: false
+        };
+
+        let result = {
+            I1: 0, I2: 0, I3: 0, VA: 0,
+            detA: 0, det1: 0, det2: 0,
+            matrix: [[0,0],[0,0]],
+            b: [0,0]
+        };
+
+        // Renderizador matemático envoltorio
+        function renderMath() {
+            renderMathInElement(document.getElementById('slide-wrapper'), {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false}
+                ],
+                throwOnError: false
+            });
+        }
+
+        // ==========================================
+        // 2. MATEMÁTICAS: SOLUCIÓN DEL CIRCUITO
+        // ==========================================
+        function solveCircuit() {
+            const R11 = params.R1 + params.R3;
+            const R12 = -params.R3;
+            const R21 = -params.R3;
+            const R22 = params.R2 + params.R3;
+
+            result.matrix = [[R11, R12], [R21, R22]];
+            result.b = [params.V1, -params.V2];
+
+            result.detA = (R11 * R22) - (R12 * R21);
+            result.det1 = (params.V1 * R22) - (R12 * -params.V2);
+            result.det2 = (R11 * -params.V2) - (params.V1 * R21);
+
+            result.I1 = result.det1 / result.detA;
+            result.I2 = result.det2 / result.detA;
+            result.I3 = result.I1 - result.I2; 
+            result.VA = result.I3 * params.R3;
+
+            updateUI();
+            update3DSignsAndArrows(); // Actualizar polaridad visual en 3D
+        }
+
+        // ==========================================
+        // 3. ACTUALIZACIÓN UI Y RENDERIZADO KaTeX
+        // ==========================================
+        function updateUI() {
+            // Actualizar datos del dashboard
+            document.getElementById('ui-i1').textContent = result.I1.toFixed(3);
+            document.getElementById('ui-i2').textContent = result.I2.toFixed(3);
+            document.getElementById('ui-i3').textContent = result.I3.toFixed(3);
+            document.getElementById('ui-va').textContent = result.VA.toFixed(2) + " V";
+            
+            let P_tot = (result.I1 * result.I1 * params.R1) + (result.I2 * result.I2 * params.R2) + (result.I3 * result.I3 * params.R3);
+            document.getElementById('ui-ptot').textContent = P_tot.toFixed(2) + " W";
+
+            // Renderizar Matriz en KaTeX
+            const matrixHtml = `
+                $$ \\begin{bmatrix} ${result.matrix[0][0]} & ${result.matrix[0][1]} \\\\ ${result.matrix[1][0]} & ${result.matrix[1][1]} \\end{bmatrix} 
+                \\begin{bmatrix} I_1 \\\\ I_2 \\end{bmatrix} = 
+                \\begin{bmatrix} ${result.b[0]} \\\\ ${result.b[1]} \\end{bmatrix} $$
+            `;
+            document.getElementById('matrix-container').innerHTML = matrixHtml;
+
+            // Renderizar Desarrollo Analítico en KaTeX
+            const stepsDiv = document.getElementById('math-steps-container');
+            const mode = params.config;
+            let stepsHtml = "";
+
+            if (mode === 'mallas') {
+                document.getElementById('math-title').innerHTML = '<i class="fas fa-project-diagram"></i> LVK: Análisis de Tensión';
+                stepsHtml += `<p class="font-bold mb-2">Malla 1 (Recorrido Horario):</p>`;
+                stepsHtml += `$$\\underbrace{V_1}_{\\text{subida}} \\underbrace{- I_1 R_1}_{\\text{caída R1}} \\underbrace{- (I_1 - I_2) R_3}_{\\text{caída R3}} = 0$$`;
+                stepsHtml += `$$${params.V1} - I_1(${params.R1}) - I_1(${params.R3}) + I_2(${params.R3}) = 0$$`;
+                stepsHtml += `$$\\mathbf{${result.matrix[0][0]} I_1 ${result.matrix[0][1] >= 0 ? '+' : ''}${result.matrix[0][1]} I_2 = ${result.b[0]}}$$`;
+                
+                stepsHtml += `<p class="font-bold mt-4 mb-2">Malla 2 (Recorrido Horario):</p>`;
+                stepsHtml += `$$\\underbrace{-V_2}_{\\text{caída fuente}} \\underbrace{- I_2 R_2}_{\\text{caída R2}} \\underbrace{- (I_2 - I_1) R_3}_{\\text{caída R3}} = 0$$`;
+                stepsHtml += `$$-${params.V2} - I_2(${params.R2}) - I_2(${params.R3}) + I_1(${params.R3}) = 0$$`;
+                stepsHtml += `$$\\mathbf{${result.matrix[1][0]} I_1 + ${result.matrix[1][1]} I_2 = ${result.b[1]}}$$`;
+
+            } else if (mode === 'nodos') {
+                document.getElementById('math-title').innerHTML = '<i class="fas fa-dot-circle"></i> LCK: Análisis de Corrientes';
+                stepsHtml += `<p class="font-bold mb-2">Nodo A (Corrientes salientes = 0):</p>`;
+                stepsHtml += `$$\\frac{V_A - V_1}{R_1} + \\frac{V_A}{R_3} + \\frac{V_A - (-V_2)}{R_2} = 0$$`;
+                stepsHtml += `$$V_A \\left( \\frac{1}{${params.R1}} + \\frac{1}{${params.R3}} + \\frac{1}{${params.R2}} \\right) = \\frac{${params.V1}}{${params.R1}} - \\frac{${params.V2}}{${params.R2}}$$`;
+                let termSum = (1/params.R1 + 1/params.R2 + 1/params.R3).toFixed(3);
+                let constRight = (params.V1/params.R1 - params.V2/params.R2).toFixed(3);
+                stepsHtml += `$$V_A (${termSum}) = ${constRight}$$`;
+                stepsHtml += `$$\\mathbf{V_A = ${result.VA.toFixed(3)} \\text{ V}}$$`;
+
+            } else if (mode === 'cramer') {
+                document.getElementById('math-title').innerHTML = '<i class="fas fa-square-root-alt"></i> Solución por Regla de Cramer';
+                stepsHtml += `$$\\Delta = \\begin{vmatrix} ${result.matrix[0][0]} & ${result.matrix[0][1]} \\\\ ${result.matrix[1][0]} & ${result.matrix[1][1]} \\end{vmatrix} = (${result.matrix[0][0]})(${result.matrix[1][1]}) - (${result.matrix[0][1]})(${result.matrix[1][0]}) = \\mathbf{${result.detA}}$$`;
+                stepsHtml += `$$\\Delta_1 = \\begin{vmatrix} ${result.b[0]} & ${result.matrix[0][1]} \\\\ ${result.b[1]} & ${result.matrix[1][1]} \\end{vmatrix} = (${result.b[0]})(${result.matrix[1][1]}) - (${result.matrix[0][1]})(${result.b[1]}) = \\mathbf{${result.det1}}$$`;
+                stepsHtml += `$$I_1 = \\frac{\\Delta_1}{\\Delta} = \\frac{${result.det1}}{${result.detA}} = \\mathbf{${result.I1.toFixed(3)} \\text{ A}}$$`;
+                
+                stepsHtml += `<hr class="my-3 border-slate-300">`;
+                stepsHtml += `$$\\Delta_2 = \\begin{vmatrix} ${result.matrix[0][0]} & ${result.b[0]} \\\\ ${result.matrix[1][0]} & ${result.b[1]} \\end{vmatrix} = (${result.matrix[0][0]})(${result.b[1]}) - (${result.b[0]})(${result.matrix[1][0]}) = \\mathbf{${result.det2}}$$`;
+                stepsHtml += `$$I_2 = \\frac{\\Delta_2}{\\Delta} = \\frac{${result.det2}}{${result.detA}} = \\mathbf{${result.I2.toFixed(3)} \\text{ A}}$$`;
+
+            } else if (mode === 'gauss') {
+                document.getElementById('math-title').innerHTML = '<i class="fas fa-subscript"></i> Solución Gauss-Jordan';
+                let f1_1 = (result.matrix[0][1] / result.matrix[0][0]);
+                let f1_b = (result.b[0] / result.matrix[0][0]);
+                let f2_1 = result.matrix[1][1] - (result.matrix[1][0] * f1_1);
+                let f2_b = result.b[1] - (result.matrix[1][0] * f1_b);
+                let I2 = f2_b / f2_1;
+                let I1 = f1_b - (f1_1 * I2);
+
+                stepsHtml += `$$\\left[ \\begin{array}{cc|c} ${result.matrix[0][0]} & ${result.matrix[0][1]} & ${result.b[0]} \\\\ ${result.matrix[1][0]} & ${result.matrix[1][1]} & ${result.b[1]} \\end{array} \\right]$$`;
+                stepsHtml += `<p class="text-xs text-center text-amber-600">Dividir F1 entre ${result.matrix[0][0]}:</p>`;
+                stepsHtml += `$$\\left[ \\begin{array}{cc|c} 1 & ${f1_1.toFixed(2)} & ${f1_b.toFixed(2)} \\\\ ${result.matrix[1][0]} & ${result.matrix[1][1]} & ${result.b[1]} \\end{array} \\right]$$`;
+                stepsHtml += `<p class="text-xs text-center text-amber-600">Hacer ceros en columna 1 (F2 - ${result.matrix[1][0]}*F1):</p>`;
+                stepsHtml += `$$\\left[ \\begin{array}{cc|c} 1 & ${f1_1.toFixed(2)} & ${f1_b.toFixed(2)} \\\\ 0 & ${f2_1.toFixed(2)} & ${f2_b.toFixed(2)} \\end{array} \\right]$$`;
+                stepsHtml += `<p class="text-xs text-center text-amber-600">Diagonal principal a unos y sustitución:</p>`;
+                stepsHtml += `$$\\left[ \\begin{array}{cc|c} 1 & 0 & \\mathbf{${I1.toFixed(3)}} \\\\ 0 & 1 & \\mathbf{${I2.toFixed(3)}} \\end{array} \\right] \\begin{matrix} \\rightarrow I_1 \\\\ \\rightarrow I_2 \\end{matrix}$$`;
+            }
+
+            stepsDiv.innerHTML = stepsHtml;
+            setTimeout(renderMath, 50); // Renderizar tras actualizar el DOM
+        }
+
+        // ==========================================
+        // 4. THREE.JS: REPRESENTACIÓN Y POLARIDAD
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        
+        const aspect = cont3D.clientWidth / cont3D.clientHeight;
+        const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio); 
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+        const light = new THREE.DirectionalLight(0xffffff, 0.6);
+        light.position.set(5, 10, 15); 
+        scene.add(light);
+
+        const circuitGroup = new THREE.Group();
+        scene.add(circuitGroup);
+
+        const nodeMaterial = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.3 });
+        const wireMaterial = new THREE.MeshStandardMaterial({ color: 0x475569 });
+        
+        const positions = {
+            N_TL: new THREE.Vector3(-4, 3, 0), N_TM: new THREE.Vector3(0, 3, 0), N_TR: new THREE.Vector3(4, 3, 0),
+            N_BL: new THREE.Vector3(-4, -3, 0), N_BM: new THREE.Vector3(0, -3, 0), N_BR: new THREE.Vector3(4, -3, 0)
+        };
+
+        function createCylinderBetween(p1, p2, radius, mat) {
+            const distance = p1.distanceTo(p2);
+            const cylinder = new THREE.Mesh(new THREE.BoxGeometry(radius, distance, radius), mat);
+            cylinder.position.copy(p1).lerp(p2, 0.5);
+            cylinder.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p2.clone().sub(p1).normalize());
+            return cylinder;
+        }
+
+        circuitGroup.add(createCylinderBetween(positions.N_TL, positions.N_TM, 0.1, wireMaterial));
+        circuitGroup.add(createCylinderBetween(positions.N_TM, positions.N_TR, 0.1, wireMaterial));
+        circuitGroup.add(createCylinderBetween(positions.N_BL, positions.N_BM, 0.1, wireMaterial));
+        circuitGroup.add(createCylinderBetween(positions.N_BM, positions.N_BR, 0.1, wireMaterial));
+
+        Object.values(positions).forEach(p => {
+            const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), nodeMaterial);
+            sphere.position.copy(p);
+            circuitGroup.add(sphere);
+        });
+
+        function createResistor(p1, p2) {
+            const group = new THREE.Group();
+            group.add(createCylinderBetween(p1, p2, 0.1, wireMaterial));
+            const body = createCylinderBetween(p1, p2, 0.4, new THREE.MeshStandardMaterial({color: 0xdeb887}));
+            body.scale.set(1, 0.5, 1);
+            group.add(body);
+            return group;
+        }
+
+        function createBattery(p1, p2, isV1) {
+            const group = new THREE.Group();
+            group.add(createCylinderBetween(p1, p2, 0.1, wireMaterial));
+            const posMat = new THREE.MeshStandardMaterial({color: isV1 ? 0xef4444 : 0x3b82f6});
+            const negMat = new THREE.MeshStandardMaterial({color: 0x1e293b});
+            
+            const center = p1.clone().lerp(p2, 0.5);
+            const dir = p2.clone().sub(p1).normalize();
+            
+            const pos = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 16), posMat);
+            pos.position.copy(center).add(dir.clone().multiplyScalar(0.5));
+            pos.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+            
+            const neg = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1, 16), negMat);
+            neg.position.copy(center).add(dir.clone().multiplyScalar(-0.5));
+            neg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+            group.add(pos); group.add(neg);
+            return group;
+        }
+
+        circuitGroup.add(createResistor(positions.N_TL, positions.N_TM)); // R1
+        circuitGroup.add(createResistor(positions.N_TR, positions.N_TM)); // R2
+        circuitGroup.add(createResistor(positions.N_TM, positions.N_BM)); // R3
+        circuitGroup.add(createBattery(positions.N_BL, positions.N_TL, true)); // V1
+        circuitGroup.add(createBattery(positions.N_BR, positions.N_TR, false)); // V2
+
+        // SPRITES DE TEXTO PARA POLARIDAD (+ / -)
+        function createTextSprite(text, colorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = colorHex;
+            ctx.font = 'bold 90px Arial';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(text, 64, 64);
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, depthTest: false, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(1.2, 1.2, 1);
+            return sprite;
+        }
+
+        const sprites = {
+            r1Plus: createTextSprite('+', '#ef4444'), r1Minus: createTextSprite('-', '#3b82f6'),
+            r2Plus: createTextSprite('+', '#ef4444'), r2Minus: createTextSprite('-', '#3b82f6'),
+            r3Plus: createTextSprite('+', '#ef4444'), r3Minus: createTextSprite('-', '#3b82f6')
+        };
+        Object.values(sprites).forEach(s => circuitGroup.add(s));
+
+        // FLECHAS DE DIRECCIÓN DE CORRIENTE
+        const arrowI1 = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(-2, 3.8, 0), 1.5, 0xffffff, 0.4, 0.3);
+        const arrowI2 = new THREE.ArrowHelper(new THREE.Vector3(-1,0,0), new THREE.Vector3(2, 3.8, 0), 1.5, 0xffffff, 0.4, 0.3);
+        const arrowI3 = new THREE.ArrowHelper(new THREE.Vector3(0,-1,0), new THREE.Vector3(-0.8, 0, 0), 1.5, 0xffffff, 0.4, 0.3);
+        circuitGroup.add(arrowI1); circuitGroup.add(arrowI2); circuitGroup.add(arrowI3);
+
+        function update3DSignsAndArrows() {
+            // Actualizar Polaridad R1 (I1 fluye N_TL a N_TM si es positivo)
+            if (result.I1 >= 0) {
+                sprites.r1Plus.position.set(-3.2, 3.6, 0); sprites.r1Minus.position.set(-0.8, 3.6, 0);
+                arrowI1.setDirection(new THREE.Vector3(1,0,0)); arrowI1.setColor(0x3b82f6); // Corriente a derecha
+            } else {
+                sprites.r1Plus.position.set(-0.8, 3.6, 0); sprites.r1Minus.position.set(-3.2, 3.6, 0);
+                arrowI1.setDirection(new THREE.Vector3(-1,0,0)); arrowI1.setColor(0x3b82f6);
+            }
+
+            // Actualizar Polaridad R2 (I2 fluye N_TM a N_TR si es positivo, debido al lazo horario)
+            if (result.I2 >= 0) {
+                sprites.r2Plus.position.set(0.8, 3.6, 0); sprites.r2Minus.position.set(3.2, 3.6, 0);
+                arrowI2.setDirection(new THREE.Vector3(1,0,0)); arrowI2.setColor(0xa855f7); // Corriente a derecha
+            } else {
+                sprites.r2Plus.position.set(3.2, 3.6, 0); sprites.r2Minus.position.set(0.8, 3.6, 0);
+                arrowI2.setDirection(new THREE.Vector3(-1,0,0)); arrowI2.setColor(0xa855f7);
+            }
+
+            // Actualizar Polaridad R3 (I3 fluye N_TM a N_BM si es positivo)
+            if (result.I3 >= 0) {
+                sprites.r3Plus.position.set(-0.7, 1.5, 0); sprites.r3Minus.position.set(-0.7, -1.5, 0);
+                arrowI3.setDirection(new THREE.Vector3(0,-1,0)); arrowI3.setColor(0x10b981); // Hacia abajo
+            } else {
+                sprites.r3Plus.position.set(-0.7, -1.5, 0); sprites.r3Minus.position.set(-0.7, 1.5, 0);
+                arrowI3.setDirection(new THREE.Vector3(0,1,0)); arrowI3.setColor(0x10b981); // Hacia arriba
+            }
+        }
+
+        // ANIMACIÓN DE PARTÍCULAS
+        const particles = [];
+        const particleGeo = new THREE.SphereGeometry(0.15, 8, 8);
+        const matConvPos = new THREE.MeshBasicMaterial({color: 0xfacc15}); // Convencional positiva (Amarillo)
+        const matConvNeg = new THREE.MeshBasicMaterial({color: 0x64748b}); // Convencional negativa (Gris)
+        const matElec = new THREE.MeshBasicMaterial({color: 0x34d399}); // Electrón (Verde vibrante)
+
+        function createParticleSequence(pathFunc, count, isMalla1) {
+            for(let i=0; i<count; i++) {
+                let mesh = new THREE.Mesh(particleGeo, matConvPos);
+                circuitGroup.add(mesh);
+                particles.push({ mesh, progress: i/count, pathFunc, isMalla1 });
+            }
+        }
+
+        const pathMalla1 = (t) => {
+            let v = new THREE.Vector3();
+            if(t < 0.25) v.lerpVectors(positions.N_BL, positions.N_TL, t*4);
+            else if(t < 0.5) v.lerpVectors(positions.N_TL, positions.N_TM, (t-0.25)*4);
+            else if(t < 0.75) v.lerpVectors(positions.N_TM, positions.N_BM, (t-0.5)*4);
+            else v.lerpVectors(positions.N_BM, positions.N_BL, (t-0.75)*4);
+            return v;
+        };
+
+        const pathMalla2 = (t) => {
+            let v = new THREE.Vector3();
+            if(t < 0.25) v.lerpVectors(positions.N_BM, positions.N_TM, t*4);
+            else if(t < 0.5) v.lerpVectors(positions.N_TM, positions.N_TR, (t-0.25)*4);
+            else if(t < 0.75) v.lerpVectors(positions.N_TR, positions.N_BR, (t-0.5)*4);
+            else v.lerpVectors(positions.N_BR, positions.N_BM, (t-0.75)*4);
+            return v;
+        };
+
+        createParticleSequence(pathMalla1, 10, true);
+        createParticleSequence(pathMalla2, 10, false);
+
+        // ==========================================
+        // 5. EVENTOS Y CONTROLADORES UI
+        // ==========================================
+        document.getElementById('select-config').addEventListener('change', (e) => { 
+            params.config = e.target.value; 
+            ['mallas', 'nodos', 'cramer', 'gauss'].forEach(mode => {
+                const el = document.getElementById('teoria-' + mode);
+                if(el) {
+                    if (mode === params.config) { el.classList.remove('hidden'); el.classList.add('flex'); } 
+                    else { el.classList.add('hidden'); el.classList.remove('flex'); }
+                }
+            });
+            solveCircuit(); 
+        });
+
+        document.getElementById('select-flow').addEventListener('change', (e) => {
+            params.flowType = e.target.value;
+        });
+
+        const binds = [
+            { id: 'slider-v1', param: 'V1', out: 'val-v1', unit: 'V' },
+            { id: 'slider-v2', param: 'V2', out: 'val-v2', unit: 'V' },
+            { id: 'slider-r1', param: 'R1', out: 'val-r1', unit: 'Ω' },
+            { id: 'slider-r2', param: 'R2', out: 'val-r2', unit: 'Ω' },
+            { id: 'slider-r3', param: 'R3', out: 'val-r3', unit: 'Ω' }
+        ];
+
+        binds.forEach(b => {
+            document.getElementById(b.id).addEventListener('input', (e) => {
+                params[b.param] = parseFloat(e.target.value);
+                document.getElementById(b.out).textContent = params[b.param] + b.unit;
+                solveCircuit();
+            });
+        });
+
+        function setupView() {
+            if (params.is3D) {
+                cam.position.set(0, -10, 15);
+                cam.lookAt(0,0,0);
+                ctrl.enableRotate = true;
+                document.getElementById('btn-toggle-3d').innerHTML = '<i class="fas fa-border-all"></i> Modo 2D';
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-purple-100 text-purple-800 border-purple-300";
+            } else {
+                cam.position.set(0, 0, 14);
+                cam.rotation.set(0,0,0);
+                ctrl.enableRotate = false;
+                document.getElementById('btn-toggle-3d').innerHTML = '<i class="fas fa-cube"></i> Vista 3D';
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-indigo-100 text-indigo-800 border-indigo-300";
+            }
+        }
+        document.getElementById('btn-toggle-3d').addEventListener('click', () => { params.is3D = !params.is3D; setupView(); });
+
+        // ==========================================
+        // 6. HERRAMIENTA PIZARRA
+        // ==========================================
+        const paintCanvas = document.getElementById('paint-canvas');
+        const pCtx = paintCanvas.getContext('2d');
+        let isPainting = false;
+
+        function resizePaint() {
+            paintCanvas.width = paintCanvas.offsetWidth;
+            paintCanvas.height = paintCanvas.offsetHeight;
+            pCtx.lineWidth = 3; pCtx.lineCap = 'round'; pCtx.strokeStyle = '#facc15'; 
+        }
+
+        const startPaint = (e) => {
+            isPainting = true; const rect = paintCanvas.getBoundingClientRect();
+            pCtx.beginPath(); pCtx.moveTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top);
+        };
+        const drawPaint = (e) => {
+            if (!isPainting) return; e.preventDefault(); const rect = paintCanvas.getBoundingClientRect();
+            pCtx.lineTo((e.touches ? e.touches[0].clientX : e.clientX) - rect.left, (e.touches ? e.touches[0].clientY : e.clientY) - rect.top); pCtx.stroke();
+        };
+        const stopPaint = () => { isPainting = false; };
+
+        paintCanvas.addEventListener('mousedown', startPaint); paintCanvas.addEventListener('mousemove', drawPaint); window.addEventListener('mouseup', stopPaint);
+        paintCanvas.addEventListener('touchstart', startPaint, {passive: false}); paintCanvas.addEventListener('touchmove', drawPaint, {passive: false}); paintCanvas.addEventListener('touchend', stopPaint);
+
+        document.getElementById('btn-clear-paint').addEventListener('click', () => { pCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height); });
+        document.getElementById('toggle-paint').addEventListener('change', (e) => {
+            const btnClear = document.getElementById('btn-clear-paint');
+            if(e.target.checked) { paintCanvas.classList.add('paint-mode-active'); btnClear.classList.remove('hidden'); } 
+            else { paintCanvas.classList.remove('paint-mode-active'); btnClear.classList.add('hidden'); }
+        });
+
+        // ==========================================
+        // 7. BUCLE DE ANIMACIÓN
+        // ==========================================
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-wrapper-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height); resizePaint();
+                }
+            }
+        });
+        resizeObserver.observe(document.getElementById('canvas-wrapper-3d')); 
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const isElectronMode = params.flowType === 'elec';
+
+            particles.forEach(p => {
+                let currentI = p.isMalla1 ? result.I1 : result.I2;
+                let speed = currentI * 0.005; // Velocidad base según corriente
+                
+                // Si es modo electrón, invierte la velocidad física real (viajan de - a +)
+                if (isElectronMode) speed = -speed;
+
+                // Actualizar posición ciclada [0, 1]
+                p.progress += speed;
+                if(p.progress > 1) p.progress -= 1;
+                if(p.progress < 0) p.progress += 1;
+
+                p.mesh.position.copy(p.pathFunc(p.progress));
+
+                // Seleccionar material (Color)
+                if (isElectronMode) {
+                    p.mesh.material = matElec; // Electrones siempre verdes
+                } else {
+                    p.mesh.material = currentI >= 0 ? matConvPos : matConvNeg; // Corriente Conv. (Amarilla o gris si es negativa)
+                }
+            });
+
+            ctrl.update();
+            renderer.render(scene, cam);
+        }
+
+        // INIT
+        setupView();
+        solveCircuit();
+        setTimeout(() => { resizePaint(); renderMath(); }, 200);
+        animate();
+
+        // Tip System Global (INMUTABLE)
+        (function () {
+            let globalTip = document.createElement("div"); globalTip.className = "tip-content"; globalTip.style.position = "fixed"; globalTip.style.zIndex = "999999"; globalTip.style.pointerEvents = "none"; globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden";
+            document.body.appendChild(globalTip);
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                const localTip = wrapper.querySelector(".tip-content");
+                wrapper.addEventListener("mouseenter", () => {
+                    const rect = wrapper.getBoundingClientRect(); globalTip.innerHTML = localTip.innerHTML; globalTip.style.top = rect.top + "px"; globalTip.style.left = (rect.right + 10) + "px"; globalTip.style.opacity = "1"; globalTip.style.visibility = "visible";
+                });
+                wrapper.addEventListener("mouseleave", () => { globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden"; });
+            });
+        })();
+    </script>
+</body>
+</html>

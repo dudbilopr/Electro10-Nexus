@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presentación Interactiva - Laboratorio de Física</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow-x: hidden; overflow-y: auto; font-family: 'Inter', sans-serif; background-color: #0f172a; scroll-behavior: smooth; }
+        #presentation-container { width: 100%; min-height: 100vh; display: flex; flex-direction: column; }
+        .slide-frame { width: 100%; height: 100vh; border: none; display: none; background-color: transparent; }
+        .slide-frame.active { display: block; }
+        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); }
+        .nav-btn { transition: all 0.2s ease; }
+        .nav-btn:hover:not(:disabled) { background: rgba(59, 130, 246, 0.2); transform: translateY(-2px); color: #60a5fa; }
+        .nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .dot { transition: all 0.3s ease; }
+        .dot.active { background-color: #3b82f6; width: 1.25rem; border-radius: 999px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="text-white">
+    <div class="fixed top-0 left-0 w-full h-1 bg-slate-800 z-[100]"><div id="progress-bar" class="h-full bg-blue-500 transition-all duration-500 ease-out" style="width: 0%;"></div></div>
+    <main id="presentation-container"></main>
+    <nav class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-4 glass-panel px-5 py-2.5 rounded-2xl">
+        <div class="flex items-center gap-1 mr-2">
+            <button id="btn-prev" class="nav-btn p-2 rounded-xl"><i class="ph-bold ph-caret-left text-lg"></i></button>
+            <button id="btn-next" class="nav-btn p-2 rounded-xl"><i class="ph-bold ph-caret-right text-lg"></i></button>
+        </div>
+        <div id="dots-container" class="flex items-center gap-2 px-2"></div>
+        <div class="w-px h-6 bg-white/10 mx-1"></div>
+        <div class="flex items-center gap-3 ml-2">
+            <span id="slide-counter" class="text-xs font-mono text-slate-400 min-w-[40px] text-center">1/4</span>
+            <button id="btn-fullscreen" class="nav-btn p-2 rounded-xl"><i class="ph-bold ph-corners-out text-lg" id="fs-icon"></i></button>
+        </div>
+    </nav>
+
+    <script>
+        // Asegúrate de que las rutas coincidan con tu estructura en GitHub
+        const slides = [
+            './Clase7/Portada.html',
+            './Clase7/Diapositiva_1.html',
+            './Clase7/Diapositiva_2.html',
+            './Clase7/Diapositiva_3.html',
+            './Clase7/Diapositiva_4.html',
+            './Clase7/Diapositiva_5.html'
+        ];
+
+        let currentIndex = 0;
+        const container = document.getElementById('presentation-container');
+        const dotsContainer = document.getElementById('dots-container');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const progressBar = document.getElementById('progress-bar');
+        const slideCounter = document.getElementById('slide-counter');
+
+        function initPresentation() {
+            slides.forEach((src, index) => {
+                const iframe = document.createElement('iframe');
+                iframe.src = src;
+                iframe.className = `slide-frame ${index === 0 ? 'active' : ''}`;
+                iframe.id = `slide-${index}`;
+                // IMPORTANTE: Permitir scripts para que el postMessage funcione
+                iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                container.appendChild(iframe);
+
+                const dot = document.createElement('div');
+                dot.className = `dot w-2 h-2 rounded-full bg-white/20 cursor-pointer ${index === 0 ? 'active' : ''}`;
+                dot.onclick = () => goToSlide(index);
+                dotsContainer.appendChild(dot);
+            });
+            updateUI();
+        }
+
+        // ESCUCHADOR DE MENSAJES (Para GitHub / Servidores)
+        window.addEventListener('message', function(e) {
+            if (e.data && e.data.type === 'resize') {
+                const iframes = document.querySelectorAll('iframe');
+                iframes.forEach(iframe => {
+                    if (iframe.contentWindow === e.source) {
+                        iframe.style.height = e.data.height + 'px';
+                    }
+                });
+            }
+        });
+
+        function goToSlide(index) {
+            if (index < 0 || index >= slides.length) return;
+            document.getElementById(`slide-${currentIndex}`).classList.remove('active');
+            dotsContainer.children[currentIndex].classList.remove('active');
+            currentIndex = index;
+            const nextFrame = document.getElementById(`slide-${currentIndex}`);
+            nextFrame.classList.add('active');
+            dotsContainer.children[currentIndex].classList.add('active');
+            window.scrollTo(0, 0);
+            updateUI();
+        }
+
+        function updateUI() {
+            btnPrev.disabled = currentIndex === 0;
+            btnNext.disabled = currentIndex === slides.length - 1;
+            progressBar.style.width = `${((currentIndex + 1) / slides.length) * 100}%`;
+            slideCounter.textContent = `${currentIndex + 1} / ${slides.length}`;
+        }
+
+        btnPrev.onclick = prevSlide;
+        btnNext.onclick = nextSlide;
+        function nextSlide() { goToSlide(currentIndex + 1); }
+        function prevSlide() { goToSlide(currentIndex - 1); }
+
+        window.onkeydown = (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+            if (e.key === 'ArrowLeft') prevSlide();
+        };
+
+        const btnFs = document.getElementById('btn-fullscreen');
+        const fsIcon = document.getElementById('fs-icon');
+        btnFs.onclick = () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+                fsIcon.className = "ph-bold ph-corners-in text-lg";
+            } else {
+                document.exitFullscreen();
+                fsIcon.className = "ph-bold ph-corners-out text-lg";
+            }
+        };
+
+        initPresentation();
+    </script>
+</body>
+</html>

@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Universitaria: Carga Eléctrica y Ley de Coulomb</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- KaTeX for Beautiful Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f8fafc; }
+        
+        /* Draggable items styles */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone.dragover { background-color: #e2e8f0; border-color: #3b82f6; }
+        .math-input { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; }
+        
+        /* Navigation Grid Styles */
+        .nav-btn { transition: all 0.2s ease; }
+        .nav-answered { background-color: #3b82f6; color: white; border-color: #2563eb; }
+        .nav-flagged { background-color: #f59e0b; color: white; border-color: #d97706; }
+        .nav-active { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4); transform: scale(1.1); z-index: 10; }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        .correct-card { border: 2px solid #22c55e !important; background-color: #f0fdf4 !important; }
+        .incorrect-card { border: 2px solid #ef4444 !important; background-color: #fef2f2 !important; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center border border-slate-200">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-warning text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">¿Evaluar examen?</h3>
+            <p class="text-slate-600 mb-6" id="confirm-message">Aún tienes preguntas sin responder.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-cancel-eval" class="px-5 py-2.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button id="btn-confirm-eval" class="px-5 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">Sí, evaluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm shrink-0 z-40 relative">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg text-white shadow-md">
+                    <i class="ph ph-magnet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">Física Electromagnética</h1>
+                    <p class="text-xs md:text-sm text-slate-500 font-medium">Evaluación: Carga Eléctrica y Ley de Coulomb</p>
+                </div>
+            </div>
+            <div class="flex gap-3 items-center">
+                <div id="auth-status" class="text-sm font-medium text-slate-500 hidden md:flex items-center gap-1 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                    <i class="ph ph-spinner animate-spin"></i> Conectando plataforma...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <!-- Sidebar: Navigation Panel -->
+        <aside class="w-full md:w-1/4 lg:w-1/5 flex flex-col gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-full max-h-[calc(100vh-120px)] overflow-y-auto">
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="ph ph-squares-four"></i> Navegación
+                </h3>
+                
+                <div id="nav-grid" class="grid grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-6">
+                    <!-- Buttons injected via JS -->
+                </div>
+
+                <!-- Legend -->
+                <div class="text-xs text-slate-600 space-y-2 mb-6 border-t border-slate-100 pt-4">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded border border-slate-300 bg-slate-50"></div> Sin responder</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-blue-500 shadow-sm"></div> Respondida</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-amber-500 shadow-sm"></div> Bandera (Revisar)</div>
+                </div>
+
+                <div class="mt-auto space-y-3">
+                    <button id="btn-export" class="w-full hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200">
+                        <i class="ph ph-file-pdf text-lg text-red-500"></i> Exportar PDF
+                    </button>
+                    <button id="btn-evaluate" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="ph ph-check-circle text-lg"></i> Evaluar Examen
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Area: Question Display -->
+        <section class="w-full md:w-3/4 lg:w-4/5 flex flex-col h-full max-h-[calc(100vh-120px)]">
+            
+            <!-- Instructions -->
+            <div id="instructions-panel" class="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-4 shadow-sm shrink-0 fade-in">
+                <h2 class="text-lg font-bold text-blue-900 mb-2 flex items-center gap-2">
+                    <i class="ph ph-info text-xl"></i> Instrucciones de la Evaluación
+                </h2>
+                <p class="text-sm text-blue-800 mb-2 leading-relaxed">Resuelve los 20 problemas sobre Cargas y Ley de Coulomb basados en el currículo de nivel universitario (AP Physics 2). Utiliza las herramientas y los <strong>tips metodológicos</strong> si necesitas apoyo.</p>
+                <p class="text-sm text-blue-800 font-semibold bg-blue-100 p-2 rounded inline-block">Tu progreso se respaldará automáticamente en la nube de Firebase si tu nota supera el 70%.</p>
+            </div>
+
+            <!-- Question Container -->
+            <div id="questions-container" class="flex-grow overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 relative p-6 md:p-10">
+                <!-- Questions injected here via JS -->
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="mt-4 flex justify-between items-center shrink-0">
+                <button id="btn-prev" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    <i class="ph ph-caret-left text-lg"></i> Anterior
+                </button>
+                
+                <button id="btn-flag" class="px-4 py-2.5 bg-white border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="ph-fill ph-flag"></i> <span class="hidden sm:inline">Marcar con Bandera</span>
+                </button>
+
+                <button id="btn-next" class="px-5 py-2.5 bg-blue-600 border border-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    Siguiente <i class="ph ph-caret-right text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="results-panel" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-8 rounded-xl border border-slate-200 shadow-2xl fade-in">
+                <div class="bg-blue-100 text-blue-600 p-4 rounded-full mb-4">
+                    <i class="ph ph-medal text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Resultados Finales</h2>
+                <div class="text-6xl font-black mb-4 tracking-tighter" id="score-display">0%</div>
+                <p id="feedback-message" class="text-lg font-medium mb-8 text-center max-w-lg"></p>
+                
+                <div class="w-full max-w-md bg-slate-200 rounded-full h-4 mb-10 shadow-inner overflow-hidden">
+                  <div id="score-bar" class="bg-blue-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="btn-review" class="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+                        <i class="ph ph-magnifying-glass"></i> Revisar Respuestas
+                    </button>
+                    <button id="btn-save" class="hidden px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                        <i class="ph ph-cloud-arrow-up text-lg"></i> Guardar en la Nube
+                    </button>
+                </div>
+            </div>
+            
+        </section>
+    </main>
+
+    <script type="module">
+        // =========================================================================
+        // === NUEVA INTEGRACIÓN FIREBASE (COMPATIBLE CON TU DASHBOARD UNAB) ===
+        // =========================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+        import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+        // Usamos tus credenciales exactas del Dashboard
+        const firebaseConfig = {
+            apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+            authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+            databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",
+            projectId: "laboratorio-de-coulomb",
+            storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+            messagingSenderId: "525944850850",
+            appId: "1:525944850850:web:eca9c0b79809358e8d8afb",
+            measurementId: "G-SZECJNG25E"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        let currentUser = null;
+
+        // Escuchamos el estado de auth. Al estar en iframe en tu plataforma, detectará automáticamente la sesión
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const statusEl = document.getElementById('auth-status');
+            if (user) {
+                const userName = user.email ? user.email.split('@')[0] : 'Estudiante';
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></div> <span class="truncate max-w-[100px]">${userName}</span>`;
+                statusEl.classList.remove('hidden');
+                loadProgress();
+            } else {
+                statusEl.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Debes iniciar sesión en la plataforma`;
+                statusEl.classList.remove('hidden');
+            }
+        });
+
+        // --- 2. EXAM DATA (20 Questions: Charge & Coulomb's Law) ---
+        const questions = [
+            { 
+                type: 'mcq', 
+                text: "Dos partículas cargadas puntuales ejercen una fuerza de atracción de $F = 100 \\text{ N}$ entre sí cuando están separadas por una distancia $r$. Si la distancia entre ellas se incrementa a $2r$, ¿cuál será la nueva fuerza de atracción?", 
+                options: ["$200 \\text{ N}$", "$50 \\text{ N}$", "$25 \\text{ N}$", "$12.5 \\text{ N}$"], 
+                answer: 2, 
+                tip: "La Ley de Coulomb establece que la fuerza es inversamente proporcional al cuadrado de la distancia ($1/r^2$). Si la distancia aumenta por un factor de 2, la fuerza disminuye por un factor de $2^2 = 4$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Dos esferas conductoras idénticas, inicialmente con cargas de $+6 \\; \\mu\\text{C}$ y $-2 \\; \\mu\\text{C}$, se ponen en contacto físico y luego se separan. ¿Cuál es la carga neta de cada esfera después de separarse?", 
+                options: ["$+4 \\; \\mu\\text{C}$", "$+2 \\; \\mu\\text{C}$", "$0 \\; \\mu\\text{C}$", "$+8 \\; \\mu\\text{C}$"], 
+                answer: 1, 
+                tip: "Principio de conservación de la carga y simetría. Suma las cargas totales y divídelas a partes iguales entre las dos esferas idénticas." 
+            },
+            { 
+                type: 'mcq', 
+                text: "La esfera A tiene una carga de $+10 \\; \\mu\\text{C}$ y la esfera B tiene una carga de $+1 \\; \\mu\\text{C}$. Se repelen entre sí con fuerzas electrostáticas. ¿Cuál es la relación entre la magnitud de la fuerza que A ejerce sobre B ($F_{AB}$) y la fuerza que B ejerce sobre A ($F_{BA}$)?", 
+                options: ["$F_{AB} = 10 F_{BA}$", "$F_{BA} = 10 F_{AB}$", "$F_{AB} = F_{BA}$", "$F_{AB} = 100 F_{BA}$"], 
+                answer: 2, 
+                tip: "Recuerda la Tercera Ley de Newton (Acción y Reacción). La magnitud de las fuerzas de interacción entre dos objetos siempre es idéntica, independientemente de sus cargas." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Debido a la cuantización de la carga en el universo, ¿cuál de las siguientes cantidades de carga eléctrica neta **NO** puede existir en una partícula o gota de aceite estable aisada?", 
+                options: ["$3.2 \\times 10^{-19} \\text{ C}$", "$4.8 \\times 10^{-19} \\text{ C}$", "$2.4 \\times 10^{-19} \\text{ C}$", "$1.6 \\times 10^{-18} \\text{ C}$"], 
+                answer: 2, 
+                tip: "Toda carga debe ser un múltiplo entero de la carga elemental $e \approx 1.6 \times 10^{-19} \\text{ C}$. Divide cada opción entre $e$; si el resultado no es un número entero, esa carga es imposible." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Se tienen dos cargas puntuales $+q$ y $+4q$ fijas, separadas por una distancia $L$. ¿En qué posición, medida desde la carga $+q$, se debe colocar una tercera carga de prueba para que la fuerza electrostática neta sobre ella sea cero?", 
+                options: ["A una distancia $L/2$", "A una distancia $L/3$", "A una distancia $L/4$", "A una distancia $2L/3$"], 
+                answer: 1, 
+                tip: "Para estar en equilibrio, las fuerzas de repulsión deben igualarse: $k\\frac{q \\cdot Q}{x^2} = k\\frac{4q \\cdot Q}{(L-x)^2}$. Saca la raíz cuadrada de ambos lados para resolver." 
+            },
+            { 
+                type: 'fill', 
+                text: "La constante de proporcionalidad de Coulomb, $k$, en el vacío tiene un valor aproximado de $9 \\times 10^n$ en unidades del SI. Escribe el valor del exponente $n$.", 
+                answer: "9", 
+                tip: "Es un valor enorme que demuestra que la fuerza eléctrica es extremadamente potente a nivel microscópico. $k \\approx 9 \\times 10^9 \\text{ N}\\cdot\\text{m}^2/\\text{C}^2$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Cuatro cargas puntuales idénticas $+Q$ se encuentran fijas en las esquinas de un cuadrado de lado $a$. Si se coloca una carga de prueba $-q$ exactamente en el centro geométrico del cuadrado, la fuerza neta sobre esta será:", 
+                options: ["Dirigida hacia arriba.", "Proporcional a $1/a^2$.", "Exactamente cero.", "Infinita."], 
+                answer: 2, 
+                tip: "Evalúa la simetría del problema (Principio de Superposición). Por cada carga atrayendo a $-q$ en una dirección, existe una carga idéntica en la esquina opuesta atrayéndola con la misma magnitud pero en dirección contraria." 
+            },
+            { 
+                type: 'equation', 
+                text: "Escribe la expresión algebraica para la magnitud de la fuerza electrostática $F$ entre dos partículas con cargas $q_1$ y $q_2$ separadas por una distancia $r$. (Usa la constante de Coulomb como 'k'. Escribe algo como k*q1*q2/r^2)", 
+                answer: "k*q1*q2/r^2", 
+                tip: "Es la famosa Ley de Coulomb. Multiplica las cargas, divide por la distancia al cuadrado, y todo afectado por la constante." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Se dispone de una barra cargada negativamente. Se acerca a una esfera metálica neutra aislada (sin tocarla), y mientras está cerca, la esfera se conecta momentáneamente a tierra mediante un cable. Finalmente, se retira la conexión a tierra y se aleja la barra. ¿Cómo queda cargada la esfera?", 
+                options: ["Negativamente.", "Positivamente.", "Vuelve a quedar neutra.", "Se polariza temporalmente."], 
+                answer: 1, 
+                tip: "Este es el proceso de 'Carga por Inducción'. La barra repelió a los electrones libres del metal hacia la tierra. Al cortar la tierra, la esfera queda con déficit de electrones." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En un átomo de hidrógeno, la fuerza dominante que mantiene al electrón en órbita alrededor del protón es:", 
+                options: ["La fuerza de la Gravedad de Newton.", "La fuerza Magnética.", "La fuerza Electrostática de Coulomb.", "La fuerza Nuclear Fuerte."], 
+                answer: 2, 
+                tip: "Si bien ambas partículas tienen masa y experimentan gravedad, la fuerza eléctrica entre ellas es aproximadamente $10^{39}$ veces más grande que su atracción gravitacional." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Al frotar una varilla de vidrio con un trozo de seda, el vidrio adquiere una carga neta positiva. A nivel atómico, esto significa que el vidrio:", 
+                options: ["Ganó protones de la seda.", "Creó carga positiva por la fricción.", "Cedió electrones a la seda.", "Polarizó sus propios átomos sin transferencia."], 
+                answer: 2, 
+                tip: "Los núcleos (donde están los protones) están fijos en la estructura sólida. Toda carga por fricción se debe exclusivamente a la transferencia de la capa superficial de electrones libres." 
+            },
+            { 
+                type: 'fill', 
+                text: "En el Sistema Internacional de Unidades (SI), la unidad fundamental de carga eléctrica, equivalente a un amperio-segundo, recibe el nombre de ______.", 
+                answer: "coulomb", 
+                tip: "En honor al físico francés Charles-Augustin de Coulomb. Se denota con la letra C mayúscula." 
+            },
+            { 
+                type: 'mcq', 
+                text: "La constante de Coulomb $k$ está matemáticamente relacionada con la permitividad eléctrica del vacío $\\epsilon_0$ mediante la expresión:", 
+                options: ["$k = 4\\pi\\epsilon_0$", "$k = \\frac{1}{4\\pi\\epsilon_0}$", "$k = \\epsilon_0 c^2$", "$k = \\sqrt{\\epsilon_0}$"], 
+                answer: 1, 
+                tip: "En el SI, la ley de Coulomb a menudo se escribe como $F = \\frac{1}{4\\pi\\epsilon_0} \\frac{q_1 q_2}{r^2}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Un neutrón viaja a alta velocidad y pasa exactamente a la mitad de distancia entre un protón y un electrón fijos. La fuerza electrostática neta de Coulomb que experimenta el neutrón en ese instante es:", 
+                options: ["Atracción hacia el protón.", "Atracción hacia el electrón.", "Cero.", "Repulsión hacia ambos lados."], 
+                answer: 2, 
+                tip: "El neutrón es una partícula subatómica, y como su nombre lo indica, no posee carga eléctrica neta ($q = 0$). Aplica esto en la fórmula de Coulomb." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Si dos cargas puntuales se sumergen en agua pura (aislante eléctrico dieléctrico con permitividad relativa $\\kappa \\approx 80$) manteniendo la misma distancia que tenían en el aire, la fuerza electrostática entre ellas:", 
+                options: ["Aumenta 80 veces.", "Disminuye unas 80 veces.", "Permanece idéntica.", "Se vuelve instantáneamente nula."], 
+                answer: 1, 
+                tip: "La fuerza en un medio está dada por $F = \\frac{1}{4\\pi \\kappa \\epsilon_0} \\frac{q_1 q_2}{r^2}$. Un medio con alto poder dieléctrico apantalla drásticamente la interacción." 
+            },
+            { 
+                type: 'drag', 
+                text: "Arrastra cada método de carga de materiales hacia la descripción física que mejor lo explica:", 
+                pairs: [
+                    { id: 'p1', question: "Fricción (Frotamiento)", answer: "Rotura de enlaces superficiales arrancando electrones de un material a otro." },
+                    { id: 'p2', question: "Contacto (Conducción)", answer: "Transferencia directa al tocar un conductor con otro hasta igualar potenciales." },
+                    { id: 'p3', question: "Inducción", answer: "Redistribución de cargas dentro de un conductor por la cercanía de un cuerpo externo." }
+                ],
+                tip: "Piensa en el nivel físico de cada uno: Frotar implica arrancar, tocar implica fluir libremente, y acercar implica 'espantar' o 'atraer' internamente."
+            },
+            { 
+                type: 'mcq', 
+                text: "Dos electrones libres se encuentran inicialmente separados por $1\\text{ mm}$ en el vacío. Al soltarlos desde el reposo, estos inmediatamente:", 
+                options: ["Se atraen y se aceleran mutuamente.", "Se quedan estáticos.", "Se repelen y se aceleran alejándose.", "Giran uno alrededor del otro."], 
+                answer: 2, 
+                tip: "Cargas de igual signo siempre se repelen por una fuerza que las empuja en la dirección del vector unitario que las separa. Como experimentan fuerza con masa muy pequeña, se aceleran velozmente." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Una barra plástica cargada negativamente se acerca a trocitos de papel, que son neutros y aislantes. Los pedacitos saltan hacia la barra. Esto ocurre físicamente por un proceso de:", 
+                options: ["Ionización en el aire.", "Inducción metálica.", "Polarización atómica del dieléctrico.", "Radiación electromagnética."], 
+                answer: 2, 
+                tip: "Aunque el papel es aislante (sin electrones libres), sus nubes electrónicas se deforman levemente (polarización), haciendo que el lado positivo del átomo quede más cerca de la barra negativa." 
+            },
+            { 
+                type: 'equation', 
+                text: "Usando notación decimal con exponentes, escribe la magnitud (en Coulombs) de la carga elemental de un solo electrón/protón. Ej: usa `1.6*10^-19`", 
+                answer: "1.6*10^-19", 
+                tip: "Es el valor fundamental $e$. Su magnitud se descubrió históricamente en el experimento de la gota de aceite de Millikan." 
+            },
+            { 
+                type: 'canvas', 
+                text: "Simulador Ley de Coulomb: Tienes un núcleo fijo positivo (Centro) y un protón móvil (Azul). **Arrastra** la carga azul hacia el anillo central sombreado para experimentar la fuerza máxima y completar la pregunta.", 
+                tip: "Observa cómo el vector Fuerza (rojo) y su Magnitud varían no linealmente. Al acercar la carga a la mitad de la distancia, la fuerza no se duplica, se **cuadruplica** ($1/r^2$)." 
+            }
+        ];
+
+        let currentQuestion = 0;
+        let userState = questions.map(() => ({ answered: false, flagged: false, value: null }));
+        let examSubmitted = false;
+
+        function initUI() {
+            renderNavGrid();
+            renderAllQuestions();
+            showQuestion(0);
+            
+            document.getElementById('btn-prev').addEventListener('click', () => { if(currentQuestion > 0) showQuestion(currentQuestion - 1); });
+            document.getElementById('btn-next').addEventListener('click', () => { if(currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1); });
+            document.getElementById('btn-flag').addEventListener('click', () => toggleFlag(currentQuestion));
+            
+            document.getElementById('btn-evaluate').addEventListener('click', showConfirmModal);
+            document.getElementById('btn-cancel-eval').addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden'));
+            document.getElementById('btn-confirm-eval').addEventListener('click', () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                evaluateExam();
+            });
+
+            document.getElementById('btn-review').addEventListener('click', hideResultsPanel);
+            document.getElementById('btn-export').addEventListener('click', exportToPDF);
+            document.getElementById('btn-save').addEventListener('click', saveProgress);
+
+            renderMathInElement(document.body, {
+              delimiters: [
+                  {left: '$$', right: '$$', display: true},
+                  {left: '$', right: '$', display: false},
+                  {left: '\\(', right: '\\)', display: false},
+                  {left: '\\[', right: '\\]', display: true}
+              ],
+              throwOnError: false
+            });
+        }
+
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid');
+            grid.innerHTML = '';
+            questions.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = `nav-btn w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-200 cursor-pointer shadow-sm`;
+                btn.id = `nav-btn-${i}`;
+                btn.textContent = i + 1;
+                btn.addEventListener('click', () => showQuestion(i));
+                grid.appendChild(btn);
+            });
+            updateNavStyles();
+        }
+
+        function updateNavStyles() {
+            questions.forEach((_, i) => {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(!btn) return;
+                btn.classList.remove('nav-answered', 'nav-flagged', 'nav-active', 'bg-slate-50', 'text-slate-500', 'border-slate-200');
+                if (userState[i].flagged) btn.classList.add('nav-flagged');
+                else if (userState[i].answered) btn.classList.add('nav-answered');
+                else btn.classList.add('bg-slate-50', 'text-slate-500', 'border-slate-200');
+
+                if (i === currentQuestion) btn.classList.add('nav-active');
+            });
+        }
+
+        function renderAllQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = `q-card hidden flex flex-col h-full`;
+                card.id = `q-card-${index}`;
+
+                let html = `
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-slate-800 leading-relaxed"><span class="text-blue-600 mr-2 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">${index + 1}.</span> ${q.text}</h3>
+                        <div id="feedback-icon-${index}" class="hidden shrink-0 mt-1"></div>
+                    </div><div class="flex-grow">`;
+
+                if (q.type === 'mcq') {
+                    html += `<div class="space-y-3 mt-4">`;
+                    q.options.forEach((opt, i) => {
+                        html += `
+                        <label class="flex items-center space-x-4 p-4 border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-all group shadow-sm">
+                            <input type="radio" name="q${index}" value="${i}" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500 q-input cursor-pointer">
+                            <span class="text-slate-700 text-[1.05rem] group-hover:text-blue-900">${opt}</span>
+                        </label>`;
+                    });
+                    html += `</div>`;
+                } 
+                else if (q.type === 'fill' || q.type === 'equation') {
+                    const ph = q.type === 'fill' ? "Ej: Coulomb, 9..." : "Expresión algebraica (Ej: k*q1*q2/r^2)";
+                    html += `
+                    <div class="mt-6 flex flex-col max-w-sm">
+                        <input type="text" id="input-q${index}" autocomplete="off" class="q-input math-input text-xl border-2 border-slate-300 rounded-xl px-4 py-3 focus:ring-4 focus:ring-blue-200 focus:border-blue-500 outline-none transition-all text-center text-slate-700 font-bold shadow-sm" placeholder="${ph}">
+                        ${q.type === 'equation' ? '<p class="text-sm text-slate-500 mt-3 text-center bg-slate-50 p-2 rounded-lg border border-slate-200">Usa notación plana. Ej: <code class="bg-white px-1 py-0.5 rounded text-blue-600">k*q1*q2/r^2</code> o `1.6*10^-19`</p>' : ''}
+                    </div>`;
+                }
+                else if (q.type === 'drag') {
+                    html += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6"><div class="space-y-4">
+                                <h4 class="font-bold text-slate-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-target"></i> Método de Carga</h4>`;
+                    q.pairs.forEach((p) => {
+                        html += `
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm">
+                            <span class="font-semibold text-slate-700 text-base">${p.question}</span>
+                            <div class="dropzone min-h-[70px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-sm text-slate-400 transition-colors relative" data-target="${p.question}">
+                                <span>Soltar definición aquí</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div><div class="space-y-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-50">
+                                <h4 class="font-bold text-blue-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-lightning"></i> Procesos Físicos</h4>`;
+                    
+                    let shuffled = [...q.pairs].sort(() => Math.random() - 0.5);
+                    let dragHtml = `<div class="flex flex-col gap-3" id="drag-source-${index}">`;
+                    shuffled.forEach((p) => {
+                        dragHtml += `
+                        <div class="draggable bg-white border-2 border-blue-200 text-blue-800 p-4 rounded-xl font-semibold shadow-sm hover:border-blue-400 hover:shadow-md transition-all flex items-center gap-3 cursor-grab active:scale-95" draggable="true" data-id="${p.answer}">
+                            <i class="ph ph-dots-six-vertical text-blue-400 text-xl"></i> <span class="text-sm leading-tight">${p.answer}</span>
+                        </div>`;
+                    });
+                    html += dragHtml + `</div></div></div>`;
+                }
+                else if (q.type === 'canvas') {
+                    html += `
+                    <div class="w-full max-w-lg mx-auto aspect-video md:aspect-[4/3] bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden mt-6 relative shadow-inner touch-none select-none">
+                        <canvas id="simCanvas" class="w-full h-full cursor-pointer touch-none"></canvas>
+                        <div class="absolute top-4 left-4 bg-white/95 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-slate-200 font-mono text-sm pointer-events-none flex flex-col gap-1 z-10">
+                            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Magnitud de Fuerza $F$</span>
+                            <span id="canvas-flux" class="font-bold text-slate-600 text-lg">0 N</span>
+                        </div>
+                        <div class="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-10">
+                            <div class="bg-blue-600/90 text-white text-xs px-4 py-2 rounded-full flex items-center gap-2 shadow-sm font-bold">
+                                <i class="ph ph-hand-swipe-left text-lg animate-pulse"></i> Arrastra la carga azul ($+q$)
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="input-q${index}" class="q-input" value="false">`;
+                }
+                html += `</div>`; 
+
+                html += `
+                    <div class="mt-8 pt-6 border-t border-slate-100 shrink-0">
+                        <button onclick="document.getElementById('tip-${index}').classList.toggle('hidden')" class="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-2 transition-colors bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 hover:border-amber-200">
+                            <i class="ph-fill ph-lightbulb text-lg"></i> Mostrar Tip Metodológico
+                        </button>
+                        <div id="tip-${index}" class="hidden mt-4 bg-amber-50 border-l-4 border-amber-400 text-amber-900 text-[0.95rem] p-4 rounded-r-xl shadow-sm fade-in leading-relaxed">
+                            <strong>Pista de resolución:</strong> ${q.tip}
+                        </div>
+                    </div>
+                `;
+
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+
+            document.querySelectorAll('.q-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const match = (e.target.name || e.target.id).match(/q(\d+)/);
+                    if(match) {
+                        userState[parseInt(match[1])].answered = true;
+                        userState[parseInt(match[1])].value = e.target.value;
+                        updateNavStyles();
+                    }
+                });
+                if (input.type === 'text') {
+                    input.addEventListener('input', (e) => {
+                        const match = e.target.id.match(/q(\d+)/);
+                        if(match) {
+                            userState[parseInt(match[1])].answered = (e.target.value.trim() !== '');
+                            userState[parseInt(match[1])].value = e.target.value;
+                            updateNavStyles();
+                        }
+                    });
+                }
+            });
+
+            initDragAndDrop();
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.q-card').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.remove('hidden');
+                    const txt = el.querySelector('input[type="text"]');
+                    if(txt && !examSubmitted) setTimeout(() => txt.focus(), 100);
+                    if (questions[i].type === 'canvas' && !window.canvasInitialized) {
+                        setTimeout(initCanvas, 100); window.canvasInitialized = true;
+                    }
+                } else el.classList.add('hidden');
+            });
+            
+            currentQuestion = index;
+            updateNavStyles();
+            if(index !== 0) document.getElementById('instructions-panel').style.display = 'none';
+
+            document.getElementById('btn-prev').disabled = index === 0;
+            document.getElementById('btn-next').disabled = index === questions.length - 1;
+            
+            const flagBtn = document.getElementById('btn-flag');
+            if (userState[index].flagged) {
+                flagBtn.classList.replace('text-amber-600', 'text-white');
+                flagBtn.classList.replace('bg-white', 'bg-amber-500');
+                flagBtn.querySelector('i').classList.replace('ph-flag', 'ph-check');
+            } else {
+                flagBtn.classList.replace('text-white', 'text-amber-600');
+                flagBtn.classList.replace('bg-amber-500', 'bg-white');
+                flagBtn.querySelector('i').classList.replace('ph-check', 'ph-flag');
+            }
+        }
+
+        function toggleFlag(index) { userState[index].flagged = !userState[index].flagged; showQuestion(index); }
+
+        function initDragAndDrop() {
+            document.querySelectorAll('.draggable').forEach(draggable => {
+                draggable.addEventListener('dragstart', (e) => {
+                    draggable.classList.add('opacity-50', 'scale-95');
+                    e.dataTransfer.setData('text/plain', draggable.getAttribute('data-id'));
+                    setTimeout(() => draggable.classList.add('invisible'), 0);
+                });
+                draggable.addEventListener('dragend', () => draggable.classList.remove('opacity-50', 'scale-95', 'invisible'));
+            });
+
+            document.querySelectorAll('.dropzone').forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault(); zone.classList.remove('dragover');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    const draggable = document.querySelector(`.draggable[data-id="${draggedId}"]`);
+                    
+                    if (draggable) {
+                        if (zone.children.length > 0 && !zone.children[0].tagName.toLowerCase().includes('span')) {
+                            const sourceContainer = document.querySelector(`[id^='drag-source']`);
+                            if(sourceContainer) sourceContainer.appendChild(zone.children[0]);
+                        }
+                        if(zone.querySelector('span')) zone.innerHTML = '';
+                        zone.appendChild(draggable);
+                        zone.classList.add('bg-blue-50', 'border-solid', 'border-blue-400');
+                        zone.classList.remove('border-dashed', 'text-slate-400');
+                        
+                        const qIndex = 15;
+                        const allZones = document.getElementById(`q-card-${qIndex}`).querySelectorAll('.dropzone');
+                        let fullZones = 0;
+                        allZones.forEach(z => { if(z.querySelector('.draggable')) fullZones++; });
+                        if(fullZones === allZones.length) { userState[qIndex].answered = true; updateNavStyles(); }
+                    }
+                });
+            });
+        }
+
+        function initCanvas() {
+            const canvas = document.getElementById('simCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const fluxDisplay = document.getElementById('canvas-flux');
+            
+            let cw = canvas.parentElement.clientWidth;
+            let ch = canvas.parentElement.clientHeight;
+            canvas.width = cw; canvas.height = ch;
+            
+            const fixedQ = { x: cw * 0.25, y: ch / 2, r: 24, q: 1 };
+            let dragQ = { x: cw * 0.85, y: ch / 2, r: 20, q: 1, isDragging: false };
+            const targetZone = { r: cw * 0.18 };
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 1;
+                for(let i=0; i<cw; i+=25){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,ch); ctx.stroke(); }
+                for(let i=0; i<ch; i+=25){ ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(cw,i); ctx.stroke(); }
+                
+                ctx.beginPath(); ctx.arc(fixedQ.x, fixedQ.y, targetZone.r + fixedQ.r, 0, Math.PI * 2);
+                ctx.strokeStyle = '#cbd5e1'; ctx.setLineDash([6, 6]); ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = 'rgba(239, 246, 255, 0.4)'; ctx.fill(); ctx.setLineDash([]);
+
+                ctx.beginPath(); ctx.moveTo(fixedQ.x, fixedQ.y); ctx.lineTo(dragQ.x, dragQ.y);
+                ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2; ctx.stroke();
+
+                ctx.beginPath(); ctx.arc(fixedQ.x, fixedQ.y, fixedQ.r, 0, Math.PI * 2);
+                ctx.fillStyle = '#ef4444'; ctx.shadowColor = 'rgba(239, 68, 68, 0.5)'; ctx.shadowBlur = 15; ctx.fill();
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 24px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText('+', fixedQ.x, fixedQ.y); 
+
+                ctx.beginPath(); ctx.arc(dragQ.x, dragQ.y, dragQ.r, 0, Math.PI * 2);
+                ctx.fillStyle = '#3b82f6'; ctx.shadowColor = 'rgba(59, 130, 246, 0.5)'; ctx.shadowBlur = 15; ctx.fill();
+                ctx.fillStyle = '#ffffff'; ctx.fillText('+q', dragQ.x, dragQ.y); ctx.shadowBlur = 0;
+
+                const dx = dragQ.x - fixedQ.x; const dy = dragQ.y - fixedQ.y;
+                let dist = Math.max(Math.sqrt(dx*dx + dy*dy), fixedQ.r + dragQ.r);
+                const forceMag = Math.pow((cw * 0.5) / dist, 2); 
+                
+                const arrowLength = Math.min(40 * forceMag, cw * 0.4);
+                const angle = Math.atan2(dy, dx);
+                const endX = dragQ.x + arrowLength * Math.cos(angle);
+                const endY = dragQ.y + arrowLength * Math.sin(angle);
+                
+                ctx.beginPath(); ctx.moveTo(dragQ.x + dragQ.r*Math.cos(angle), dragQ.y + dragQ.r*Math.sin(angle));
+                ctx.lineTo(endX, endY); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 4; ctx.stroke();
+                
+                ctx.beginPath(); ctx.moveTo(endX, endY);
+                ctx.lineTo(endX - 10 * Math.cos(angle - Math.PI/6), endY - 10 * Math.sin(angle - Math.PI/6));
+                ctx.lineTo(endX - 10 * Math.cos(angle + Math.PI/6), endY - 10 * Math.sin(angle + Math.PI/6));
+                ctx.fillStyle = '#ef4444'; ctx.fill();
+
+                let displayF = (forceMag * 10).toFixed(1);
+                
+                if (dist <= targetZone.r + fixedQ.r + dragQ.r) {
+                    fluxDisplay.innerHTML = `${displayF} N (Máxima)`; fluxDisplay.className = "font-black text-red-600 text-2xl mt-1";
+                    const inputH = document.getElementById('input-q19'); 
+                    if(inputH) { inputH.value = "true"; inputH.dispatchEvent(new Event('change')); }
+                } else {
+                    fluxDisplay.innerHTML = `${displayF} N`; fluxDisplay.className = "font-bold text-slate-600 text-xl mt-1";
+                    const inputH = document.getElementById('input-q19'); 
+                    if(inputH && !examSubmitted) { inputH.value = "false"; }
+                }
+            }
+
+            const startDrag = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                if (Math.sqrt((clientX - rect.left - dragQ.x)**2 + (clientY - rect.top - dragQ.y)**2) < dragQ.r * 2.5) { 
+                    dragQ.isDragging = true; e.preventDefault(); canvas.style.cursor = 'grabbing';
+                }
+            };
+
+            const doDrag = (e) => {
+                if (dragQ.isDragging) {
+                    e.preventDefault();
+                    const rect = canvas.getBoundingClientRect();
+                    dragQ.x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    dragQ.y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                    draw();
+                }
+            };
+            
+            const stopDrag = () => { dragQ.isDragging = false; canvas.style.cursor = 'pointer'; };
+
+            canvas.addEventListener('mousedown', startDrag); canvas.addEventListener('mousemove', doDrag); window.addEventListener('mouseup', stopDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive: false}); canvas.addEventListener('touchmove', doDrag, {passive: false}); window.addEventListener('touchend', stopDrag);
+
+            window.addEventListener('resize', () => {
+                cw = canvas.parentElement.clientWidth; ch = canvas.parentElement.clientHeight;
+                canvas.width = cw; canvas.height = ch; fixedQ.x = cw * 0.25; fixedQ.y = ch/2; draw();
+            });
+
+            draw();
+        }
+
+        function cleanString(str) {
+            if(!str) return "";
+            return str.toLowerCase().replace(/\s+/g, '').replace(/[\(\)]/g, '').replace(/\*/g, '').replace(/\\/g, '').replace(/[{}]/g, '');
+        }
+
+        function showConfirmModal() {
+            let unanswered = userState.filter(s => !s.answered).length;
+            const msg = document.getElementById('confirm-message');
+            msg.textContent = unanswered > 0 ? `Tienes ${unanswered} pregunta(s) sin responder. ¿Seguro que deseas evaluar ahora?` : `¿Deseas enviar tus respuestas para su evaluación final?`;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function evaluateExam() {
+            examSubmitted = true;
+            let score = 0; let total = questions.length;
+
+            questions.forEach((q, index) => {
+                const card = document.getElementById(`q-card-${index}`);
+                const icon = document.getElementById(`feedback-icon-${index}`);
+                let isCorrect = false;
+
+                card.querySelectorAll('input, button.draggable').forEach(el => { el.disabled = true; if(el.draggable) el.draggable = false; el.classList.remove('cursor-pointer'); });
+
+                if (q.type === 'mcq') {
+                    if (userState[index].value !== null && parseInt(userState[index].value) === q.answer) isCorrect = true;
+                } else if (q.type === 'fill' || q.type === 'equation') {
+                    if (userState[index].value) {
+                        const uVal = cleanString(userState[index].value); const aVal = cleanString(q.answer.toString());
+                        if (uVal === aVal || (uVal.includes(aVal.replace('q1','q').replace('q2','q')))) isCorrect = true;
+                        if(q.type === 'equation' && (uVal.includes('1.6') && uVal.includes('-19'))) isCorrect = true;
+
+                        if(!isCorrect) {
+                            const inpCont = card.querySelector('input[type="text"]').parentElement;
+                            const ansDiv = document.createElement('div');
+                            ansDiv.className = "mt-2 text-sm text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200";
+                            ansDiv.innerHTML = `Solución esperada: $$${q.answer}$$`;
+                            inpCont.appendChild(ansDiv);
+                            if(window.renderMathInElement) renderMathInElement(ansDiv);
+                        }
+                    }
+                } else if (q.type === 'drag') {
+                    let correctCount = 0;
+                    card.querySelectorAll('.dropzone').forEach(zone => {
+                        const target = zone.getAttribute('data-target'); const child = zone.querySelector('.draggable');
+                        if (child) {
+                            const pair = q.pairs.find(p => p.question === target);
+                            if (pair && pair.answer === child.getAttribute('data-id')) { correctCount++; zone.classList.add('border-green-400', 'bg-green-50'); } 
+                            else { zone.classList.add('border-red-400', 'bg-red-50'); }
+                        }
+                    });
+                    if (correctCount === q.pairs.length) isCorrect = true;
+                } else if (q.type === 'canvas') {
+                    if (userState[index].value === "true") isCorrect = true;
+                }
+
+                icon.classList.remove('hidden');
+                if (isCorrect) {
+                    score++; card.classList.add('correct-card');
+                    icon.innerHTML = `<div class="bg-green-100 p-2 rounded-full text-green-600 shadow-sm border border-green-200"><i class="ph-bold ph-check text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#22c55e';
+                } else {
+                    card.classList.add('incorrect-card');
+                    icon.innerHTML = `<div class="bg-red-100 p-2 rounded-full text-red-600 shadow-sm border border-red-200"><i class="ph-bold ph-x text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#ef4444';
+                }
+                document.getElementById(`nav-btn-${index}`).style.color = '#fff';
+                document.getElementById(`nav-btn-${index}`).style.borderColor = 'transparent';
+                document.getElementById(`tip-${index}`).classList.remove('hidden');
+            });
+
+            const percentage = Math.round((score / total) * 100);
+            document.getElementById('score-display').textContent = `${percentage}% (${score}/${total})`;
+            document.getElementById('results-panel').classList.remove('hidden');
+            
+            setTimeout(() => {
+                const bar = document.getElementById('score-bar');
+                bar.style.width = `${percentage}%`;
+                bar.className = `h-full rounded-full transition-all duration-1000 ease-out ${percentage >= 70 ? 'bg-green-500' : 'bg-red-500'}`;
+            }, 300);
+
+            const msg = document.getElementById('feedback-message');
+            if (percentage >= 70) {
+                msg.textContent = "¡Aprobado! Demuestras una excelente comprensión de las fuerzas electrostáticas y la Ley de Coulomb.";
+                msg.className = "text-xl font-bold text-green-700 mb-6 text-center max-w-lg";
+                document.getElementById('btn-save').classList.remove('hidden');
+            } else {
+                msg.textContent = "Reprobado. Necesitas repasar los métodos de carga y la constante de Coulomb. Requiere mínimo 70%.";
+                msg.className = "text-xl font-bold text-red-600 mb-6 text-center max-w-lg";
+            }
+            
+            window.lastScore = percentage;
+            document.getElementById('btn-export').classList.remove('hidden');
+            document.getElementById('btn-evaluate').classList.add('hidden');
+            
+            renderMathInElement(document.getElementById('questions-container'), {
+                delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+            });
+        }
+
+        function hideResultsPanel() { document.getElementById('results-panel').classList.add('hidden'); }
+
+        // --- 7. GUARDAR EN REALTIME DATABASE (TU CÓDIGO) ---
+        async function saveProgress() {
+            if (!currentUser) return showToast("Inicia sesión en la plataforma principal para guardar.", "error");
+            if (window.lastScore < 70) return showToast("Solo se guardan calificaciones aprobatorias (>70%).", "warning");
+
+            try {
+                const btn = document.getElementById('btn-save');
+                btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Guardando...`;
+                
+                // Guardamos directamente en la Realtime Database usando la ruta y configuración de tu Dashboard
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                await update(progresoRef, {
+                    'm1-q1': true, // ESTO HARÁ QUE EL CHULITO VERDE APAREZCA EN TU DASHBOARD AL CERRAR EL EXAMEN
+                    'examen_coulomb_score': window.lastScore
+                });
+                
+                showToast("¡Progreso sincronizado con tu Plataforma UNAB!", "success");
+                btn.innerHTML = `<i class="ph ph-check-circle text-lg"></i> Guardado en la plataforma`;
+                btn.classList.replace('bg-green-600', 'bg-slate-700');
+                btn.classList.replace('hover:bg-green-700', 'hover:bg-slate-800');
+                btn.disabled = true;
+            } catch (error) {
+                console.error("Save err:", error);
+                showToast("Error de conexión al guardar el progreso.", "error");
+                document.getElementById('btn-save').innerHTML = `<i class="ph ph-cloud-arrow-up text-lg"></i> Reintentar`;
+            }
+        }
+
+        async function loadProgress() {
+            if (!currentUser) return;
+            try {
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                const snapshot = await get(progresoRef);
+                if (snapshot.exists() && snapshot.val().examen_coulomb_score) {
+                    showToast(`¡Bienvenido de nuevo! Tu récord anterior es: ${snapshot.val().examen_coulomb_score}%`, "success");
+                }
+            } catch (e) { /* ignore silently */ }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-blue-600';
+            toast.className = `${bg} text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 fade-in border border-white/20`;
+            const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
+            toast.innerHTML = `<i class="ph ${icon} text-2xl"></i> <span class="font-medium text-[0.95rem]">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'; 
+                setTimeout(() => toast.remove(), 400); 
+            }, 4000);
+        }
+
+        function exportToPDF() {
+            document.querySelectorAll('.q-card').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('instructions-panel').style.display = 'none';
+            document.getElementById('results-panel').classList.add('hidden');
+            
+            const element = document.getElementById('questions-container');
+            showToast("Generando PDF detallado... Esto puede tardar unos segundos.", "info");
+            
+            const titleHTML = `<div id="pdf-header" class="mb-8 border-b-2 border-blue-200 pb-4">
+                                  <h1 class="text-3xl font-black text-blue-900">Resultados: Cargas y Ley de Coulomb</h1>
+                                  <p class="text-lg text-slate-600 font-bold mt-2">Puntaje obtenido: ${window.lastScore}%</p>
+                               </div>`;
+            element.insertAdjacentHTML('afterbegin', titleHTML);
+
+            html2pdf().set({
+                margin: [15, 10, 15, 10], 
+                filename: 'Examen_Coulomb.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save().then(() => {
+                const h = document.getElementById('pdf-header');
+                if(h) h.remove();
+                
+                showQuestion(currentQuestion);
+                document.getElementById('results-panel').classList.remove('hidden');
+                showToast("¡PDF exportado exitosamente!", "success");
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>

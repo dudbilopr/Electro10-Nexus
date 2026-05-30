@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Física Universitaria: Flujo Eléctrico y Ley de Gauss</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- KaTeX for Beautiful Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background-color: #f8fafc; }
+        
+        /* Draggable items styles */
+        .draggable { cursor: grab; }
+        .draggable:active { cursor: grabbing; }
+        .dropzone.dragover { background-color: #e2e8f0; border-color: #3b82f6; }
+        .math-input { font-family: 'Courier New', Courier, monospace; font-size: 1.1em; }
+        
+        /* Navigation Grid Styles */
+        .nav-btn { transition: all 0.2s ease; }
+        .nav-answered { background-color: #3b82f6; color: white; border-color: #2563eb; }
+        .nav-flagged { background-color: #f59e0b; color: white; border-color: #d97706; }
+        .nav-active { box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4); transform: scale(1.1); z-index: 10; }
+        
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        
+        .correct-card { border: 2px solid #22c55e !important; background-color: #f0fdf4 !important; }
+        .incorrect-card { border: 2px solid #ef4444 !important; background-color: #fef2f2 !important; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased h-screen flex flex-col">
+
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 fade-in">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 text-center border border-slate-200">
+            <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="ph ph-warning text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2">¿Evaluar examen?</h3>
+            <p class="text-slate-600 mb-6" id="confirm-message">Aún tienes preguntas sin responder.</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-cancel-eval" class="px-5 py-2.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors">Cancelar</button>
+                <button id="btn-confirm-eval" class="px-5 py-2.5 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">Sí, evaluar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm shrink-0 z-40 relative">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-600 p-2 rounded-lg text-white shadow-md">
+                    <i class="ph ph-arrows-out text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-800">Física Electromagnética</h1>
+                    <p class="text-xs md:text-sm text-slate-500 font-medium">Evaluación: Flujo Eléctrico y Ley de Gauss</p>
+                </div>
+            </div>
+            <div class="flex gap-3 items-center">
+                <div id="auth-status" class="text-sm font-medium text-slate-500 hidden md:flex items-center gap-1 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+                    <i class="ph ph-spinner animate-spin"></i> Conectando plataforma...
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 py-6 flex flex-col md:flex-row gap-6 overflow-hidden">
+        
+        <!-- Sidebar: Navigation Panel -->
+        <aside class="w-full md:w-1/4 lg:w-1/5 flex flex-col gap-4">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col h-full max-h-[calc(100vh-120px)] overflow-y-auto">
+                <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="ph ph-squares-four"></i> Navegación
+                </h3>
+                
+                <div id="nav-grid" class="grid grid-cols-5 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-6">
+                    <!-- Buttons injected via JS -->
+                </div>
+
+                <!-- Legend -->
+                <div class="text-xs text-slate-600 space-y-2 mb-6 border-t border-slate-100 pt-4">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded border border-slate-300 bg-slate-50"></div> Sin responder</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-blue-500 shadow-sm"></div> Respondida</div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 rounded bg-amber-500 shadow-sm"></div> Bandera (Revisar)</div>
+                </div>
+
+                <div class="mt-auto space-y-3">
+                    <button id="btn-export" class="w-full hidden bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 border border-slate-200">
+                        <i class="ph ph-file-pdf text-lg text-red-500"></i> Exportar PDF
+                    </button>
+                    <button id="btn-evaluate" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
+                        <i class="ph ph-check-circle text-lg"></i> Evaluar Examen
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Area: Question Display -->
+        <section class="w-full md:w-3/4 lg:w-4/5 flex flex-col h-full max-h-[calc(100vh-120px)]">
+            
+            <!-- Instructions -->
+            <div id="instructions-panel" class="bg-emerald-50 border border-emerald-200 rounded-xl p-6 mb-4 shadow-sm shrink-0 fade-in">
+                <h2 class="text-lg font-bold text-emerald-900 mb-2 flex items-center gap-2">
+                    <i class="ph ph-info text-xl"></i> Instrucciones de la Evaluación
+                </h2>
+                <p class="text-sm text-emerald-800 mb-2 leading-relaxed">Resuelve los 20 problemas sobre Flujo Eléctrico, Ley de Gauss y Potencial Eléctrico basados en los ejercicios del PDF y el currículo universitario. Utiliza las herramientas y los <strong>tips metodológicos</strong> si necesitas apoyo.</p>
+                <p class="text-sm text-emerald-800 font-semibold bg-emerald-100 p-2 rounded inline-block">Tu progreso se respaldará automáticamente en la nube de Firebase si tu nota supera el 70%.</p>
+            </div>
+
+            <!-- Question Container -->
+            <div id="questions-container" class="flex-grow overflow-y-auto bg-white rounded-xl shadow-sm border border-slate-200 relative p-6 md:p-10">
+                <!-- Questions injected here via JS -->
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="mt-4 flex justify-between items-center shrink-0">
+                <button id="btn-prev" class="px-5 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    <i class="ph ph-caret-left text-lg"></i> Anterior
+                </button>
+                
+                <button id="btn-flag" class="px-4 py-2.5 bg-white border border-amber-300 text-amber-600 rounded-lg hover:bg-amber-50 font-bold transition-colors flex items-center gap-2 shadow-sm">
+                    <i class="ph-fill ph-flag"></i> <span class="hidden sm:inline">Marcar con Bandera</span>
+                </button>
+
+                <button id="btn-next" class="px-5 py-2.5 bg-blue-600 border border-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+                    Siguiente <i class="ph ph-caret-right text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Results Panel -->
+            <div id="results-panel" class="hidden absolute inset-0 bg-white/95 backdrop-blur-md z-20 flex flex-col items-center justify-center p-8 rounded-xl border border-slate-200 shadow-2xl fade-in">
+                <div class="bg-blue-100 text-blue-600 p-4 rounded-full mb-4">
+                    <i class="ph ph-medal text-5xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-800 mb-2">Resultados Finales</h2>
+                <div class="text-6xl font-black mb-4 tracking-tighter" id="score-display">0%</div>
+                <p id="feedback-message" class="text-lg font-medium mb-8 text-center max-w-lg"></p>
+                
+                <div class="w-full max-w-md bg-slate-200 rounded-full h-4 mb-10 shadow-inner overflow-hidden">
+                  <div id="score-bar" class="bg-blue-600 h-full rounded-full transition-all duration-1000 ease-out" style="width: 0%"></div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="btn-review" class="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2">
+                        <i class="ph ph-magnifying-glass"></i> Revisar Respuestas
+                    </button>
+                    <button id="btn-save" class="hidden px-6 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center gap-2">
+                        <i class="ph ph-cloud-arrow-up text-lg"></i> Guardar en la Nube
+                    </button>
+                </div>
+            </div>
+            
+        </section>
+    </main>
+
+    <script type="module">
+        // =========================================================================
+        // === INTEGRACIÓN FIREBASE (COMPATIBLE CON DASHBOARD UNAB) ===
+        // =========================================================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+        import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+            authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+            databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",
+            projectId: "laboratorio-de-coulomb",
+            storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+            messagingSenderId: "525944850850",
+            appId: "1:525944850850:web:eca9c0b79809358e8d8afb",
+            measurementId: "G-SZECJNG25E"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const statusEl = document.getElementById('auth-status');
+            if (user) {
+                const userName = user.email ? user.email.split('@')[0] : 'Estudiante';
+                statusEl.innerHTML = `<div class="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></div> <span class="truncate max-w-[100px]">${userName}</span>`;
+                statusEl.classList.remove('hidden');
+                loadProgress();
+            } else {
+                statusEl.innerHTML = `<i class="ph ph-warning-circle text-amber-500"></i> Debes iniciar sesión en la plataforma`;
+                statusEl.classList.remove('hidden');
+            }
+        });
+
+        // --- 2. DATA DEL EXAMEN: FLUJO ELÉCTRICO Y LEY DE GAUSS ---
+        const questions = [
+            { 
+                type: 'mcq', 
+                text: "Considere una superficie inmersa en una región donde hay un campo eléctrico uniforme $E$. Si la superficie es paralela a las líneas de campo, el flujo eléctrico a través de ella es:", 
+                options: ["Máximo", "Cero", "$E \\cdot A$", "Depende de la carga"], 
+                answer: 1, 
+                tip: "Recuerda que el flujo se define mediante el producto punto $\\Phi_E = \\vec{E} \\cdot \\vec{A} = E A \\cos \\theta$. Si la superficie es paralela al campo, el vector área (que es perpendicular a la superficie) forma un ángulo de $90^\\circ$ con el campo." 
+            },
+            { 
+                type: 'mcq', 
+                text: "La Ley de Gauss establece que el flujo eléctrico neto a través de cualquier superficie matemática cerrada es proporcional a:", 
+                options: ["La carga total presente en el universo.", "La carga neta encerrada por la superficie.", "El campo eléctrico externo.", "El área de la superficie al cuadrado."], 
+                answer: 1, 
+                tip: "La ley es $\\oint \\vec{E} \\cdot d\\vec{A} = \\frac{Q_{enc}}{\\epsilon_0}$. Solo importa la carga que queda atrapada *dentro* del volumen de la superficie." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Un dipolo eléctrico (compuesto por una carga $+q$ y una carga $-q$ muy cercanas) está completamente encerrado por una superficie esférica. ¿Cuál es el flujo eléctrico neto a través de la esfera?", 
+                options: ["$2q/\\epsilon_0$", "$q/\\epsilon_0$", "Cero", "$-2q/\\epsilon_0$"], 
+                answer: 2, 
+                tip: "La carga neta encerrada es la suma algebraica de las cargas dentro de la superficie: $+q + (-q) = 0$." 
+            },
+            { 
+                type: 'fill', 
+                text: "(Extraído del PDF) Una superficie plana de área $A = 6 \\text{ m}^2$ está en un campo eléctrico uniforme $E = 600 \\text{ N/C}$. Si el ángulo entre el campo y la normal a la superficie es $\\theta = 90^\\circ$, ¿cuál es la magnitud del flujo eléctrico en $\\text{N}\\cdot\\text{m}^2/\\text{C}$?", 
+                answer: "0", 
+                tip: "Aplica la fórmula directa $\\Phi_E = E \\cdot A \\cdot \\cos(90^\\circ)$." 
+            },
+            { 
+                type: 'fill', 
+                text: "(Extraído del PDF) Otra superficie de área $A = 15 \\text{ m}^2$ está inmersa en el mismo campo de $600 \\text{ N/C}$. Si el ángulo respecto al vector normal es $\\theta = 53.13^\\circ$, calcula el flujo eléctrico. (Asume $\\cos(53.13^\\circ) = 0.6$)", 
+                answer: "5400", 
+                tip: "Multiplica la magnitud del campo por el área y por el factor coseno proporcionado: $600 \\times 15 \\times 0.6$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Una carga puntual $Q$ se encuentra localizada exactamente en el centro geométrico de un cubo cerrado. Usando la simetría y la ley de Gauss, el flujo eléctrico que atraviesa **solo una** de las seis caras del cubo es:", 
+                options: ["$Q/\\epsilon_0$", "$Q/(6\\epsilon_0)$", "$Q/(4\\pi\\epsilon_0)$", "Cero"], 
+                answer: 1, 
+                tip: "El flujo total a través de todo el cubo es $Q/\\epsilon_0$. Por simetría, como la carga está en el centro perfecto, el flujo se reparte equitativamente entre las 6 caras." 
+            },
+            { 
+                type: 'equation', 
+                text: "Según la Ley de Gauss, el flujo neto $\\Phi_E$ es igual a la carga encerrada dividida por la permitividad del vacío. Escribe la expresión para la carga encerrada usando `Q` y la permitividad usando `e0`.", 
+                answer: "Q/e0", 
+                tip: "Escribe la fórmula simple como Q/e0." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Un globo esférico de goma desinflado contiene una carga puntual fija en su interior. Si el globo se infla y aumenta su radio al doble, ¿qué le ocurre al flujo eléctrico total a través de su superficie de goma?", 
+                options: ["Aumenta al cuádruple.", "Se reduce a la cuarta parte.", "Se reduce a la mitad.", "Permanece sin cambios."], 
+                answer: 3, 
+                tip: "Recuerda la Ley de Gauss: el flujo total solo depende de la cantidad de carga interior. Aunque el área es mayor, las líneas de campo están más separadas, compensando el efecto exacto." 
+            },
+            { 
+                type: 'mcq', 
+                text: "En un material conductor sólido aislado que ha alcanzado el equilibrio electrostático y posee una carga neta excedente $Q$, ¿dónde se ubica dicha carga?", 
+                options: ["Distribuida uniformemente en todo su volumen interno.", "Exclusivamente en su superficie exterior.", "Confinada en el centro geométrico.", "Depende de la forma del conductor."], 
+                answer: 1, 
+                tip: "Las cargas del mismo signo se repelen fuertemente y, dado que en un conductor pueden moverse libremente, se alejan lo máximo posible unas de otras, llegando a la frontera del material." 
+            },
+            { 
+                type: 'mcq', 
+                text: "(Extraído del PDF) Un conductor esférico de $20 \\text{ cm}$ de diámetro tiene una carga de $3 \\times 10^{-9} \\text{ C}$. Sabiendo que $k = 9 \\times 10^9 \\text{ Nm}^2/\\text{C}^2$, ¿cuánto vale el potencial eléctrico en la superficie de la esfera?", 
+                options: ["270 V", "135 V", "540 V", "67.5 V"], 
+                answer: 0, 
+                tip: "¡Cuidado! Te dan el diámetro. El radio es $r = 10 \\text{ cm} = 0.1 \\text{ m}$. El potencial en la superficie de una esfera conductora es $V = k \\frac{q}{r}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "(Extraído del PDF) Para el mismo conductor esférico anterior (radio $10 \\text{ cm}$ y carga $3 \\text{ nC}$), ¿cuánto vale el potencial eléctrico a una distancia de $30 \\text{ cm}$ medida desde su **superficie**?", 
+                options: ["270 V", "90 V", "67.5 V", "135 V"], 
+                answer: 2, 
+                tip: "Para el campo exterior de una esfera, la distancia 'r' de la fórmula se mide desde el centro geométrico. Así que la distancia total es $r = 10\\text{cm (radio)} + 30\\text{cm} = 40 \\text{cm} = 0.4 \\text{m}$. Calcula $V = k \\frac{q}{0.4}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "¿Cuál es el valor del campo eléctrico en el interior del material de un conductor que está en equilibrio electrostático?", 
+                options: ["Cero.", "Constante pero distinto de cero.", "Depende de la magnitud de la carga externa.", "Mayor que el campo en la superficie."], 
+                answer: 0, 
+                tip: "Si hubiera un campo eléctrico interno distinto de cero, los electrones libres se seguirían moviendo, lo cual contradice la definición de 'equilibrio electrostático'." 
+            },
+            { 
+                type: 'mcq', 
+                text: "(Extraído del PDF) Una carga de $7 \\; \\mu\\text{C}$ se coloca en un punto de un campo eléctrico y adquiere una energía potencial de $63 \\times 10^{-6} \\text{ J}$. ¿Cuál es el valor del potencial eléctrico en dicho punto?", 
+                options: ["9 V", "441 V", "7 V", "63 V"], 
+                answer: 0, 
+                tip: "El potencial eléctrico $V$ se define como la energía potencial por unidad de carga: $V = \\frac{U}{q}$. Divide $63 \\times 10^{-6}$ entre $7 \\times 10^{-6}$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Se tiene una placa plana infinita de material aislante con una densidad superficial de carga uniforme $\\sigma$. Usando una superficie gaussiana cilíndrica (caja de pildoras), el campo eléctrico a una distancia $r$ resulta ser:", 
+                options: ["$\\sigma/\\epsilon_0$", "$\\sigma/(2\\epsilon_0)$", "$k\\sigma/r^2$", "Cero"], 
+                answer: 1, 
+                tip: "El flujo cruza las dos tapas planas del cilindro gaussiano, por lo que $2 E A = \\frac{\\sigma A}{\\epsilon_0}$. Despejando $E$." 
+            },
+            { 
+                type: 'drag', 
+                text: "Arrastra cada distribución de carga continua a la derecha hacia el comportamiento geométrico de la magnitud de su Campo Eléctrico:", 
+                pairs: [
+                    { id: 'p1', question: "Esfera con carga superficial", answer: "Disminuye con $1/r^2$ fuera de ella" },
+                    { id: 'p2', question: "Línea recta infinita de carga", answer: "Disminuye con $1/r$" },
+                    { id: 'p3', question: "Placa plana infinita", answer: "Es constante, no depende de la distancia $r$" }
+                ],
+                tip: "La ley de Gauss demuestra que cuantas más dimensiones infinitas tenga el objeto, menos decae el campo con la distancia."
+            },
+            { 
+                type: 'mcq', 
+                text: "Una gran esfera conductora inicialmente neutra contiene una cavidad hueca. Se introduce una carga puntual $+q$ en la cavidad mediante un hilo aislante, sin que toque las paredes metálicas. ¿Qué carga aparecerá inducida en la superficie exterior de la esfera conductora?", 
+                options: ["Cero.", "$-q$", "$+q$", "$+2q$"], 
+                answer: 2, 
+                tip: "Aplica Gauss trazando una superficie dentro del metal. El campo ahí es cero, así que la carga neta encerrada debe ser cero. Esto obliga a la pared interior a adquirir una carga $-q$. Como la esfera en total era neutra, a la superficie exterior se desplaza un $+q$." 
+            },
+            { 
+                type: 'mcq', 
+                text: "Al usar la Ley de Gauss para calcular analíticamente la magnitud del campo eléctrico $E$, la clave principal para elegir la superficie gaussiana imaginaria correcta es:", 
+                options: ["Asegurar que envuelva al universo entero.", "Tener exactamente la misma forma y tamaño del cuerpo cargado.", "Aprovechar la simetría espacial (esférica, plana o cilíndrica) para que $E$ sea constante.", "Que la superficie sea un material conductor real."], 
+                answer: 2, 
+                tip: "La integral $\\oint E \\cdot dA$ solo puede resolverse fácilmente sin computadoras complejas si logramos sacar a $E$ como una constante fuera de la integral, gracias a la simetría." 
+            },
+            { 
+                type: 'fill', 
+                text: "Completa el número: El flujo eléctrico total neto a través de una superficie cerrada que NO encierra ninguna carga en su volumen es igual a ______.", 
+                answer: "0", 
+                tip: "Si no hay cargas en su interior que generen (o consuman) flujo de campo, todas las líneas de campo externo que entran deben salir por el otro lado, sumando algebraicamente cero." 
+            },
+            { 
+                type: 'equation', 
+                text: "El campo eléctrico $\\vec{E}$ representa el gradiente de potencial. Escribe algebraicamente cómo se relaciona el campo en la dirección x ($E_x$) con el potencial $V$. Escribe la derivada negativa de V respecto a x (Ej. usa dV/dx).", 
+                answer: "-dV/dx", 
+                tip: "El campo eléctrico apunta en la dirección del máximo descenso de potencial, por eso lleva signo negativo frente a la derivada." 
+            },
+            { 
+                type: 'canvas', 
+                text: "Simulador de la Ley de Gauss: En el lienzo interactivo de abajo hay cargas positivas y negativas representadas. **Arrastra la Superficie Gaussiana (el anillo azul)** para que encierre una carga neta interior exacta de **+1q**. Observa cómo cambia el indicador de flujo.", 
+                tip: "Recuerda que la carga neta es la suma algebraica. Si encierras un protón (+2q) y un electrón (-1q), tu carga neta encerrada será +1q y el flujo será proporcional a esto." 
+            }
+        ];
+
+        let currentQuestion = 0;
+        let userState = questions.map(() => ({ answered: false, flagged: false, value: null }));
+        let examSubmitted = false;
+
+        function initUI() {
+            renderNavGrid();
+            renderAllQuestions();
+            showQuestion(0);
+            
+            document.getElementById('btn-prev').addEventListener('click', () => { if(currentQuestion > 0) showQuestion(currentQuestion - 1); });
+            document.getElementById('btn-next').addEventListener('click', () => { if(currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1); });
+            document.getElementById('btn-flag').addEventListener('click', () => toggleFlag(currentQuestion));
+            
+            document.getElementById('btn-evaluate').addEventListener('click', showConfirmModal);
+            document.getElementById('btn-cancel-eval').addEventListener('click', () => document.getElementById('confirm-modal').classList.add('hidden'));
+            document.getElementById('btn-confirm-eval').addEventListener('click', () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                evaluateExam();
+            });
+
+            document.getElementById('btn-review').addEventListener('click', hideResultsPanel);
+            document.getElementById('btn-export').addEventListener('click', exportToPDF);
+            document.getElementById('btn-save').addEventListener('click', saveProgress);
+
+            renderMathInElement(document.body, {
+              delimiters: [
+                  {left: '$$', right: '$$', display: true},
+                  {left: '$', right: '$', display: false},
+                  {left: '\\(', right: '\\)', display: false},
+                  {left: '\\[', right: '\\]', display: true}
+              ],
+              throwOnError: false
+            });
+        }
+
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid');
+            grid.innerHTML = '';
+            questions.forEach((_, i) => {
+                const btn = document.createElement('button');
+                btn.className = `nav-btn w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm border-2 border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-200 cursor-pointer shadow-sm`;
+                btn.id = `nav-btn-${i}`;
+                btn.textContent = i + 1;
+                btn.addEventListener('click', () => showQuestion(i));
+                grid.appendChild(btn);
+            });
+            updateNavStyles();
+        }
+
+        function updateNavStyles() {
+            questions.forEach((_, i) => {
+                const btn = document.getElementById(`nav-btn-${i}`);
+                if(!btn) return;
+                btn.classList.remove('nav-answered', 'nav-flagged', 'nav-active', 'bg-slate-50', 'text-slate-500', 'border-slate-200');
+                if (userState[i].flagged) btn.classList.add('nav-flagged');
+                else if (userState[i].answered) btn.classList.add('nav-answered');
+                else btn.classList.add('bg-slate-50', 'text-slate-500', 'border-slate-200');
+
+                if (i === currentQuestion) btn.classList.add('nav-active');
+            });
+        }
+
+        function renderAllQuestions() {
+            const container = document.getElementById('questions-container');
+            container.innerHTML = '';
+
+            questions.forEach((q, index) => {
+                const card = document.createElement('div');
+                card.className = `q-card hidden flex flex-col h-full`;
+                card.id = `q-card-${index}`;
+
+                let html = `
+                    <div class="flex justify-between items-start mb-6 gap-4">
+                        <h3 class="text-xl font-bold text-slate-800 leading-relaxed"><span class="text-blue-600 mr-2 bg-blue-50 px-2 py-1 rounded-md border border-blue-100">${index + 1}.</span> ${q.text}</h3>
+                        <div id="feedback-icon-${index}" class="hidden shrink-0 mt-1"></div>
+                    </div><div class="flex-grow">`;
+
+                if (q.type === 'mcq') {
+                    html += `<div class="space-y-3 mt-4">`;
+                    q.options.forEach((opt, i) => {
+                        html += `
+                        <label class="flex items-center space-x-4 p-4 border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-300 cursor-pointer transition-all group shadow-sm">
+                            <input type="radio" name="q${index}" value="${i}" class="h-5 w-5 text-blue-600 border-gray-300 focus:ring-blue-500 q-input cursor-pointer">
+                            <span class="text-slate-700 text-[1.05rem] group-hover:text-blue-900">${opt}</span>
+                        </label>`;
+                    });
+                    html += `</div>`;
+                } 
+                else if (q.type === 'fill' || q.type === 'equation') {
+                    const ph = q.type === 'fill' ? "Escribe tu respuesta final" : "Expresión algebraica (Ej: Q/e0)";
+                    html += `
+                    <div class="mt-6 flex flex-col max-w-sm">
+                        <input type="text" id="input-q${index}" autocomplete="off" class="q-input math-input text-xl border-2 border-slate-300 rounded-xl px-4 py-3 focus:ring-4 focus:ring-blue-200 focus:border-blue-500 outline-none transition-all text-center text-slate-700 font-bold shadow-sm" placeholder="${ph}">
+                        ${q.type === 'equation' ? '<p class="text-sm text-slate-500 mt-3 text-center bg-slate-50 p-2 rounded-lg border border-slate-200">Usa notación simple sin LaTeX. Ej: <code class="bg-white px-1 py-0.5 rounded text-blue-600">Q/e0</code> para representar $\\frac{Q}{\\epsilon_0}$</p>' : ''}
+                    </div>`;
+                }
+                else if (q.type === 'drag') {
+                    html += `<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6"><div class="space-y-4">
+                                <h4 class="font-bold text-slate-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-target"></i> Distribución</h4>`;
+                    q.pairs.forEach((p) => {
+                        html += `
+                        <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl flex flex-col gap-3 shadow-sm">
+                            <span class="font-semibold text-slate-700 text-base">${p.question}</span>
+                            <div class="dropzone min-h-[70px] border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-sm text-slate-400 transition-colors relative" data-target="${p.question}">
+                                <span>Soltar respuesta aquí</span>
+                            </div>
+                        </div>`;
+                    });
+                    html += `</div><div class="space-y-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-50">
+                                <h4 class="font-bold text-blue-500 text-sm uppercase tracking-wider flex items-center gap-2"><i class="ph ph-lightning"></i> Comportamiento del Campo</h4>`;
+                    
+                    let shuffled = [...q.pairs].sort(() => Math.random() - 0.5);
+                    let dragHtml = `<div class="flex flex-col gap-3" id="drag-source-${index}">`;
+                    shuffled.forEach((p) => {
+                        dragHtml += `
+                        <div class="draggable bg-white border-2 border-blue-200 text-blue-800 p-4 rounded-xl font-semibold shadow-sm hover:border-blue-400 hover:shadow-md transition-all flex items-center gap-3 cursor-grab active:scale-95" draggable="true" data-id="${p.answer}">
+                            <i class="ph ph-dots-six-vertical text-blue-400 text-xl"></i> <span class="text-sm leading-tight">${p.answer}</span>
+                        </div>`;
+                    });
+                    html += dragHtml + `</div></div></div>`;
+                }
+                else if (q.type === 'canvas') {
+                    html += `
+                    <div class="w-full max-w-lg mx-auto aspect-video md:aspect-[4/3] bg-slate-50 border-2 border-slate-200 rounded-2xl overflow-hidden mt-6 relative shadow-inner touch-none select-none">
+                        <canvas id="simCanvas" class="w-full h-full cursor-pointer touch-none"></canvas>
+                        <div class="absolute top-4 left-4 bg-white/95 backdrop-blur px-4 py-2 rounded-xl shadow-md border border-slate-200 font-mono text-sm pointer-events-none flex flex-col gap-1 z-10">
+                            <span class="text-xs text-slate-500 uppercase font-bold tracking-wider">Flujo Total $\\Phi_E$</span>
+                            <span id="canvas-flux" class="font-bold text-slate-600 text-lg">0 $Q/\\epsilon_0$</span>
+                        </div>
+                        <div class="absolute bottom-4 left-0 right-0 flex justify-center pointer-events-none z-10">
+                            <div class="bg-blue-600/90 text-white text-xs px-4 py-2 rounded-full flex items-center gap-2 shadow-sm font-bold">
+                                <i class="ph ph-hand-swipe-left text-lg animate-pulse"></i> Arrastra la Superficie Gaussiana (azul)
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="input-q${index}" class="q-input" value="false">`;
+                }
+                html += `</div>`; 
+
+                html += `
+                    <div class="mt-8 pt-6 border-t border-slate-100 shrink-0">
+                        <button onclick="document.getElementById('tip-${index}').classList.toggle('hidden')" class="text-sm font-bold text-amber-600 hover:text-amber-700 flex items-center gap-2 transition-colors bg-amber-50 px-4 py-2 rounded-lg border border-amber-100 hover:border-amber-200">
+                            <i class="ph-fill ph-lightbulb text-lg"></i> Mostrar Tip Metodológico
+                        </button>
+                        <div id="tip-${index}" class="hidden mt-4 bg-amber-50 border-l-4 border-amber-400 text-amber-900 text-[0.95rem] p-4 rounded-r-xl shadow-sm fade-in leading-relaxed">
+                            <strong>Pista de resolución:</strong> ${q.tip}
+                        </div>
+                    </div>
+                `;
+
+                card.innerHTML = html;
+                container.appendChild(card);
+            });
+
+            document.querySelectorAll('.q-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const match = (e.target.name || e.target.id).match(/q(\d+)/);
+                    if(match) {
+                        userState[parseInt(match[1])].answered = true;
+                        userState[parseInt(match[1])].value = e.target.value;
+                        updateNavStyles();
+                    }
+                });
+                if (input.type === 'text') {
+                    input.addEventListener('input', (e) => {
+                        const match = e.target.id.match(/q(\d+)/);
+                        if(match) {
+                            userState[parseInt(match[1])].answered = (e.target.value.trim() !== '');
+                            userState[parseInt(match[1])].value = e.target.value;
+                            updateNavStyles();
+                        }
+                    });
+                }
+            });
+
+            initDragAndDrop();
+        }
+
+        function showQuestion(index) {
+            document.querySelectorAll('.q-card').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.remove('hidden');
+                    const txt = el.querySelector('input[type="text"]');
+                    if(txt && !examSubmitted) setTimeout(() => txt.focus(), 100);
+                    if (questions[i].type === 'canvas' && !window.canvasInitialized) {
+                        setTimeout(initCanvas, 100); window.canvasInitialized = true;
+                    }
+                } else el.classList.add('hidden');
+            });
+            
+            currentQuestion = index;
+            updateNavStyles();
+            if(index !== 0) document.getElementById('instructions-panel').style.display = 'none';
+
+            document.getElementById('btn-prev').disabled = index === 0;
+            document.getElementById('btn-next').disabled = index === questions.length - 1;
+            
+            const flagBtn = document.getElementById('btn-flag');
+            if (userState[index].flagged) {
+                flagBtn.classList.replace('text-amber-600', 'text-white');
+                flagBtn.classList.replace('bg-white', 'bg-amber-500');
+                flagBtn.querySelector('i').classList.replace('ph-flag', 'ph-check');
+            } else {
+                flagBtn.classList.replace('text-white', 'text-amber-600');
+                flagBtn.classList.replace('bg-amber-500', 'bg-white');
+                flagBtn.querySelector('i').classList.replace('ph-check', 'ph-flag');
+            }
+        }
+
+        function toggleFlag(index) { userState[index].flagged = !userState[index].flagged; showQuestion(index); }
+
+        function initDragAndDrop() {
+            document.querySelectorAll('.draggable').forEach(draggable => {
+                draggable.addEventListener('dragstart', (e) => {
+                    draggable.classList.add('opacity-50', 'scale-95');
+                    e.dataTransfer.setData('text/plain', draggable.getAttribute('data-id'));
+                    setTimeout(() => draggable.classList.add('invisible'), 0);
+                });
+                draggable.addEventListener('dragend', () => draggable.classList.remove('opacity-50', 'scale-95', 'invisible'));
+            });
+
+            document.querySelectorAll('.dropzone').forEach(zone => {
+                zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+                zone.addEventListener('dragleave', () => { zone.classList.remove('dragover'); });
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault(); zone.classList.remove('dragover');
+                    const draggedId = e.dataTransfer.getData('text/plain');
+                    const draggable = document.querySelector(`.draggable[data-id="${draggedId}"]`);
+                    
+                    if (draggable) {
+                        if (zone.children.length > 0 && !zone.children[0].tagName.toLowerCase().includes('span')) {
+                            const sourceContainer = document.querySelector(`[id^='drag-source']`);
+                            if(sourceContainer) sourceContainer.appendChild(zone.children[0]);
+                        }
+                        if(zone.querySelector('span')) zone.innerHTML = '';
+                        zone.appendChild(draggable);
+                        zone.classList.add('bg-blue-50', 'border-solid', 'border-blue-400');
+                        zone.classList.remove('border-dashed', 'text-slate-400');
+                        
+                        const qIndex = 14; // Index for drag question is 14
+                        const allZones = document.getElementById(`q-card-${qIndex}`).querySelectorAll('.dropzone');
+                        let fullZones = 0;
+                        allZones.forEach(z => { if(z.querySelector('.draggable')) fullZones++; });
+                        if(fullZones === allZones.length) { userState[qIndex].answered = true; updateNavStyles(); }
+                    }
+                });
+            });
+        }
+
+        function initCanvas() {
+            const canvas = document.getElementById('simCanvas');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const fluxDisplay = document.getElementById('canvas-flux');
+            
+            let cw = canvas.parentElement.clientWidth;
+            let ch = canvas.parentElement.clientHeight;
+            canvas.width = cw; canvas.height = ch;
+            
+            const charges = [
+                { x: cw * 0.25, y: ch / 2.5, q: 2, r: 20, color: '#ef4444', label: '+2q' },
+                { x: cw * 0.45, y: ch / 1.8, q: -1, r: 15, color: '#3b82f6', label: '-1q' },
+                { x: cw * 0.75, y: ch / 2, q: 1, r: 15, color: '#ef4444', label: '+1q' }
+            ];
+
+            let gs = { x: cw * 0.85, y: ch / 2, r: cw * 0.2, isDragging: false };
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#f8fafc'; ctx.lineWidth = 1;
+                for(let i=0; i<cw; i+=25){ ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,ch); ctx.stroke(); }
+                for(let i=0; i<ch; i+=25){ ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(cw,i); ctx.stroke(); }
+                
+                // Draw charges
+                charges.forEach(c => {
+                    ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                    ctx.fillStyle = c.color; ctx.shadowColor = c.color; ctx.shadowBlur = 10; ctx.fill();
+                    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Inter'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(c.label, c.x, c.y); ctx.shadowBlur = 0;
+                });
+
+                // Draw Gaussian Surface
+                ctx.beginPath(); ctx.arc(gs.x, gs.y, gs.r, 0, Math.PI * 2);
+                ctx.strokeStyle = '#6366f1'; ctx.setLineDash([8, 8]); ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = 'rgba(99, 102, 241, 0.15)'; ctx.fill(); ctx.setLineDash([]);
+                ctx.fillStyle = '#6366f1'; ctx.font = '12px Inter'; ctx.fillText('Superficie de Gauss', gs.x, gs.y - gs.r - 10);
+
+                // Calculate Net Enclosed Charge
+                let netQ = 0;
+                charges.forEach(c => {
+                    const dist = Math.sqrt(Math.pow(c.x - gs.x, 2) + Math.pow(c.y - gs.y, 2));
+                    if (dist < gs.r) netQ += c.q;
+                });
+
+                let sign = netQ > 0 ? '+' : '';
+                fluxDisplay.innerHTML = `${sign}${netQ} $Q/\\epsilon_0$`; 
+                
+                const inputH = document.getElementById('input-q19'); 
+                if (netQ === 1) { // Target is +1q
+                    fluxDisplay.className = "font-black text-emerald-600 text-2xl mt-1";
+                    if(inputH) { inputH.value = "true"; inputH.dispatchEvent(new Event('change')); }
+                } else {
+                    fluxDisplay.className = "font-bold text-slate-600 text-xl mt-1";
+                    if(inputH && !examSubmitted) { inputH.value = "false"; }
+                }
+            }
+
+            const startDrag = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                if (Math.sqrt((clientX - rect.left - gs.x)**2 + (clientY - rect.top - gs.y)**2) < gs.r) { 
+                    gs.isDragging = true; e.preventDefault(); canvas.style.cursor = 'grabbing';
+                }
+            };
+
+            const doDrag = (e) => {
+                if (gs.isDragging) {
+                    e.preventDefault();
+                    const rect = canvas.getBoundingClientRect();
+                    gs.x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                    gs.y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                    draw();
+                }
+            };
+            
+            const stopDrag = () => { gs.isDragging = false; canvas.style.cursor = 'pointer'; };
+
+            canvas.addEventListener('mousedown', startDrag); canvas.addEventListener('mousemove', doDrag); window.addEventListener('mouseup', stopDrag);
+            canvas.addEventListener('touchstart', startDrag, {passive: false}); canvas.addEventListener('touchmove', doDrag, {passive: false}); window.addEventListener('touchend', stopDrag);
+
+            window.addEventListener('resize', () => {
+                cw = canvas.parentElement.clientWidth; ch = canvas.parentElement.clientHeight;
+                canvas.width = cw; canvas.height = ch; gs.x = cw * 0.8; gs.y = ch/2; gs.r = cw * 0.2; draw();
+            });
+
+            draw();
+        }
+
+        function cleanString(str) {
+            if(!str) return "";
+            return str.toLowerCase().replace(/\s+/g, '').replace(/[\(\)]/g, '').replace(/\*/g, '').replace(/\\/g, '').replace(/[{}]/g, '');
+        }
+
+        function showConfirmModal() {
+            let unanswered = userState.filter(s => !s.answered).length;
+            const msg = document.getElementById('confirm-message');
+            msg.textContent = unanswered > 0 ? `Tienes ${unanswered} pregunta(s) sin responder. ¿Seguro que deseas evaluar ahora?` : `¿Deseas enviar tus respuestas para su evaluación final?`;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function evaluateExam() {
+            examSubmitted = true;
+            let score = 0; let total = questions.length;
+
+            questions.forEach((q, index) => {
+                const card = document.getElementById(`q-card-${index}`);
+                const icon = document.getElementById(`feedback-icon-${index}`);
+                let isCorrect = false;
+
+                card.querySelectorAll('input, button.draggable').forEach(el => { el.disabled = true; if(el.draggable) el.draggable = false; el.classList.remove('cursor-pointer'); });
+
+                if (q.type === 'mcq') {
+                    if (userState[index].value !== null && parseInt(userState[index].value) === q.answer) isCorrect = true;
+                } else if (q.type === 'fill' || q.type === 'equation') {
+                    if (userState[index].value) {
+                        const uVal = cleanString(userState[index].value); const aVal = cleanString(q.answer.toString());
+                        if (uVal === aVal || (uVal.includes(aVal))) isCorrect = true;
+                        if(q.type === 'equation' && (uVal.includes('q/e') || uVal.includes('dv/dx'))) isCorrect = true;
+
+                        if(!isCorrect) {
+                            const inpCont = card.querySelector('input[type="text"]').parentElement;
+                            const ansDiv = document.createElement('div');
+                            ansDiv.className = "mt-2 text-sm text-red-600 font-bold bg-red-50 p-2 rounded border border-red-200";
+                            ansDiv.innerHTML = `Solución esperada: $$${q.answer}$$`;
+                            inpCont.appendChild(ansDiv);
+                            if(window.renderMathInElement) renderMathInElement(ansDiv);
+                        }
+                    }
+                } else if (q.type === 'drag') {
+                    let correctCount = 0;
+                    card.querySelectorAll('.dropzone').forEach(zone => {
+                        const target = zone.getAttribute('data-target'); const child = zone.querySelector('.draggable');
+                        if (child) {
+                            const pair = q.pairs.find(p => p.question === target);
+                            if (pair && pair.answer === child.getAttribute('data-id')) { correctCount++; zone.classList.add('border-green-400', 'bg-green-50'); } 
+                            else { zone.classList.add('border-red-400', 'bg-red-50'); }
+                        }
+                    });
+                    if (correctCount === q.pairs.length) isCorrect = true;
+                } else if (q.type === 'canvas') {
+                    if (userState[index].value === "true") isCorrect = true;
+                }
+
+                icon.classList.remove('hidden');
+                if (isCorrect) {
+                    score++; card.classList.add('correct-card');
+                    icon.innerHTML = `<div class="bg-green-100 p-2 rounded-full text-green-600 shadow-sm border border-green-200"><i class="ph-bold ph-check text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#22c55e';
+                } else {
+                    card.classList.add('incorrect-card');
+                    icon.innerHTML = `<div class="bg-red-100 p-2 rounded-full text-red-600 shadow-sm border border-red-200"><i class="ph-bold ph-x text-xl"></i></div>`;
+                    document.getElementById(`nav-btn-${index}`).style.backgroundColor = '#ef4444';
+                }
+                document.getElementById(`nav-btn-${index}`).style.color = '#fff';
+                document.getElementById(`nav-btn-${index}`).style.borderColor = 'transparent';
+                document.getElementById(`tip-${index}`).classList.remove('hidden');
+            });
+
+            const percentage = Math.round((score / total) * 100);
+            document.getElementById('score-display').textContent = `${percentage}% (${score}/${total})`;
+            document.getElementById('results-panel').classList.remove('hidden');
+            
+            setTimeout(() => {
+                const bar = document.getElementById('score-bar');
+                bar.style.width = `${percentage}%`;
+                bar.className = `h-full rounded-full transition-all duration-1000 ease-out ${percentage >= 70 ? 'bg-green-500' : 'bg-red-500'}`;
+            }, 300);
+
+            const msg = document.getElementById('feedback-message');
+            if (percentage >= 70) {
+                msg.textContent = "¡Aprobado! Demuestras una excelente comprensión del Flujo Eléctrico y la Ley de Gauss.";
+                msg.className = "text-xl font-bold text-green-700 mb-6 text-center max-w-lg";
+                document.getElementById('btn-save').classList.remove('hidden');
+            } else {
+                msg.textContent = "Reprobado. Repasa el concepto de superficies cerradas y carga neta encerrada. Requiere mínimo 70%.";
+                msg.className = "text-xl font-bold text-red-600 mb-6 text-center max-w-lg";
+            }
+            
+            window.lastScore = percentage;
+            document.getElementById('btn-export').classList.remove('hidden');
+            document.getElementById('btn-evaluate').classList.add('hidden');
+            
+            renderMathInElement(document.getElementById('questions-container'), {
+                delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}]
+            });
+        }
+
+        function hideResultsPanel() { document.getElementById('results-panel').classList.add('hidden'); }
+
+        // --- GUARDADO ESPECÍFICO EN EL MÓDULO 5 ---
+        async function saveProgress() {
+            if (!currentUser) return showToast("Inicia sesión en la plataforma principal para guardar.", "error");
+            if (window.lastScore < 70) return showToast("Solo se guardan calificaciones aprobatorias (>70%).", "warning");
+
+            try {
+                const btn = document.getElementById('btn-save');
+                btn.innerHTML = `<i class="ph ph-spinner animate-spin"></i> Guardando...`;
+                
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                await update(progresoRef, {
+                    'm5-q1': true, // MARCARÁ EL CHULO VERDE EN LA LECCIÓN "6. Evaluación del Módulo 5"
+                    'examen_gauss_score': window.lastScore
+                });
+                
+                showToast("¡Progreso sincronizado con tu Plataforma UNAB!", "success");
+                btn.innerHTML = `<i class="ph ph-check-circle text-lg"></i> Guardado en la plataforma`;
+                btn.classList.replace('bg-green-600', 'bg-slate-700');
+                btn.classList.replace('hover:bg-green-700', 'hover:bg-slate-800');
+                btn.disabled = true;
+            } catch (error) {
+                console.error("Save err:", error);
+                showToast("Error de conexión al guardar el progreso.", "error");
+                document.getElementById('btn-save').innerHTML = `<i class="ph ph-cloud-arrow-up text-lg"></i> Reintentar`;
+            }
+        }
+
+        async function loadProgress() {
+            if (!currentUser) return;
+            try {
+                const progresoRef = ref(db, 'usuarios/' + currentUser.uid + '/progreso_curso');
+                const snapshot = await get(progresoRef);
+                if (snapshot.exists() && snapshot.val().examen_gauss_score) {
+                    showToast(`¡Bienvenido de nuevo! Tu récord anterior en Gauss es: ${snapshot.val().examen_gauss_score}%`, "success");
+                }
+            } catch (e) { /* ignore silently */ }
+        }
+
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bg = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : type === 'warning' ? 'bg-amber-500' : 'bg-emerald-600';
+            toast.className = `${bg} text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 fade-in border border-white/20`;
+            const icon = type === 'success' ? 'ph-check-circle' : type === 'error' ? 'ph-warning-circle' : 'ph-info';
+            toast.innerHTML = `<i class="ph ${icon} text-2xl"></i> <span class="font-medium text-[0.95rem]">${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'; 
+                setTimeout(() => toast.remove(), 400); 
+            }, 4000);
+        }
+
+        function exportToPDF() {
+            document.querySelectorAll('.q-card').forEach(el => el.classList.remove('hidden'));
+            document.getElementById('instructions-panel').style.display = 'none';
+            document.getElementById('results-panel').classList.add('hidden');
+            
+            const element = document.getElementById('questions-container');
+            showToast("Generando PDF detallado... Esto puede tardar unos segundos.", "info");
+            
+            const titleHTML = `<div id="pdf-header" class="mb-8 border-b-2 border-emerald-200 pb-4">
+                                  <h1 class="text-3xl font-black text-emerald-900">Resultados: Flujo y Ley de Gauss</h1>
+                                  <p class="text-lg text-slate-600 font-bold mt-2">Puntaje obtenido: ${window.lastScore}%</p>
+                               </div>`;
+            element.insertAdjacentHTML('afterbegin', titleHTML);
+
+            html2pdf().set({
+                margin: [15, 10, 15, 10], 
+                filename: 'Examen_Ley_de_Gauss.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save().then(() => {
+                const h = document.getElementById('pdf-header');
+                if(h) h.remove();
+                
+                showQuestion(currentQuestion);
+                document.getElementById('results-panel').classList.remove('hidden');
+                showToast("¡PDF exportado exitosamente!", "success");
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initUI);
+    </script>
+</body>
+</html>

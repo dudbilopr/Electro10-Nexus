@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador: Resonancia RLC</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; padding: 6px; border-radius: 6px; width: 100%; font-size: 0.85rem; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        input[type="range"] { accent-color: #8b5cf6; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center px-4 z-20 shrink-0 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-violet-500/20">RLC</div>
+            <h1 class="text-lg font-bold text-white">Simulador <span class="text-violet-400">Resonancia RLC en Serie</span></h1>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Controls Sidebar -->
+        <aside class="w-80 glass-panel border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto z-10 p-4 space-y-6">
+            
+            <div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Parámetros del Circuito</h2>
+                
+                <div class="space-y-4">
+                    <!-- Resistencia R -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-amber-400 font-medium">Resistencia ($R$)</span>
+                            <span id="r-val" class="font-mono text-slate-300">50 Ω</span>
+                        </div>
+                        <input type="range" id="R-slider" min="10" max="500" step="10" value="50" class="w-full accent-amber-500">
+                    </div>
+
+                    <!-- Inductancia L -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-indigo-400 font-medium">Inductancia ($L$)</span>
+                            <span id="l-val" class="font-mono text-slate-300">100 mH</span>
+                        </div>
+                        <input type="range" id="L-slider" min="10" max="500" step="10" value="100" class="w-full accent-indigo-500">
+                    </div>
+
+                    <!-- Capacitancia C -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-emerald-400 font-medium">Capacitancia ($C$)</span>
+                            <span id="c-val" class="font-mono text-slate-300">10 µF</span>
+                        </div>
+                        <input type="range" id="C-slider" min="1" max="100" step="1" value="10" class="w-full accent-emerald-500">
+                    </div>
+
+                    <!-- Frecuencia Fuente f -->
+                    <div class="bg-violet-900/30 p-3 rounded-lg border border-violet-500/50 shadow-inner">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-violet-400 font-bold">Frecuencia Fuente ($f$)</span>
+                            <span id="f-val" class="font-mono text-white">100 Hz</span>
+                        </div>
+                        <input type="range" id="F-slider" min="10" max="500" step="1" value="100" class="w-full accent-violet-500">
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center Area -->
+        <div class="flex-1 flex flex-col relative bg-slate-950">
+            <!-- Canvas / Charts -->
+            <div id="chart-container" class="w-full h-2/3 border-b border-slate-800 relative flex flex-col p-4 bg-slate-900">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-2">Curva de Resonancia: Corriente ($I_{rms}$) vs Frecuencia ($f$)</h3>
+                <div class="flex-1 glass-panel rounded-xl p-3 relative">
+                    <canvas id="resonanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Theory and Math (Bottom) -->
+            <div class="w-full h-1/3 p-6 overflow-y-auto bg-slate-950 scrollbar-thin flex gap-6">
+                
+                <!-- Math Panel -->
+                <div class="flex-1">
+                    <h3 class="text-xs font-bold text-violet-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                        Impedancia y Corriente
+                    </h3>
+                    <div class="glass-panel p-4 rounded-xl border-violet-500/30 border text-sm text-slate-300 font-light flex gap-8">
+                        <div id="math-steps-1" class="flex-1">
+                            <!-- Injected -->
+                        </div>
+                        <div id="math-steps-2" class="flex-1 border-l border-slate-700 pl-8">
+                            <!-- Injected -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // State
+        const Vrms = 120; // Fixed voltage source 120V
+        let state = {
+            R: 50,
+            L: 100e-3,
+            C: 10e-6,
+            f: 100
+        };
+
+        // UI
+        const rSlider = document.getElementById('R-slider');
+        const lSlider = document.getElementById('L-slider');
+        const cSlider = document.getElementById('C-slider');
+        const fSlider = document.getElementById('F-slider');
+        const rVal = document.getElementById('r-val');
+        const lVal = document.getElementById('l-val');
+        const cVal = document.getElementById('c-val');
+        const fVal = document.getElementById('f-val');
+        const mSteps1 = document.getElementById('math-steps-1');
+        const mSteps2 = document.getElementById('math-steps-2');
+
+        // Chart
+        let resChart;
+        function initChart() {
+            const ctx = document.getElementById('resonanceChart').getContext('2d');
+            resChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Corriente Irms (A)', data: [], borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.2)', borderWidth: 3, tension: 0.4, fill: true, pointRadius: 0, yAxisID: 'y' },
+                        { label: 'Impedancia Z (Ω)', data: [], borderColor: '#f59e0b', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, yAxisID: 'y1' },
+                        { label: 'Operación Actual', data: [], borderColor: '#ef4444', backgroundColor: '#ef4444', pointRadius: 8, showLine: false, yAxisID: 'y' }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { labels: { color: '#cbd5e1' } } },
+                    scales: {
+                        x: { title: { display: true, text: 'Frecuencia (Hz)', color: '#64748b' }, grid: { color: '#1e293b' }, ticks: { color: '#94a3b8' } },
+                        y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Corriente (A)', color: '#8b5cf6' }, grid: { color: '#1e293b' }, ticks: { color: '#8b5cf6' } },
+                        y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Impedancia (Ω)', color: '#f59e0b' }, grid: { drawOnChartArea: false }, ticks: { color: '#f59e0b' } }
+                    }
+                }
+            });
+        }
+
+        function calculateVals(freq) {
+            const w = 2 * Math.PI * freq;
+            const XL = w * state.L;
+            const XC = 1 / (w * state.C);
+            const Z = Math.sqrt(Math.pow(state.R, 2) + Math.pow(XL - XC, 2));
+            const I = Vrms / Z;
+            return { XL, XC, Z, I };
+        }
+
+        function updateChart() {
+            const freqs = Array.from({length: 100}, (_, i) => 10 + i * 5); // 10 to 505 Hz
+            let iData = [];
+            let zData = [];
+            
+            freqs.forEach(f => {
+                const vals = calculateVals(f);
+                iData.push(vals.I);
+                zData.push(vals.Z);
+            });
+
+            resChart.data.labels = freqs;
+            resChart.data.datasets[0].data = iData;
+            resChart.data.datasets[1].data = zData;
+
+            const curVals = calculateVals(state.f);
+            resChart.data.datasets[2].data = [{x: state.f, y: curVals.I}];
+            
+            resChart.update();
+        }
+
+        function updateUI() {
+            rVal.innerText = `${state.R} Ω`;
+            lVal.innerText = `${(state.L * 1000).toFixed(0)} mH`;
+            cVal.innerText = `${(state.C * 1e6).toFixed(0)} µF`;
+            fVal.innerText = `${state.f} Hz`;
+
+            const cur = calculateVals(state.f);
+            const w = 2 * Math.PI * state.f;
+            const fres = 1 / (2 * Math.PI * Math.sqrt(state.L * state.C));
+
+            mSteps1.innerHTML = `
+                <div class="text-[11px] text-slate-400">Reactancia Inductiva ($X_L$)</div>
+                <div class="mb-3">$$ X_L = 2\\pi f L = ${cur.XL.toFixed(1)}\\ \\Omega $$</div>
+                
+                <div class="text-[11px] text-slate-400">Reactancia Capacitiva ($X_C$)</div>
+                <div class="mb-3">$$ X_C = \\frac{1}{2\\pi f C} = ${cur.XC.toFixed(1)}\\ \\Omega $$</div>
+
+                <div class="text-[11px] text-amber-400 font-bold">Impedancia Total ($Z$)</div>
+                <div>$$ Z = \\sqrt{R^2 + (X_L - X_C)^2} = ${cur.Z.toFixed(1)}\\ \\Omega $$</div>
+            `;
+
+            mSteps2.innerHTML = `
+                <div class="text-[11px] text-slate-400">Frecuencia de Resonancia ($f_{res}$)</div>
+                <div class="mb-3">$$ f_{res} = \\frac{1}{2\\pi \\sqrt{LC}} = ${fres.toFixed(1)}\\ \\text{Hz} $$</div>
+                
+                <div class="bg-violet-500/10 p-3 rounded mt-4 border border-violet-500/20 text-center shadow-lg">
+                    <span class="text-xs text-violet-400 uppercase tracking-wider font-bold">Corriente $I_{rms}$ a ${state.f} Hz</span><br>
+                    <span class="text-xl font-mono text-white">$$ I = \\frac{V}{Z} = ${cur.I.toFixed(2)}\\ \\text{A} $$</span>
+                </div>
+            `;
+
+            if (window.MathJax) MathJax.typesetPromise([mSteps1, mSteps2]);
+
+            updateChart();
+        }
+
+        function handleInput() {
+            state.R = parseInt(rSlider.value);
+            state.L = parseFloat(lSlider.value) * 1e-3;
+            state.C = parseFloat(cSlider.value) * 1e-6;
+            state.f = parseInt(fSlider.value);
+            updateUI();
+        }
+
+        rSlider.addEventListener('input', handleInput);
+        lSlider.addEventListener('input', handleInput);
+        cSlider.addEventListener('input', handleInput);
+        fSlider.addEventListener('input', handleInput);
+
+        initChart();
+        handleInput();
+
+    </script>
+</body>
+</html>

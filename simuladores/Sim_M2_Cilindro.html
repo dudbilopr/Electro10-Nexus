@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Campo Eléctrico: Eje de un Cilindro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-light: #f8fafc; --bg-dark: #0f172a;
+            --text-light: #1e2b3b; --text-dark: #e2e8f0;
+            --border-light: #e2e8f0; --border-dark: #334155;
+            --panel-light: #ffffff; --panel-dark: #1e2b3b;
+            --accent-color: #3b82f6; --tab-inactive-light: #f1f5f9;
+            --tab-inactive-dark: #334155;
+        }
+        html.dark {
+            --bg-light: #0f172a; --text-light: #e2e8f0;
+            --border-light: #334155; --panel-light: #1e2b3b;
+            --tab-inactive-light: #334155;
+        }
+        body {
+            font-family: 'Inter', sans-serif; background-color: var(--bg-light);
+            color: var(--text-light); transition: background-color 0.3s, color 0.3s;
+        }
+        .panel {
+            background-color: var(--panel-light); border: 1px solid var(--border-light);
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .tab-button { background-color: var(--tab-inactive-light); color: var(--text-light); }
+        .tab-button.active { background-color: var(--accent-color); color: white; }
+        html.dark .tab-button { color: var(--text-dark); }
+        html.dark .tab-button.active { color: white; }
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none;
+            background: transparent; cursor: pointer; width: 100%;
+        }
+        input[type="range"]::-webkit-slider-runnable-track { height: 0.5rem; border-radius: 0.25rem; background: var(--border-light); }
+        input[type="range"]::-moz-range-track { height: 0.5rem; border-radius: 0.25rem; background: var(--border-light); }
+        input[type="range"]::-webkit-slider-thumb {
+           -webkit-appearance: none; appearance: none; margin-top: -0.25rem;
+           width: 1rem; height: 1rem; border-radius: 9999px; background-color: var(--accent-color);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 1rem; height: 1rem; border-radius: 9999px;
+            background-color: var(--accent-color); border: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 flex items-center justify-center">
+
+<div class="w-full max-w-screen-2xl mx-auto flex flex-col lg:flex-row gap-4">
+    <!-- Main Simulation Area -->
+    <main class="flex-grow flex flex-col items-center justify-center panel rounded-xl shadow-lg p-4">
+        <h1 class="text-2xl font-bold text-center mb-4 text-blue-600 dark:text-blue-400">Campo Eléctrico en el Eje de un Cilindro Cargado (3D)</h1>
+        <div id="canvas-parent" class="w-full h-[60vh] lg:h-full cursor-move">
+            <canvas id="simulationCanvas"></canvas>
+        </div>
+    </main>
+
+    <!-- Control and Information Panel -->
+    <aside class="w-full lg:w-[550px] flex-shrink-0">
+        <div class="panel rounded-xl shadow-lg p-4">
+             <nav class="flex space-x-1 rounded-lg bg-slate-100 dark:bg-slate-900 p-1 mb-4">
+                <button data-tab="controles" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Controles</button>
+                <button data-tab="datos" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Datos</button>
+                <button data-tab="teoria" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Teoría</button>
+                <button data-tab="analisis" class="tab-button w-full text-sm font-semibold p-2 rounded-md">Análisis</button>
+            </nav>
+            <div>
+                <div id="controles" class="tab-content">
+                    <p class="text-xs text-center text-slate-500 mb-3">Arrastra el punto P o el disco diferencial ($dx$) en la simulación.</p>
+                    <div class="my-3">
+                        <label for="lengthSlider" class="block text-sm font-medium">Longitud del cilindro ($L$): <span id="lengthValue">2.0</span> m</label>
+                        <input id="lengthSlider" type="range" min="0.5" max="4" value="2" step="0.1" class="w-full">
+                    </div>
+                    <div class="my-3">
+                        <label for="radiusSlider" class="block text-sm font-medium">Radio del cilindro ($R$): <span id="radiusValue">1.0</span> m</label>
+                        <input id="radiusSlider" type="range" min="0.1" max="2" value="1" step="0.1" class="w-full">
+                    </div>
+                     <div class="my-3">
+                        <label for="pSlider" class="block text-sm font-medium">Posición de P ($x_1$): <span id="pValue">3.0</span> m</label>
+                        <input id="pSlider" type="range" min="0" max="5" value="3" step="0.1" class="w-full">
+                    </div>
+                    <div class="my-3">
+                        <label for="densitySlider" class="block text-sm font-medium">Densidad volumétrica ($\rho$): <span id="densityValue">5.0</span> nC/m³</label>
+                        <input id="densitySlider" type="range" min="1" max="10" value="5" step="0.1" class="w-full">
+                    </div>
+                    <div class="my-3">
+                        <label for="diskSlider" class="block text-sm font-medium">Posición del disco diferencial ($x$): <span id="diskValue">1.0</span> m</label>
+                        <input id="diskSlider" type="range" min="0" max="4" value="1" step="0.05" class="w-full">
+                    </div>
+                     <div class="grid grid-cols-2 gap-2 mt-4">
+                        <button id="chargeSignBtn" class="p-2 rounded-lg font-semibold bg-red-500 text-white">Carga Positiva</button>
+                        <button id="resetBtn" class="p-2 rounded-lg font-semibold bg-gray-500 hover:bg-gray-600 text-white">Reiniciar</button>
+                    </div>
+                    <div class="mt-4 flex items-center justify-center">
+                        <span class="mr-2 text-sm font-medium">Claro</span>
+                        <label for="theme-toggle" class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" value="" id="theme-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                        <span class="ml-2 text-sm font-medium">Oscuro</span>
+                    </div>
+                </div>
+
+                <div id="datos" class="tab-content p-2 text-sm">
+                    <p class="font-semibold text-base mb-2">Valores del Disco Diferencial (en posición $x$)</p>
+                    <div class="space-y-2 pl-2">
+                        <p>Carga del disco $dq$: <span id="dqValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> C</p>
+                        <p>Campo del disco $|d\vec{E}|$: <span id="dEValue" class="font-mono font-semibold text-blue-600 dark:text-blue-400">...</span> N/C</p>
+                    </div>
+                    <hr class="my-4 border-slate-200 dark:border-slate-700">
+                    <p class="font-semibold text-base mb-2">Valores Totales del Cilindro</p>
+                     <div class="space-y-2 pl-2">
+                        <p>Carga Total $Q$: <span id="QValue" class="font-mono font-semibold text-purple-600 dark:text-purple-400">...</span> C</p>
+                        <p>Campo Total $|\vec{E}_{total}|$: <span id="EtotalValue" class="font-mono font-semibold text-purple-600 dark:text-purple-400">...</span> N/C</p>
+                    </div>
+                </div>
+                
+                <div id="teoria" class="tab-content p-2 text-sm space-y-3">
+                    <p class="font-semibold text-base">1. Estrategia: Integrar Discos</p>
+                    <p>Tratamos el cilindro como una suma de infinitos discos delgados de grosor $dx$. El campo de un disco de radio $R$ y carga $dq$ a una distancia $x_0$ es:</p>
+                     <p class="text-center my-1 p-2 border rounded-md">$$d\vec{E} = 2\pi k_e \sigma \left( 1 - \frac{x_0}{\sqrt{R^2 + x_0^2}} \right) \hat{i}$$</p>
+                    
+                    <p class="font-semibold text-base">2. Variables del Problema</p>
+                    <p>Un disco diferencial en la posición $x$ tiene una carga $dq = \rho dV = \rho (\pi R^2 dx)$. Su densidad superficial es $\sigma = dq/(\pi R^2) = \rho dx$. La distancia a P es $x_0 = x_1 - x$.</p>
+
+                    <p class="font-semibold text-base">3. Sustitución e Integración</p>
+                    <p>Sustituimos $\sigma$ y $x_0$ en la fórmula de $dE$ e integramos a lo largo de la longitud del cilindro, desde $x=0$ hasta $x=L$.</p>
+                     <p class="text-center my-1 p-2 border rounded-md">$$\vec{E} = \int_{0}^{L} 2\pi k_e (\rho dx) \left( 1 - \frac{x_1 - x}{\sqrt{R^2 + (x_1 - x)^2}} \right) \hat{i}$$</p>
+                     <p class="font-semibold text-base">4. Resultado Final</p>
+                      <p>La integral se resuelve en dos partes y el resultado final es:</p>
+                      <p class="text-center my-1 p-2 border rounded-md">$$ \vec{E} = 2\pi k_e \rho \left( L + \sqrt{R^2+(x_1-L)^2} - \sqrt{R^2+x_1^2} \right) \hat{i} $$</p>
+                </div>
+                
+                <div id="analisis" class="tab-content p-2 text-sm space-y-4">
+                     <p class="font-semibold text-base">Tips Conceptuales</p>
+                    <ul class="list-disc list-inside space-y-2">
+                         <li><strong>Lejos del cilindro ($x_1 \gg L, R$):</strong> El cilindro se comporta como una carga puntual $Q = \rho (\pi R^2 L)$. La fórmula se simplifica a $E \approx k_e Q / x_1^2$.</li>
+                         <li><strong>Varilla Delgada ($R \to 0$):</strong> Si el radio es muy pequeño, el campo debería ser similar al de una varilla cargada de longitud $L$. ¡Puedes compararlo!</li>
+                    </ul>
+
+                     <div class="mt-6">
+                        <p class="font-semibold text-base">Desafío: Campo adentro</p>
+                        <div class="mt-2 p-3 border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <p>¿Qué sucede con el campo si el punto P se encuentra exactamente en el centro de la cara frontal del cilindro (es decir, $x_1 = L$)?</p>
+                             <ol class="list-decimal list-inside my-2 pl-4">
+                                <li>Usa los sliders para que $x_1$ sea igual a $L$.</li>
+                                <li>Simplifica la fórmula final en la pestaña de Teoría para este caso.</li>
+                                <li>¿Coincide el resultado de la fórmula simplificada con lo que muestra el simulador?</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE AND CONSTANTS ---
+    const k = 8.9875517923e9;
+    const initialState = {
+        L: 2.0, R: 1.0, x1: 3.0, rho: 5.0,
+        chargeSign: 1, diskPos: 1.0, // 'x'
+    };
+    let state = { ...initialState };
+
+    // --- DOM ELEMENTS ---
+    const lengthSlider = document.getElementById('lengthSlider'), lengthValue = document.getElementById('lengthValue');
+    const radiusSlider = document.getElementById('radiusSlider'), radiusValue = document.getElementById('radiusValue');
+    const pSlider = document.getElementById('pSlider'), pValue = document.getElementById('pValue');
+    const densitySlider = document.getElementById('densitySlider'), densityValue = document.getElementById('densityValue');
+    const diskSlider = document.getElementById('diskSlider'), diskValue = document.getElementById('diskValue');
+    const chargeSignBtn = document.getElementById('chargeSignBtn'), resetBtn = document.getElementById('resetBtn');
+    const dqValueEl = document.getElementById('dqValue'), dEValueEl = document.getElementById('dEValue');
+    const QValueEl = document.getElementById('QValue'), EtotalValueEl = document.getElementById('EtotalValue');
+
+    // --- 3D SCENE SETUP ---
+    const canvas = document.getElementById('simulationCanvas');
+    const canvasParent = document.getElementById('canvas-parent');
+    let scene, camera, renderer, controls, cylinder, diffDisk, pointP;
+    let dE_vector, E_total_vector, line;
+    let raycaster, mouse, dragPlane, draggedObject = null;
+
+    function init3D() {
+        scene = new THREE.Scene();
+        const rect = canvasParent.getBoundingClientRect();
+
+        camera = new THREE.PerspectiveCamera(75, rect.width / rect.height, 0.1, 1000);
+        camera.position.set(2, 3, 4);
+
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(rect.width, rect.height);
+
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        const cylinderMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.4 });
+        const cylinderGeometry = new THREE.CylinderGeometry(1, 1, 1, 64);
+        cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+        cylinder.rotation.z = -Math.PI / 2;
+        scene.add(cylinder);
+
+        const diskGeometry = new THREE.CylinderGeometry(1, 1, 0.05, 64);
+        diffDisk = new THREE.Mesh(diskGeometry, new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.8 }));
+        diffDisk.rotation.z = -Math.PI / 2;
+        scene.add(diffDisk);
+        
+        const pointGeo = new THREE.SphereGeometry(0.08, 16, 16);
+        pointP = new THREE.Mesh(pointGeo, new THREE.MeshBasicMaterial({ color: 0x10b981 }));
+        scene.add(pointP);
+        
+        dE_vector = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xf59e0b, 0.2, 0.1);
+        E_total_vector = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xa855f7, 0.25, 0.12);
+        scene.add(dE_vector, E_total_vector);
+
+        const dashedMaterial = new THREE.LineDashedMaterial({ color: 0x64748b, dashSize: 0.1, gapSize: 0.05 });
+        const lineGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+        line = new THREE.Line(lineGeom, dashedMaterial);
+        scene.add(line);
+        
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+
+        raycaster = new THREE.Raycaster();
+        mouse = new THREE.Vector2();
+        dragPlane = new THREE.Plane();
+        
+        renderer.domElement.addEventListener('mousedown', onMouseDown, false);
+        renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+        renderer.domElement.addEventListener('mouseup', onMouseUp, false);
+
+        window.addEventListener('resize', onWindowResize);
+        animate();
+    }
+
+    function onWindowResize() {
+        const rect = canvasParent.getBoundingClientRect();
+        camera.aspect = rect.width / rect.height;
+        camera.updateProjectionMatrix();
+        renderer.setSize(rect.width, rect.height);
+    }
+    
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    function calculateFields() {
+        const { L, R, x1, rho, chargeSign, diskPos } = state;
+        const rho_signed = rho * 1e-9 * chargeSign;
+        
+        const Q = rho_signed * Math.PI * R * R * L;
+        
+        const term1 = Math.sqrt(R*R + (x1-L)*(x1-L));
+        const term2 = Math.sqrt(R*R + x1*x1);
+        const E_total = 2 * Math.PI * k * rho_signed * (L + term1 - term2);
+
+        // Differential Disk Field
+        const dx = 0.05; // thickness of the disk
+        const dq = rho_signed * Math.PI * R*R * dx;
+        const x0_diff = x1 - diskPos;
+        const dE = 2 * Math.PI * k * (rho_signed * dx) * (1 - x0_diff / Math.sqrt(R*R + x0_diff*x0_diff));
+        
+        return { Q, E_total, dq, dE };
+    }
+
+    function updateScene() {
+        const { L, R, x1, chargeSign, diskPos } = state;
+        const fields = calculateFields();
+
+        cylinder.scale.set(R, L, R);
+        cylinder.position.set(L / 2, 0, 0);
+
+        diffDisk.scale.set(R, 1, R);
+        diffDisk.position.set(diskPos, 0, 0);
+
+        pointP.position.set(x1, 0, 0);
+
+        const isDark = document.documentElement.classList.contains('dark');
+        scene.background = new THREE.Color(isDark ? 0x0f172a : 0xf8fafc);
+        cylinder.material.color.set(chargeSign > 0 ? 0xef4444 : 0x3b82f6);
+        
+        const P_pos = pointP.position;
+        const vectorScale = 0.5 / Math.max(1e-9, Math.abs(fields.E_total), Math.abs(fields.dE));
+
+        const E_dir = new THREE.Vector3(fields.E_total >= 0 ? 1 : -1, 0, 0);
+        E_total_vector.position.copy(P_pos);
+        E_total_vector.setDirection(E_dir);
+        E_total_vector.setLength(Math.abs(fields.E_total * vectorScale), 0.25, 0.12);
+
+        const dE_dir = new THREE.Vector3(fields.dE >= 0 ? 1 : -1, 0, 0);
+        dE_vector.position.copy(P_pos);
+        dE_vector.setDirection(dE_dir);
+        dE_vector.setLength(Math.abs(fields.dE * vectorScale), 0.2, 0.1);
+
+        line.geometry.setFromPoints([diffDisk.position, P_pos]);
+        line.computeLineDistances();
+    }
+    
+    function updateDataPanel() {
+        const fields = calculateFields();
+        dqValueEl.textContent = fields.dq.toExponential(2);
+        dEValueEl.textContent = Math.abs(fields.dE).toExponential(2);
+        QValueEl.textContent = fields.Q.toExponential(2);
+        EtotalValueEl.textContent = Math.abs(fields.E_total).toExponential(2);
+    }
+
+    function handleInputChange() {
+        state.L = parseFloat(lengthSlider.value);
+        state.R = parseFloat(radiusSlider.value);
+        state.x1 = parseFloat(pSlider.value);
+        state.rho = parseFloat(densitySlider.value);
+        state.diskPos = parseFloat(diskSlider.value);
+
+        if (state.diskPos > state.L) {
+            state.diskPos = state.L;
+            diskSlider.value = state.diskPos;
+        }
+        diskSlider.max = state.L;
+        
+        lengthValue.textContent = state.L.toFixed(1);
+        radiusValue.textContent = state.R.toFixed(1);
+        pValue.textContent = state.x1.toFixed(1);
+        densityValue.textContent = state.rho.toFixed(1);
+        diskValue.textContent = state.diskPos.toFixed(2);
+
+        updateDataPanel();
+        updateScene();
+        if (window.MathJax) MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+    }
+
+    function resetSimulation() {
+        state = { ...initialState };
+        lengthSlider.value = state.L;
+        radiusSlider.value = state.R;
+        pSlider.value = state.x1;
+        densitySlider.value = state.rho;
+        diskSlider.value = state.diskPos;
+        chargeSignBtn.classList.toggle('bg-red-500', true);
+        chargeSignBtn.classList.toggle('bg-blue-500', false);
+        chargeSignBtn.textContent = 'Carga Positiva';
+        handleInputChange();
+    }
+    
+    function onMouseDown(event) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects([pointP, diffDisk]);
+
+        if (intersects.length > 0) {
+            draggedObject = intersects[0].object;
+            controls.enabled = false;
+            dragPlane.setFromNormalAndCoplanarPoint(camera.getWorldDirection(dragPlane.normal).cross(new THREE.Vector3(0,1,0)), draggedObject.position);
+        }
+    }
+
+    function onMouseMove(event) {
+        if (draggedObject) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            
+            const intersectPoint = new THREE.Vector3();
+            raycaster.ray.intersectPlane(dragPlane, intersectPoint);
+            
+            if (draggedObject === pointP) {
+                let newX1 = intersectPoint.x;
+                state.x1 = Math.max(0, Math.min(parseFloat(pSlider.max), newX1));
+                pSlider.value = state.x1.toFixed(1);
+            } else if (draggedObject === diffDisk) {
+                let newDiskPos = intersectPoint.x;
+                state.diskPos = Math.max(0, Math.min(state.L, newDiskPos));
+                diskSlider.value = state.diskPos.toFixed(2);
+            }
+            handleInputChange();
+        }
+    }
+
+    function onMouseUp(event) {
+        draggedObject = null;
+        controls.enabled = true;
+    }
+
+    [lengthSlider, radiusSlider, pSlider, densitySlider, diskSlider].forEach(s => s.addEventListener('input', handleInputChange));
+    resetBtn.addEventListener('click', resetSimulation);
+    chargeSignBtn.addEventListener('click', () => {
+        state.chargeSign *= -1;
+        const isPositive = state.chargeSign > 0;
+        chargeSignBtn.textContent = isPositive ? 'Carga Positiva' : 'Carga Negativa';
+        chargeSignBtn.classList.toggle('bg-red-500', isPositive);
+        chargeSignBtn.classList.toggle('bg-blue-500', !isPositive);
+        handleInputChange();
+    });
+
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            tabContents.forEach(content => {
+                content.id === button.dataset.tab ? content.classList.add('active') : content.classList.remove('active');
+            });
+            if (window.MathJax) MathJax.Hub.Queue(["Typeset", MathJax.Hub]);
+        });
+    });
+
+    document.getElementById('theme-toggle').addEventListener('change', () => {
+        document.documentElement.classList.toggle('dark');
+        updateScene();
+    });
+
+    init3D();
+    resetSimulation();
+    document.querySelector('[data-tab="controles"]').click();
+});
+</script>
+</body>
+</html>

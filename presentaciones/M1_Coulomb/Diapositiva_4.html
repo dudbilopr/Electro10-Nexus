@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Coulomb vs Gravitación</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 4px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #475569; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        .angle-label {
+            position: absolute; transform: translate(-50%, -50%);
+            font-weight: bold; font-family: monospace; color: #dc2626;
+            background: rgba(255, 255, 255, 0.9); padding: 2px 6px; border-radius: 6px;
+            pointer-events: none; z-index: 20; border: 1px solid #fca5a5;
+            font-size: clamp(11px, 0.9vw, 15px); display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-600">
+                <h1 class="font-bold tracking-wide" style="font-size: clamp(20px, 2vw, 36px);">Fuerzas Fundamentales: Coulomb vs Gravitación</h1>
+                <p class="text-blue-300" style="font-size: clamp(12px, 1vw, 18px);">Análisis Comparativo de las Leyes de Inversa al Cuadrado</p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BLOQUE 1: COULOMB -->
+                    <div class="bg-blue-50 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1.5vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span><strong>Ley de Coulomb:</strong> Describe la interacción electrostática entre partículas cargadas. La fuerza es inversamente proporcional al cuadrado de la distancia:</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Signos:</strong> Cargas del mismo signo se repelen ($F > 0$), signos opuestos se atraen ($F < 0$). La constante $k_e$ depende del medio.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$\vec{F}_e = k_e \frac{q_1 q_2}{r^2} \hat{r}$$</div>
+                        <p class="text-xs text-blue-800 italic text-center mt-1">$k_e \approx 8.99 \times 10^9 \, \text{N}\cdot\text{m}^2/\text{C}^2$</p>
+                    </div>
+
+                    <!-- BLOQUE 2: GRAVITACIÓN -->
+                    <div class="bg-emerald-50 p-[1.5vmin] border-l-[0.5vmin] border-emerald-600 shadow-sm rounded-r-lg mb-[1.5vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span><strong>Ley de Gravitación Universal:</strong> Describe la atracción entre partículas con masa. Es estrictamente atractiva y posee idéntica estructura geométrica:</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Geometría 3D:</strong> El término $1/r^2$ en ambas leyes surge porque el "flujo" de la fuerza se esparce sobre el área de una esfera ($4\pi r^2$).</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$\vec{F}_g = -G \frac{m_1 m_2}{r^2} \hat{r}$$</div>
+                        <p class="text-xs text-emerald-800 italic text-center mt-1">$G \approx 6.67 \times 10^{-11} \, \text{N}\cdot\text{m}^2/\text{kg}^2$</p>
+                    </div>
+
+                    <!-- BLOQUE 3: TABLA COMPARATIVA -->
+                    <div class="bg-white p-[1.5vmin] shadow-sm rounded-lg border border-slate-300 mb-[1.5vmin]">
+                        <p class="font-bold text-slate-800 flex items-center mb-2">Tabla Comparativa Estructural</p>
+                        <table class="table-auto w-full text-[clamp(10px,0.85vw,14px)] text-left border-collapse font-sans">
+                            <thead>
+                                <tr class="bg-slate-100 text-slate-700">
+                                    <th class="border px-2 py-1">Propiedad</th>
+                                    <th class="border px-2 py-1">Coulomb ($F_e$)</th>
+                                    <th class="border px-2 py-1">Gravitación ($F_g$)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border px-2 py-1 font-semibold">Causa/Origen</td>
+                                    <td class="border px-2 py-1">Carga ($q$)</td>
+                                    <td class="border px-2 py-1">Masa ($m$)</td>
+                                </tr>
+                                <tr class="bg-slate-50">
+                                    <td class="border px-2 py-1 font-semibold">Naturaleza</td>
+                                    <td class="border px-2 py-1">Atracción y Repulsión</td>
+                                    <td class="border px-2 py-1 text-emerald-700 font-bold">Solo Atracción</td>
+                                </tr>
+                                <tr>
+                                    <td class="border px-2 py-1 font-semibold">Dependencia</td>
+                                    <td class="border px-2 py-1">Medio material ($k_e$)</td>
+                                    <td class="border px-2 py-1">Universal ($G$)</td>
+                                </tr>
+                                <tr class="bg-slate-50">
+                                    <td class="border px-2 py-1 font-semibold">Magnitud Relativa</td>
+                                    <td class="border px-2 py-1 text-red-600 font-bold">Inmensamente Dominante</td>
+                                    <td class="border px-2 py-1 text-emerald-600 font-bold">Extremadamente Débil</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- BLOQUE 4: ADVERTENCIA Y CONCLUSIÓN -->
+                    <div class="bg-amber-50 p-[1.5vmin] border border-amber-300 shadow-sm rounded-lg relative">
+                        <p class="font-bold text-amber-800 mb-1">⚠️ Paradoja Cósmica</p>
+                        <p class="text-sm text-slate-700">La repulsión eléctrica entre dos protones es $\sim 10^{36}$ veces mayor que su atracción gravitatoria. ¿Por qué la gravedad rige el universo macroscópico? Porque la materia a gran escala es eléctricamente neutra (se cancela), mientras que la masa siempre se suma y se acumula.</p>
+                    </div>
+
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL -->
+                    <div class="control-panel shadow-sm">
+                        
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-slate-800">Ley:</label>
+                            <select id="select-mode" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500">
+                                <option value="coulomb">1. Coulomb</option>
+                                <option value="gravity">2. Gravitación</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-indigo-700" id="lbl-val1">$q_1$:</label>
+                            <input type="range" id="slider-val1" min="-10" max="10" step="1" value="5" class="w-[4vw]">
+                            <span id="val-1" class="font-mono font-bold w-[3.5vw] text-right">5 μC</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-indigo-700" id="lbl-val2">$q_2$:</label>
+                            <input type="range" id="slider-val2" min="-10" max="10" step="1" value="-5" class="w-[4vw]">
+                            <span id="val-2" class="font-mono font-bold w-[3.5vw] text-right">-5 μC</span>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-slate-700">Distancia $r$:</label>
+                            <input type="range" id="slider-r" min="2" max="12" step="0.1" value="6" class="w-[5vw]">
+                            <span id="val-r" class="font-mono font-bold w-[3.5vw] text-right">6.0 m</span>
+                        </div>
+
+                        <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-sm font-semibold text-slate-700">
+                            <label><input type="checkbox" id="toggle-field"> Líneas Campo</label>
+                            <label><input type="checkbox" id="toggle-force" checked> Vectores $\vec{F}$</label>
+                            <button id="btn-animate" class="bg-blue-600 text-white px-2 py-1 rounded shadow hover:bg-blue-700 transition">▶ Soltar Partículas</button>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper" id="canvas-3d">
+                            <div class="hint-overlay" id="hint-text">⟲ Rotar | ⚲ Zoom | Coulomb: Rojo(+), Azul(-)</div>
+                        </div>
+
+                        <!-- 2D Graph & Stats -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Gráfica -->
+                            <div class="flex-1 graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 16px);">Magnitud $|F|$ vs Distancia $r$</div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Stats Flujo -->
+                            <div class="bg-white border border-slate-200 rounded-lg p-[1.5vmin] text-center shadow-sm">
+                                <div class="text-slate-600 font-serif italic mb-1" style="font-size: clamp(12px, 1vw, 16px);">Estado Dinámico</div>
+                                <div class="font-bold text-slate-800 rounded p-1" id="ui-region" style="font-size: clamp(14px, 1.2vw, 20px);">
+                                    Analizando sistema...
+                                </div>
+                                <div class="mt-2 text-slate-600 font-semibold bg-slate-100 py-1 rounded border border-slate-200" style="font-size: clamp(12px, 1.1vw, 16px);">
+                                    Fuerza $|F|$: <span id="val-f-local" class="text-red-600 font-bold font-mono text-lg">0.0</span> <span id="unit-f" class="text-red-600 font-bold">N</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS Y FÍSICA -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(40, cont3D.clientWidth / cont3D.clientHeight, 0.1, 100);
+        cam.position.set(0, 8, 16);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true; ctrl.enablePan = false;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(5, 10, 5); scene.add(light);
+        
+        const light2 = new THREE.DirectionalLight(0xffffff, 0.5);
+        light2.position.set(-5, -5, -5); scene.add(light2);
+
+        // ==========================================
+        // 2. CONSTANTES FÍSICAS Y ESTADO
+        // ==========================================
+        let params = { 
+            mode: 'coulomb', // 'coulomb' o 'gravity'
+            val1: 5,         // q1 o m1
+            val2: -5,        // q2 o m2
+            r_initial: 6,    // distancia inicial del slider
+            r_current: 6,    // distancia dinámica real
+            x1: -3,          // posición individual de partícula 1
+            x2: 3,           // posición individual de partícula 2
+            animating: false,
+            v1: 0, v2: 0     // velocidades simuladas
+        };
+
+        const radiusObj = 0.6;   // Radio visual de las partículas
+        
+        // ==========================================
+        // 3. GENERADORES DE GEOMETRÍA 3D
+        // ==========================================
+        const sphereGeo = new THREE.SphereGeometry(radiusObj, 32, 32);
+        
+        // Materiales (MeshPhongMaterial soluciona problemas de transparencias)
+        const matPos = new THREE.MeshPhongMaterial({ color: 0xdc2626, shininess: 80 });
+        const matNeg = new THREE.MeshPhongMaterial({ color: 0x2563eb, shininess: 80 });
+        const matNeutral = new THREE.MeshPhongMaterial({ color: 0x94a3b8, shininess: 30 });
+        const matMass = new THREE.MeshPhongMaterial({ color: 0x059669, shininess: 20 });
+
+        const particle1 = new THREE.Mesh(sphereGeo, matPos);
+        const particle2 = new THREE.Mesh(sphereGeo, matNeg);
+        scene.add(particle1, particle2);
+
+        // Grid (Suelo para dar perspectiva 3D)
+        const gridHelper = new THREE.GridHelper(24, 24, 0x94a3b8, 0xcbd5e1);
+        gridHelper.position.y = -radiusObj - 0.5;
+        scene.add(gridHelper);
+
+        // Vectores de fuerza
+        const forceGroup = new THREE.Group(); scene.add(forceGroup);
+        let arrow1, arrow2;
+
+        // Campo (anclado a la escena general para mejor rendimiento)
+        const fieldGroup = new THREE.Group(); 
+        scene.add(fieldGroup);
+
+        function getMaterial(val, mode) {
+            if (mode === 'gravity') return matMass;
+            if (val > 0) return matPos;
+            if (val < 0) return matNeg;
+            return matNeutral;
+        }
+
+        function updateBodies() {
+            particle1.material = getMaterial(params.val1, params.mode);
+            particle2.material = getMaterial(params.val2, params.mode);
+
+            // Escalar visualmente según el valor absoluto
+            const s1 = 0.5 + Math.abs(params.val1)*0.08;
+            const s2 = 0.5 + Math.abs(params.val2)*0.08;
+            particle1.scale.set(s1, s1, s1);
+            particle2.scale.set(s2, s2, s2);
+
+            particle1.position.set(params.x1, 0, 0);
+            particle2.position.set(params.x2, 0, 0);
+        }
+
+        // ==========================================
+        // 4. MOTOR MATEMÁTICO
+        // ==========================================
+        function calculateForce(val1, val2, r, mode) {
+            if (r < 0.1) r = 0.1; // Evitar singularidad matemática infinita visualmente
+            if (mode === 'coulomb') {
+                return 15 * (val1 * val2) / (r * r); // F > 0 Repulsión, F < 0 Atracción
+            } else {
+                return -15 * (Math.abs(val1) * Math.abs(val2)) / (r * r); // F < 0 Siempre Atracción
+            }
+        }
+
+        function buildForceArrows() {
+            forceGroup.clear();
+            if (!document.getElementById('toggle-force').checked) return;
+            if (params.val1 === 0 || params.val2 === 0) return;
+
+            const F = calculateForce(params.val1, params.val2, params.r_current, params.mode);
+            const mag = Math.abs(F);
+            
+            // Escalamiento logarítmico para mantener flechas en un rango visible
+            let len = Math.log(mag + 1) * 0.9; 
+            if (len > 6) len = 6; 
+            if (len < 0.1) return;
+
+            // P1 Izquierda (-x), P2 Derecha (+x)
+            const dir1 = new THREE.Vector3(F > 0 ? -1 : 1, 0, 0); 
+            const dir2 = new THREE.Vector3(F > 0 ? 1 : -1, 0, 0); 
+            
+            const colorArrow = F > 0 ? 0xf59e0b : 0x10b981; // Naranja repulsión, Verde atracción
+
+            arrow1 = new THREE.ArrowHelper(dir1, particle1.position, len, colorArrow, len*0.3, len*0.2);
+            arrow2 = new THREE.ArrowHelper(dir2, particle2.position, len, colorArrow, len*0.3, len*0.2);
+            
+            forceGroup.add(arrow1, arrow2);
+        }
+
+        function buildFieldLines() {
+            fieldGroup.clear();
+            if (!document.getElementById('toggle-field').checked) return;
+
+            const isGrav = params.mode === 'gravity';
+            const srcVal = params.val1;
+            if (srcVal === 0) return;
+
+            const maxDist = 8;
+            const steps = 5;
+            // Dibujamos campo alrededor de particle1
+            for (let x = -steps; x <= steps; x++) {
+                for (let y = -steps; y <= steps; y++) {
+                    if (x===0 && y===0) continue;
+                    
+                    // Posicion relativa a partícula 1
+                    const pX = particle1.position.x + (x * 1.5);
+                    const pY = particle1.position.y + (y * 1.5);
+                    const pos = new THREE.Vector3(pX, pY, 0);
+                    
+                    const distToP1 = pos.distanceTo(particle1.position);
+                    if (distToP1 < radiusObj + 0.3 || distToP1 > maxDist) continue;
+
+                    let E = isGrav ? -srcVal / (distToP1 * distToP1) : srcVal / (distToP1 * distToP1);
+                    
+                    let dir = new THREE.Vector3().subVectors(pos, particle1.position).normalize();
+                    if (E < 0) dir.negate();
+                    
+                    let len = Math.abs(E) * 2;
+                    if(len > 1.2) len = 1.2;
+
+                    const col = isGrav ? 0x059669 : (srcVal > 0 ? 0xdc2626 : 0x2563eb);
+                    fieldGroup.add(new THREE.ArrowHelper(dir, pos, len, col, len*0.3, len*0.2));
+                }
+            }
+        }
+
+        function updateUI() {
+            const F = calculateForce(params.val1, params.val2, params.r_current, params.mode);
+            document.getElementById('val-f-local').textContent = Math.abs(F).toFixed(2);
+            
+            const uiRegion = document.getElementById('ui-region');
+            if (params.val1 === 0 || params.val2 === 0) {
+                uiRegion.innerHTML = `<span class='text-slate-500'>Sistema Inactivo ($F = 0$)</span>`;
+            } else if (F > 0) {
+                uiRegion.innerHTML = `<span class='text-amber-600 bg-amber-100 px-3 py-1 rounded shadow-sm'>Repulsión Activa ↔</span>`;
+            } else {
+                uiRegion.innerHTML = `<span class='text-emerald-600 bg-emerald-100 px-3 py-1 rounded shadow-sm'>Atracción Activa ⭲⭰</span>`;
+            }
+
+            // Reflejar la animación en el slider de manera limpia
+            if(params.animating) {
+                document.getElementById('slider-r').value = params.r_current;
+                document.getElementById('val-r').textContent = params.r_current.toFixed(1) + ' m';
+            }
+        }
+
+        // ==========================================
+        // 5. GRÁFICA 2D UNIVERSAL
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const canvas2D = document.getElementById('graph-2d');
+        const ctx = canvas2D.getContext('2d');
+
+        function resizeGraph() {
+            canvas2D.width = graphCont.clientWidth;
+            canvas2D.height = graphCont.clientHeight;
+            drawGraph();
+        }
+
+        function drawGraph() {
+            const w = canvas2D.width; const h = canvas2D.height;
+            const padX = 40; const padY = 30;
+            ctx.clearRect(0, 0, w, h);
+
+            // Ejes
+            ctx.beginPath(); ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 2;
+            ctx.moveTo(padX, padY/2); ctx.lineTo(padX, h - padY);
+            ctx.lineTo(w - padX/2, h - padY);
+            ctx.stroke();
+
+            ctx.fillStyle = "#475569"; ctx.font = "14px serif";
+            ctx.fillText("|F|", padX - 25, padY); ctx.fillText("r", w - padX + 5, h - padY + 15);
+
+            const maxR_graph = 12;
+            let F_max_graph = Math.abs(calculateForce(10, 10, 2, params.mode));
+            if(F_max_graph === 0) F_max_graph = 10;
+
+            const mapX = (rad) => padX + ((rad - 2) / (maxR_graph - 2)) * (w - padX * 1.5);
+            const mapY = (fVal) => (h - padY) - Math.min(fVal / F_max_graph, 1) * (h - padY * 1.5);
+
+            if (params.val1 !== 0 && params.val2 !== 0) {
+                ctx.beginPath();
+                ctx.strokeStyle = params.mode === 'gravity' ? "#059669" : "#2563eb";
+                ctx.lineWidth = 3;
+                let started = false;
+                for(let r = 2; r <= maxR_graph; r += 0.1) {
+                    const fVal = Math.abs(calculateForce(params.val1, params.val2, r, params.mode));
+                    const x = mapX(r); const y = mapY(fVal);
+                    if(!started) { ctx.moveTo(x, y); started = true; }
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+
+                // Punto actual
+                const currF = calculateForce(params.val1, params.val2, params.r_current, params.mode);
+                const absF = Math.abs(currF);
+                const currX = mapX(params.r_current); const currY = mapY(absF);
+                
+                ctx.beginPath(); ctx.setLineDash([5, 5]); ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 1;
+                ctx.moveTo(currX, h - padY); ctx.lineTo(currX, currY); ctx.lineTo(padX, currY); ctx.stroke(); ctx.setLineDash([]);
+                
+                ctx.beginPath(); ctx.arc(currX, currY, 6, 0, Math.PI*2); 
+                ctx.fillStyle = currF > 0 ? "#f59e0b" : "#10b981";
+                ctx.fill(); ctx.strokeStyle="#fff"; ctx.lineWidth=2; ctx.stroke();
+            }
+        }
+
+        // ==========================================
+        // 6. EVENTOS Y BUCLE PRINCIPAL
+        // ==========================================
+        function stopAnimation() {
+            params.animating = false;
+            const btn = document.getElementById('btn-animate');
+            btn.textContent = "▶ Soltar Partículas";
+            btn.classList.replace('bg-red-600', 'bg-blue-600');
+            btn.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+        }
+
+        function updateAll() {
+            updateBodies(); buildForceArrows(); buildFieldLines(); updateUI(); drawGraph();
+        }
+
+        document.getElementById('select-mode').addEventListener('change', (e) => {
+            params.mode = e.target.value;
+            stopAnimation();
+            
+            const isGrav = params.mode === 'gravity';
+            document.getElementById('lbl-val1').innerHTML = isGrav ? '$m_1$:' : '$q_1$:';
+            document.getElementById('lbl-val2').innerHTML = isGrav ? '$m_2$:' : '$q_2$:';
+            document.getElementById('hint-text').innerText = isGrav ? '⟲ Rotar | ⚲ Zoom | Gravedad: Las masas siempre se atraen' : '⟲ Rotar | ⚲ Zoom | Coulomb: Rojo(+), Azul(-)';
+
+            const s1 = document.getElementById('slider-val1');
+            const s2 = document.getElementById('slider-val2');
+            
+            if (isGrav) {
+                s1.min = "1"; s1.value = Math.max(1, Math.abs(params.val1));
+                s2.min = "1"; s2.value = Math.max(1, Math.abs(params.val2));
+            } else {
+                s1.min = "-10"; s2.min = "-10"; 
+            }
+            
+            params.val1 = parseFloat(s1.value); params.val2 = parseFloat(s2.value);
+            
+            const u = isGrav ? ' kg' : ' μC';
+            document.getElementById('val-1').textContent = params.val1 + u;
+            document.getElementById('val-2').textContent = params.val2 + u;
+            document.getElementById('val-r').textContent = params.r_initial.toFixed(1) + ' m';
+
+            // Restablecer posiciones
+            params.r_current = params.r_initial;
+            params.x1 = -params.r_current / 2;
+            params.x2 = params.r_current / 2;
+            params.v1 = 0; params.v2 = 0;
+
+            if (typeof MathJax !== 'undefined') MathJax.typesetPromise();
+            updateAll();
+        });
+
+        document.getElementById('slider-val1').addEventListener('input', (e) => {
+            params.val1 = parseFloat(e.target.value);
+            const u = params.mode === 'gravity' ? ' kg' : ' μC';
+            document.getElementById('val-1').textContent = params.val1 + u;
+            stopAnimation(); updateAll();
+        });
+
+        document.getElementById('slider-val2').addEventListener('input', (e) => {
+            params.val2 = parseFloat(e.target.value);
+            const u = params.mode === 'gravity' ? ' kg' : ' μC';
+            document.getElementById('val-2').textContent = params.val2 + u;
+            stopAnimation(); updateAll();
+        });
+
+        document.getElementById('slider-r').addEventListener('input', (e) => {
+            params.r_initial = parseFloat(e.target.value);
+            params.r_current = params.r_initial;
+            params.x1 = -params.r_current / 2;
+            params.x2 = params.r_current / 2;
+            params.v1 = 0; params.v2 = 0; // Reiniciar inercia
+            document.getElementById('val-r').textContent = params.r_initial.toFixed(1) + ' m';
+            stopAnimation(); updateAll();
+        });
+
+        document.getElementById('toggle-force').addEventListener('change', updateAll);
+        document.getElementById('toggle-field').addEventListener('change', updateAll);
+
+        document.getElementById('btn-animate').addEventListener('click', (e) => {
+            if (params.animating) {
+                stopAnimation();
+            } else {
+                params.animating = true;
+                clock.getDelta(); // Limpiar el reloj para no dar un salto abrupto inicial
+                e.target.textContent = "⏹ Pausar";
+                e.target.classList.replace('bg-blue-600', 'bg-red-600');
+                e.target.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
+            }
+        });
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height);
+                } else if(entry.target.id === 'graph-container') {
+                    resizeGraph();
+                }
+            }
+        });
+        resizeObserver.observe(cont3D); resizeObserver.observe(graphCont);
+
+        // Inicialización segura
+        updateAll();
+
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctrl.update(); 
+            
+            if (params.animating) {
+                const dt = Math.min(clock.getDelta(), 0.05); // Limitar delta para evitar fallas físicas
+                const F = calculateForce(params.val1, params.val2, params.r_current, params.mode);
+                
+                // Masas inerciales dinámicas: a mayor valor, más pesado y menor aceleración
+                const mass1 = Math.max(1, Math.abs(params.val1));
+                const mass2 = Math.max(1, Math.abs(params.val2));
+
+                // F > 0 (Repulsión): a1 hacia la izquierda(-), a2 hacia la derecha(+)
+                // F < 0 (Atracción): a1 hacia la derecha(+), a2 hacia la izquierda(-)
+                const a1 = -(F / mass1) * 0.4;
+                const a2 = (F / mass2) * 0.4;
+
+                params.v1 += a1 * dt;
+                params.v2 += a2 * dt;
+
+                // Fricción suave para estabilidad visual (velocidad máxima)
+                params.v1 *= 0.94;
+                params.v2 *= 0.94;
+
+                // Actualizar posiciones de forma independiente
+                params.x1 += params.v1 * dt;
+                params.x2 += params.v2 * dt;
+                
+                let new_r = params.x2 - params.x1;
+
+                // Limites físicos de la simulación
+                const min_r = radiusObj * 2.1; 
+                const max_r = 15;
+
+                if (new_r <= min_r) {
+                    params.x1 -= params.v1 * dt; // rollback
+                    params.x2 -= params.v2 * dt;
+                    params.v1 = 0; params.v2 = 0;
+                    new_r = params.x2 - params.x1;
+                }
+                if (new_r >= max_r) {
+                    params.x1 -= params.v1 * dt; // rollback
+                    params.x2 -= params.v2 * dt;
+                    params.v1 = 0; params.v2 = 0;
+                    new_r = params.x2 - params.x1;
+                }
+                
+                params.r_current = new_r;
+
+                updateAll(); // Refrescar gráfica, cuerpos, campos y UI simultáneamente
+            }
+
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tip encima de todo (INMUTABLE Y OBLIGATORIO)
+        (function () {
+            let globalTip = document.createElement("div");
+            globalTip.className = "tip-content";
+            globalTip.style.position = "fixed";
+            globalTip.style.zIndex = "999999";
+            globalTip.style.pointerEvents = "none";
+            globalTip.style.opacity = "0";
+            globalTip.style.visibility = "hidden";
+            document.body.appendChild(globalTip);
+
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                const localTip = wrapper.querySelector(".tip-content");
+
+                wrapper.addEventListener("mouseenter", () => {
+                    const rect = wrapper.getBoundingClientRect();
+
+                    globalTip.innerHTML = localTip.innerHTML;
+
+                    globalTip.style.top = rect.top + "px";
+                    globalTip.style.left = (rect.right + 10) + "px";
+
+                    globalTip.style.opacity = "1";
+                    globalTip.style.visibility = "visible";
+                });
+
+                wrapper.addEventListener("mouseleave", () => {
+                    globalTip.style.opacity = "0";
+                    globalTip.style.visibility = "hidden";
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

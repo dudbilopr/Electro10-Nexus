@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quiz Adaptativo — Ley de Ampere</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet">
+<style>
+  :root{--accent:#0d9488;--accent-light:#0d948820;--bg:#0f172a;--surface:#1e293b;--surface2:#334155;--text:#f1f5f9;--text-mid:#94a3b8;--success:#10b981;--warning:#f59e0b;--danger:#ef4444;--border:rgba(255,255,255,0.08)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+  .quiz-container{width:100%;max-width:780px}
+  /* Header */
+  .quiz-header{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;gap:16px}
+  .quiz-icon{width:52px;height:52px;background:var(--accent-light);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:26px}
+  .quiz-title{font-size:1.3rem;font-weight:700;color:var(--text)}
+  .quiz-subtitle{font-size:0.85rem;color:var(--text-mid);margin-top:4px}
+  /* Progress */
+  .progress-bar-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;flex-direction:column;gap:10px}
+  .progress-meta{display:flex;justify-content:space-between;align-items:center;font-size:0.82rem;color:var(--text-mid)}
+  .level-badge{background:var(--accent-light);color:var(--accent);padding:3px 10px;border-radius:20px;font-weight:600;font-size:0.78rem;letter-spacing:.5px}
+  .progress-track{height:6px;background:var(--surface2);border-radius:999px;overflow:hidden}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#7c3aed);border-radius:999px;transition:width .5s ease}
+  /* Question card */
+  .question-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;margin-bottom:16px;animation:slideIn .35s ease}
+  @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .q-number{font-size:0.75rem;font-weight:600;color:var(--text-mid);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}
+  .q-text{font-size:1.05rem;font-weight:500;line-height:1.6;margin-bottom:20px}
+  .q-formula{background:rgba(37,99,235,0.08);border-left:3px solid var(--accent);padding:10px 16px;border-radius:0 8px 8px 0;font-family:monospace;font-size:1rem;color:#93c5fd;margin-bottom:16px}
+  /* Options */
+  .options-grid{display:flex;flex-direction:column;gap:10px}
+  .option-btn{display:flex;align-items:center;gap:12px;background:transparent;border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;color:var(--text);font-family:'Inter',sans-serif;font-size:0.95rem;cursor:pointer;transition:all .2s;text-align:left;width:100%}
+  .option-btn:hover{border-color:var(--accent);background:var(--accent-light);transform:translateX(4px)}
+  .option-btn.selected{border-color:var(--accent);background:var(--accent-light)}
+  .option-btn.correct{border-color:var(--success);background:rgba(16,185,129,0.12);color:var(--success)}
+  .option-btn.wrong{border-color:var(--danger);background:rgba(239,68,68,0.1);color:var(--danger)}
+  .opt-letter{width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;flex-shrink:0;transition:all .2s}
+  .option-btn.correct .opt-letter{background:var(--success);color:#fff}
+  .option-btn.wrong .opt-letter{background:var(--danger);color:#fff}
+  /* Feedback */
+  .feedback-box{border-radius:12px;padding:16px 20px;margin-top:12px;font-size:0.9rem;line-height:1.5;display:none;animation:slideIn .3s ease}
+  .feedback-box.show{display:block}
+  .feedback-box.ok{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:#6ee7b7}
+  .feedback-box.bad{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);color:#fca5a5}
+  /* Hint */
+  .hint-box{background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px 16px;font-size:0.85rem;color:#fcd34d;margin-top:8px;display:none;animation:slideIn .3s ease}
+  .hint-box.show{display:block}
+  /* Actions */
+  .action-row{display:flex;gap:10px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+  .btn{padding:11px 22px;border-radius:10px;border:none;font-family:'Inter',sans-serif;font-size:0.9rem;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:#1d4ed8;transform:translateY(-1px)}
+  .btn-secondary{background:var(--surface2);color:var(--text)}
+  .btn-secondary:hover{background:#475569}
+  .btn-ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+  .btn-ghost:hover{background:var(--accent-light)}
+  /* Level indicator */
+  .level-bar{display:flex;gap:8px;margin-bottom:20px;background:var(--surface);border:1px solid var(--border);padding:14px 20px;border-radius:12px;align-items:center}
+  .level-dot{width:10px;height:10px;border-radius:50%;background:var(--surface2);transition:all .3s}
+  .level-dot.l1{background:#10b981}.level-dot.l2{background:#f59e0b}.level-dot.l3{background:#ef4444}
+  .level-dot.inactive{background:var(--surface2)}
+  /* Results screen */
+  .results-screen{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px;text-align:center;animation:slideIn .4s ease}
+  .result-icon{font-size:60px;margin-bottom:16px;display:block}
+  .result-title{font-size:1.6rem;font-weight:800;margin-bottom:8px}
+  .result-xp{font-size:2rem;font-weight:900;color:var(--accent);margin:16px 0}
+  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+  .stat-card{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+  .stat-val{font-size:1.5rem;font-weight:800;color:var(--accent)}
+  .stat-lbl{font-size:0.75rem;color:var(--text-mid);margin-top:4px}
+  .hidden{display:none}
+  @media(max-width:600px){.stats-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="quiz-container" id="quiz-container">
+  <!-- Header -->
+  <div class="quiz-header">
+    <div class="quiz-icon"><span class="material-symbols-outlined">loop</span></div>
+    <div>
+      <div class="quiz-title" id="quiz-title">Quiz Adaptativo — Ley de Ampere</div>
+      <div class="quiz-subtitle">Sistema adaptativo • 3 niveles de dificultad • Retroalimentación inmediata</div>
+    </div>
+  </div>
+
+  <!-- Level indicator -->
+  <div class="level-bar" id="level-indicator">
+    <span class="material-symbols-outlined" style="color:var(--text-mid);font-size:18px">trending_up</span>
+    <span style="font-size:0.82rem;color:var(--text-mid);margin-right:8px">Nivel actual:</span>
+    <div class="level-dot l1" id="dot-1" title="Nivel 1: Reconocimiento"></div>
+    <div class="level-dot inactive" id="dot-2" title="Nivel 2: Comprensión"></div>
+    <div class="level-dot inactive" id="dot-3" title="Nivel 3: Aplicación"></div>
+    <span id="level-label" style="font-size:0.82rem;font-weight:600;color:#10b981;margin-left:8px">Nivel 1 — Reconocimiento</span>
+    <span style="flex:1"></span>
+    <button class="btn btn-ghost" style="padding:6px 14px;font-size:0.78rem" onclick="mostrarPista()">
+      <span class="material-symbols-outlined" style="font-size:16px">lightbulb</span> Pista
+    </button>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-bar-wrap">
+    <div class="progress-meta">
+      <span id="q-counter">Pregunta 1 de 10</span>
+      <span class="level-badge" id="level-badge-text">RECONOCIMIENTO</span>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+  </div>
+
+  <!-- Question area -->
+  <div id="question-area"></div>
+
+  <!-- Results (hidden initially) -->
+  <div class="results-screen hidden" id="results-screen">
+    <span class="result-icon" id="result-emoji">⭐</span>
+    <div class="result-title" id="result-title">¡Evaluación Completada!</div>
+    <div style="color:var(--text-mid);font-size:0.95rem;margin-bottom:8px" id="result-level-text">Nivel máximo alcanzado</div>
+    <div class="result-xp" id="result-xp">+40 XP</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-val" id="stat-correct">0</div><div class="stat-lbl">Correctas</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-max-level">1</div><div class="stat-lbl">Nivel Máximo</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-score">0%</div><div class="stat-lbl">Precisión</div></div>
+    </div>
+    <div id="result-feedback" style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:left;font-size:0.88rem;line-height:1.6;color:var(--text-mid);margin-bottom:20px"></div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="reiniciarQuiz()"><span class="material-symbols-outlined" style="font-size:16px">refresh</span> Intentar de nuevo</button>
+      <button class="btn btn-primary" onclick="enviarResultado()"><span class="material-symbols-outlined" style="font-size:16px">check_circle</span> Guardar resultado</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const QUIZ_CONFIG = {
+  titulo: "Quiz Adaptativo — Ley de Ampere",
+  icono: "loop",
+  moduloId: "m9-q1",
+  xpBase: 40,
+  preguntas: [
+  {nivel:1,id:"c9-n1-1",
+   texto:"Ley de Ampere integral:",
+   formula:"∮ B·dl = μ₀I_enc",
+   opciones:[{"texto":"∮ B·dl = μ₀I_enc","correcto":true},{"texto":"∮ E·dA = Q/ε₀","correcto":false},{"texto":"∮ B·dA = 0","correcto":false},{"texto":"∮ E·dl = −dΦ/dt","correcto":false}],
+   feedback_ok:"∮ B·dl = μ₀I_enc es la Ley de Ampere.",
+   feedback_bad:"Ampere: ∮B·dl = μ₀I_enc.",
+   pista:"Ampere involucra la CIRCULACIÓN de B, no el flujo."
+  },
+  {nivel:1,id:"c9-n1-2",
+   texto:"Ampere es práctico cuando:",
+   
+   opciones:[{"texto":"Siempre","correcto":false},{"texto":"Solo con simetría que hace B constante en el camino","correcto":true},{"texto":"Solo para corrientes infinitas","correcto":false},{"texto":"Solo en conductores","correcto":false}],
+   feedback_ok:"Ampere es simple solo cuando B es constante en el camino elegido.",
+   feedback_bad:"Sin simetría, usa Biot-Savart. Ampere: cuando B = cte en el camino.",
+   pista:"¿Cuándo puedes sacar B fuera de la integral?"
+  },
+  {nivel:1,id:"c9-n1-3",
+   texto:"B fuera de solenoide ideal infinito:",
+   
+   opciones:[{"texto":"B = μ₀nI","correcto":false},{"texto":"B = 0","correcto":true},{"texto":"B = μ₀nI/2","correcto":false},{"texto":"Depende del radio","correcto":false}],
+   feedback_ok:"Fuera: I_enc = 0 → B = 0.",
+   feedback_bad:"Por Ampere con lazo exterior: I_enc = 0 → B = 0.",
+   pista:"Aplica Ampere con lazo que pasa dentro y fuera. ¿Cuánta corriente neta encierra afuera?"
+  },
+  {nivel:2,id:"c9-n2-4",
+   texto:"B dentro de conductor cilíndrico (r < R, corriente uniforme I):",
+   formula:"B = μ₀Ir/(2πR²)",
+   opciones:[{"texto":"B = μ₀I/(2πr)","correcto":false},{"texto":"B = μ₀Ir/(2πR²)","correcto":true},{"texto":"B = 0","correcto":false},{"texto":"B = μ₀I/(2πR)","correcto":false}],
+   feedback_ok:"I_enc = I(r/R)². B(2πr) = μ₀I_enc → B = μ₀Ir/(2πR²).",
+   feedback_bad:"I_enc = I(r/R)². Ampere: B = μ₀Ir/(2πR²).",
+   pista:"I_enc ∝ área encerrada: I_enc = I × (r²/R²)."
+  },
+  {nivel:2,id:"c9-n2-5",
+   texto:"B dentro de toroide (N vueltas, radio r, I):",
+   formula:"B = μ₀NI/(2πr)",
+   opciones:[{"texto":"B = μ₀NI/(2πr)","correcto":true},{"texto":"B = μ₀NI/(2r)","correcto":false},{"texto":"B = 0","correcto":false},{"texto":"B = μ₀nI","correcto":false}],
+   feedback_ok:"B(2πr) = μ₀NI → B = μ₀NI/(2πr).",
+   feedback_bad:"Ampere en toroide: B × 2πr = μ₀NI.",
+   pista:"Camino circular de radio r dentro del toroide."
+  },
+  {nivel:2,id:"c9-n2-6",
+   texto:"La corriente de desplazamiento de Maxwell:",
+   formula:"I_d = ε₀ dΦ_E/dt",
+   opciones:[{"texto":"I_d = ε₀ dΦ_E/dt","correcto":true},{"texto":"I_d = dQ/dt","correcto":false},{"texto":"I_d = μ₀ dB/dt","correcto":false},{"texto":"I_d = ε₀ E A","correcto":false}],
+   feedback_ok:"I_d = ε₀ dΦ_E/dt. Maxwell la agregó para generalizar Ampere.",
+   feedback_bad:"Maxwell: I_d = ε₀ dΦ_E/dt existe entre placas de un capacitor.",
+   pista:"Maxwell: Ampere falla entre placas del capacitor. Solución: término de flujo eléctrico variable."
+  },
+  {nivel:3,id:"c9-n3-7",
+   texto:"Coaxial: radio a (I), radio b (−I). B para a < r < b:",
+   formula:"B = μ₀I/(2πr)",
+   opciones:[{"texto":"B = μ₀I/(2πr)","correcto":true},{"texto":"B = μ₀(2I)/(2πr)","correcto":false},{"texto":"B = 0","correcto":false},{"texto":"B = μ₀I/(πr²)","correcto":false}],
+   feedback_ok:"Para a < r < b: I_enc = +I. B = μ₀I/(2πr).",
+   feedback_bad:"I_enc = I (solo interno). B = μ₀I/(2πr).",
+   pista:"¿Qué corrientes encierra el camino de radio a < r < b?"
+  },
+  {nivel:3,id:"c9-n3-8",
+   texto:"B para r > b en el mismo coaxial:",
+   
+   opciones:[{"texto":"B = μ₀(2I)/(2πr)","correcto":false},{"texto":"B = 0","correcto":true},{"texto":"B = μ₀I/(2πr)","correcto":false},{"texto":"B = μ₀I/(2πb)","correcto":false}],
+   feedback_ok:"I_enc = I − I = 0 → B = 0. ¡Sin campo externo!",
+   feedback_bad:"I_enc = +I + (−I) = 0 → B = 0.",
+   pista:"Suma TODAS las corrientes: conductor interno +I y externo −I."
+  },
+  {nivel:3,id:"c9-n3-9",
+   texto:"¿Por qué ∮ B·dA = 0?",
+   
+   opciones:[{"texto":"No existen monopolos magnéticos","correcto":true},{"texto":"B ⊥ dA","correcto":false},{"texto":"Las corrientes se cancelan","correcto":false},{"texto":"Por Lenz","correcto":false}],
+   feedback_ok:"No existen monopolos. Las líneas de B son siempre cerradas → flujo neto = 0.",
+   feedback_bad:"A diferencia de E, las líneas de B son siempre cerradas. No hay 'carga magnética'.",
+   pista:"El flujo eléctrico puede ser ≠ 0. ¿Por qué el magnético siempre es 0?"
+  }
+  ]
+};
+
+const MAX_QUESTIONS = 10;
+
+function shuffleArray(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function getQuestionsForLevel(level) {
+  return QUIZ_CONFIG.preguntas.filter(q => q.nivel === level);
+}
+
+function buildQueue() {
+  const n1 = shuffleArray(getQuestionsForLevel(1));
+  const n2 = shuffleArray(getQuestionsForLevel(2));
+  const n3 = shuffleArray(getQuestionsForLevel(3));
+  // Empieza con 2 de nivel 1, luego alterna según adaptación
+  shuffledQuestions = [...n1.slice(0,2), ...n2.slice(0,4), ...n3.slice(0,4)];
+  if(shuffledQuestions.length < MAX_QUESTIONS) {
+    shuffledQuestions = [...shuffledQuestions,...n1,...n2,...n3].slice(0,MAX_QUESTIONS);
+  }
+}
+
+function init() {
+  document.getElementById('quiz-title').textContent = QUIZ_CONFIG.titulo;
+  buildQueue();
+  renderQuestion();
+}
+
+function renderQuestion() {
+  if(questionIndex >= MAX_QUESTIONS || questionIndex >= shuffledQuestions.length) {
+    showResults(); return;
+  }
+  answered = false; hintsUsed = 0;
+  const q = shuffledQuestions[questionIndex];
+  currentLevel = q.nivel;
+  updateLevelUI();
+
+  const pct = (questionIndex / MAX_QUESTIONS) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('q-counter').textContent = `Pregunta ${questionIndex+1} de ${MAX_QUESTIONS}`;
+
+  const opts = shuffleArray(q.opciones.map((o,i) => ({...o, origIdx:i})));
+  const letters = ['A','B','C','D'];
+
+  document.getElementById('question-area').innerHTML = `
+    <div class="question-card">
+      <div class="q-number">PREGUNTA ${questionIndex+1} · NIVEL ${q.nivel}</div>
+      <div class="q-text">${q.texto}</div>
+      ${q.formula ? `<div class="q-formula">${q.formula}</div>` : ''}
+      <div class="options-grid" id="options-grid">
+        ${opts.map((o,i) => `
+          <button class="option-btn" id="opt-${i}" onclick="selectOption(${i}, this, ${o.correcto})">
+            <span class="opt-letter">${letters[i]}</span>
+            <span>${o.texto}</span>
+          </button>`).join('')}
+      </div>
+      <div class="hint-box" id="hint-box">
+        <strong>💡 Pista:</strong> ${q.pista}
+      </div>
+      <div class="feedback-box" id="feedback-box"></div>
+      <div class="action-row">
+        <button class="btn btn-primary hidden" id="btn-next" onclick="nextQuestion()">
+          <span class="material-symbols-outlined" style="font-size:16px">arrow_forward</span>
+          ${questionIndex+1 >= MAX_QUESTIONS ? 'Ver Resultados' : 'Siguiente'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function selectOption(idx, el, isCorrect) {
+  if(answered) return;
+  answered = true;
+  const q = shuffledQuestions[questionIndex];
+
+  document.querySelectorAll('.option-btn').forEach(b => {
+    b.disabled = true;
+    if(b.querySelector('span:last-child').textContent === el.querySelector('span:last-child').textContent) {
+      b.classList.add(isCorrect ? 'correct' : 'wrong');
+    }
+  });
+  // Show correct if wrong
+  if(!isCorrect) {
+    document.querySelectorAll('.option-btn').forEach(b => {
+      // mark correct answer
+    });
+  }
+
+  const fb = document.getElementById('feedback-box');
+  fb.className = 'feedback-box show ' + (isCorrect ? 'ok' : 'bad');
+  fb.innerHTML = `<strong>${isCorrect ? '✅ ¡Correcto!' : '❌ Incorrecto.'}</strong> ${isCorrect ? q.feedback_ok : q.feedback_bad}`;
+
+  document.getElementById('btn-next').classList.remove('hidden');
+
+  results.total++;
+  if(isCorrect) {
+    results.correct++;
+    correctStreak++; wrongStreak = 0;
+    if(correctStreak >= 2 && currentLevel < 3) { currentLevel++; correctStreak = 0; }
+  } else {
+    wrongStreak++; correctStreak = 0;
+    if(wrongStreak >= 2 && currentLevel > 1) { currentLevel--; wrongStreak = 0; }
+  }
+  results.maxLevel = Math.max(results.maxLevel, currentLevel);
+  results.details.push({ id: q.id, nivel: q.nivel, correcto: isCorrect });
+}
+
+function nextQuestion() {
+  questionIndex++;
+  // Inject next question with appropriate level
+  if(questionIndex < shuffledQuestions.length) {
+    // Try to get a question at currentLevel
+    const remaining = shuffledQuestions.slice(questionIndex);
+    const levelMatch = remaining.findIndex(q => q.nivel === currentLevel);
+    if(levelMatch > 0) {
+      [shuffledQuestions[questionIndex], shuffledQuestions[questionIndex+levelMatch]] =
+      [shuffledQuestions[questionIndex+levelMatch], shuffledQuestions[questionIndex]];
+    }
+  }
+  renderQuestion();
+}
+
+function mostrarPista() {
+  const box = document.getElementById('hint-box');
+  if(box) { box.classList.toggle('show'); hintsUsed++; }
+}
+
+function updateLevelUI() {
+  const dots = [document.getElementById('dot-1'), document.getElementById('dot-2'), document.getElementById('dot-3')];
+  dots.forEach((d,i) => {
+    d.className = 'level-dot';
+    if(i+1 <= currentLevel) d.classList.add(['l1','l2','l3'][i]);
+    else d.classList.add('inactive');
+  });
+  const lbl = document.getElementById('level-label');
+  lbl.textContent = `Nivel ${currentLevel} — ${['Reconocimiento','Comprensión','Aplicación'][currentLevel-1]}`;
+  lbl.style.color = LEVEL_COLORS[currentLevel];
+  document.getElementById('level-badge-text').textContent = LEVEL_NAMES[currentLevel];
+}
+
+function showResults() {
+  document.getElementById('level-indicator').style.display = 'none';
+  document.getElementById('progress-bar-wrap')?.remove?.();
+  document.getElementById('question-area').style.display = 'none';
+  document.querySelectorAll('.progress-bar-wrap').forEach(e => e.style.display='none');
+
+  const pct = Math.round((results.correct / results.total) * 100) || 0;
+  const xp = Math.round(QUIZ_CONFIG.xpBase * (pct/100) * (results.maxLevel / 3) * (hintsUsed === 0 ? 1.2 : 1));
+
+  const emojis = ['😔','😐','🙂','😊','⭐','🌟','🏆'][Math.floor(pct/15)] || '🏆';
+  const titulo = pct >= 80 ? '¡Desempeño Sobresaliente!' : pct >= 60 ? '¡Buen trabajo!' : 'Sigue practicando';
+
+  const feedbacks = {
+    conceptos: results.details.filter(d => d.nivel===1 && !d.correcto).length,
+    calculo:   results.details.filter(d => d.nivel===2 && !d.correcto).length,
+    aplicacion: results.details.filter(d => d.nivel===3 && !d.correcto).length
+  };
+  let feedbackText = '';
+  if(feedbacks.conceptos > 0) feedbackText += '• Repasa los conceptos básicos de la Ley de Coulomb y las propiedades de las cargas.<br>';
+  if(feedbacks.calculo > 0) feedbackText += '• Practica el cálculo numérico con conversión de unidades (μC → C).<br>';
+  if(feedbacks.aplicacion > 0) feedbackText += '• Los problemas de aplicación requieren integrar superposición y análisis vectorial.<br>';
+  if(!feedbackText) feedbackText = '🎉 Dominio completo del módulo. ¡Estás listo para el siguiente tema!';
+
+  document.getElementById('results-screen').classList.remove('hidden');
+  document.getElementById('result-emoji').textContent = emojis;
+  document.getElementById('result-title').textContent = titulo;
+  document.getElementById('result-level-text').textContent = `Nivel máximo alcanzado: ${['','Reconocimiento','Comprensión','Aplicación'][results.maxLevel]}`;
+  document.getElementById('result-xp').textContent = `+${xp} XP`;
+  document.getElementById('stat-correct').textContent = `${results.correct}/${results.total}`;
+  document.getElementById('stat-max-level').textContent = results.maxLevel;
+  document.getElementById('stat-score').textContent = pct + '%';
+  document.getElementById('result-feedback').innerHTML = feedbackText;
+}
+
+function enviarResultado() {
+  const pct = Math.round((results.correct / results.total) * 100) || 0;
+  const xp = Math.round(QUIZ_CONFIG.xpBase * (pct/100) * (results.maxLevel/3));
+  window.parent?.postMessage({
+    action: 'marcarCompletado',
+    lessonId: QUIZ_CONFIG.moduloId,
+    xp: xp,
+    quizData: { nivel_final: results.maxLevel, score: pct, correctas: results.correct, total: results.total },
+    mensaje: `Quiz completado — Nivel ${results.maxLevel} — ${pct}% de precisión`
+  }, '*');
+}
+
+function reiniciarQuiz() {
+  currentLevel=1; questionIndex=0; correctStreak=0; wrongStreak=0;
+  results={correct:0,total:0,maxLevel:1,details:[]}; hintsUsed=0;
+  document.getElementById('results-screen').classList.add('hidden');
+  document.getElementById('question-area').style.display='';
+  document.getElementById('level-indicator').style.display='';
+  buildQueue(); renderQuestion();
+}
+
+window.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>

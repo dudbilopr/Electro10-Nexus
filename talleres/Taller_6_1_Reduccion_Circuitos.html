@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Interactivo: Análisis de Redes Eléctricas</title>
+    
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- Motores Matemáticos y Exportación -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <!-- Fuentes -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #0f172a;
+            --secondary-color: #3b82f6;
+            --success-color: #10b981;
+            --error-color: #ef4444;
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8fafc; 
+            color: #1e293b; 
+            transition: background-color 0.3s;
+        }
+
+        /* Capa de Dibujo Global */
+        .drawing-layer { 
+            position: fixed; top: 0; left: 0; pointer-events: none; z-index: 50; width: 100vw; height: 100vh; 
+        }
+        .drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+
+        /* Estilos de Componentes Académicos */
+        .problem-card { break-inside: avoid; transition: all 0.3s ease; }
+        .problem-text { margin-bottom: 0.75rem; padding-left: 0.5rem; border-left: 3px solid #cbd5e1; }
+        .compact-text { font-size: 0.85rem; line-height: 1.5; color: #334155; }
+        .hint-content { display: none; margin-top: 0.5rem; padding: 0.75rem; background: #eff6ff; border-radius: 0.5rem; border: 1px solid #bfdbfe; font-size: 0.8rem; color: #1e40af; }
+        .hint-content.show { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Lienzo Integrado (Modo Claro/Oscuro) */
+        .neon-container {
+            border-radius: 0.75rem;
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            cursor: grab;
+            transition: all 0.3s ease;
+        }
+        .neon-container:active { cursor: grabbing; }
+
+        /* Temas del Canvas */
+        body.light-theme .neon-container {
+            background: #ffffff;
+            border: 2px solid #e2e8f0;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.02);
+        }
+        body.dark-theme .neon-container {
+            background: #0f172a;
+            border: 2px solid #334155;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        /* Envoltura para Escala Dinámica (Pan y Zoom) */
+        .circuit-scale-wrapper {
+            position: absolute;
+            top: 0; left: 0;
+            width: 850px; height: 480px;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        .labels-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5;
+        }
+        .katex-label {
+            position: absolute; transform: translate(-50%, -50%); font-size: 1.15em; font-weight: 600;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+
+        body.light-theme .katex-label {
+            color: #1e293b;
+            text-shadow: 0 0 4px rgba(255, 255, 255, 1);
+        }
+        body.dark-theme .katex-label {
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.9), 0 0 15px rgba(56, 189, 248, 0.6);
+        }
+
+        /* Editor Panel - Inputs Amplios */
+        .values-panel {
+            display: none; animation: fadeIn 0.2s ease-out;
+        }
+        .values-panel.active { display: block; }
+        
+        .editor-input-box {
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .editor-input-box input {
+            width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;
+            background: #ffffff; color: #0f172a; text-align: center; font-weight: 600; outline: none;
+            transition: all 0.2s; font-size: 0.9rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        body.dark-theme .editor-input-box input {
+            background: #1e293b; border-color: #475569; color: #f8fafc;
+        }
+        .editor-input-box input:focus { border-color: var(--secondary-color); box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+
+        /* Tablas de Verificación Compactas */
+        .verify-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .verify-table th, .verify-table td { border: 1px solid #e2e8f0; padding: 0.3rem; text-align: center; }
+        .verify-table th { background: #f1f5f9; color: #475569; font-weight: 600; }
+        .verify-table td { background: #ffffff; }
+        
+        body.dark-theme .verify-table th, body.dark-theme .verify-table td { border-color: #334155; }
+        body.dark-theme .verify-table th { background: #1e293b; color: #cbd5e1; }
+        body.dark-theme .verify-table td { background: #0f172a; }
+
+        input.verify-cell {
+            width: 100%; min-width: 50px; padding: 0.25rem; border: 1px solid #cbd5e1; border-radius: 4px; 
+            text-align: center; font-size: 0.8rem; outline: none; background: #f8fafc; font-weight: 600; transition: all 0.2s;
+        }
+        body.dark-theme input.verify-cell { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+        
+        input.verify-cell:focus { border-color: var(--secondary-color); }
+        input.verify-cell.correct { background-color: #d1fae5; border-color: var(--success-color); color: #065f46; }
+        input.verify-cell.incorrect { background-color: #fee2e2; border-color: var(--error-color); color: #991b1b; }
+        
+        body.dark-theme input.verify-cell.correct { background-color: rgba(16,185,129,0.2); color: #34d399; }
+        body.dark-theme input.verify-cell.incorrect { background-color: rgba(239,68,68,0.2); color: #f87171; }
+
+        .toolbar-btn { transition: all 0.2s; display: inline-flex; items-center; justify-center; gap: 0.4rem; }
+        .toolbar-btn:hover { transform: translateY(-1px); }
+        .icon-svg { width: 1.1rem; height: 1.1rem; }
+
+        /* Controles de Vista de Canvas */
+        .canvas-controls {
+            position: absolute; bottom: 10px; right: 10px; z-index: 20;
+            display: flex; gap: 4px; background: rgba(255,255,255,0.9); padding: 4px; border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;
+        }
+        body.dark-theme .canvas-controls { background: rgba(15,23,42,0.9); border-color: #334155; }
+        .canvas-controls button {
+            padding: 6px; border-radius: 4px; color: #475569; transition: all 0.2s;
+        }
+        body.dark-theme .canvas-controls button { color: #cbd5e1; }
+        .canvas-controls button:hover { background: #e2e8f0; color: #0f172a; }
+        body.dark-theme .canvas-controls button:hover { background: #334155; color: #fff; }
+
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            body { background: white; padding: 0; }
+            .problem-card { border: 1px solid #e2e8f0; box-shadow: none; margin-bottom: 1rem; }
+            .neon-container { background: #ffffff !important; border: 1px solid #cbd5e1 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .katex-label { color: #000 !important; text-shadow: none !important; }
+            main { display: block !important; }
+            .grid { display: block !important; }
+        }
+    </style>
+</head>
+<body class="light-theme p-4 md:p-8">
+
+    <!-- Capa de Dibujo Global -->
+    <canvas id="globalDrawingCanvas" class="drawing-layer"></canvas>
+
+    <!-- Toolbar Superior Fija -->
+    <nav class="no-print sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 mb-6 px-4 py-3 flex flex-wrap gap-3 items-center justify-between rounded-xl shadow-sm transition-colors">
+        <div class="flex items-center gap-2 md:gap-3 overflow-x-auto">
+            <h1 class="font-bold text-slate-800 text-sm md:text-base whitespace-nowrap">Physics.10easy Workshop</h1>
+            <div class="h-6 w-px bg-slate-300 hidden md:block"></div>
+            
+            <button onclick="toggleCanvasTheme()" class="toolbar-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-200">
+                <svg id="themeIcon" class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                Tema
+            </button>
+            <button onclick="exportToPDF()" class="toolbar-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-blue-700">
+                <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Exportar PDF
+            </button>
+            <button onclick="toggleAllHints()" class="toolbar-btn bg-amber-100 text-amber-800 border border-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-200">
+                <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                Pistas
+            </button>
+            <button id="btnFlowToggle" onclick="toggleFlowType()" class="toolbar-btn bg-rose-100 text-rose-800 border border-rose-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-rose-200">
+                <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span id="flowText">Flujo Convencional</span>
+            </button>
+        </div>
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 mt-2 md:mt-0">
+            <button id="penBtn" onclick="setDrawingMode('pen')" class="p-1.5 rounded hover:bg-white transition-colors text-slate-600" title="Lápiz">
+                <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            </button>
+            <button id="eraserBtn" onclick="setDrawingMode('eraser')" class="p-1.5 rounded hover:bg-white transition-colors text-slate-600" title="Borrador">
+                <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path></svg>
+            </button>
+            <button onclick="clearCanvas()" class="p-1.5 rounded hover:bg-white transition-colors text-slate-600" title="Limpiar todo">
+                <svg class="icon-svg" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+            <button id="toggleDrawBtn" onclick="toggleDrawing()" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 border-l border-slate-300 ml-1">Dibujo OFF</button>
+        </div>
+    </nav>
+
+    <!-- Header Principal -->
+    <header class="text-center mb-8 border-b border-blue-100 pb-6">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Taller Completo: Análisis de Circuitos y Redes</h2>
+        <p class="text-slate-500 mt-2 text-sm">Física II • Ingeniería • Área de Física y Electrónica</p>
+        <div class="flex flex-wrap justify-center gap-4 md:gap-8 mt-4 text-[10px] md:text-xs font-mono text-slate-400 uppercase tracking-widest">
+            <span>Grupo: 10E-CIRC</span>
+            <span>Docente: Physics.10easy Builder</span>
+            <span>Unidad 3: Electrodinámica</span>
+        </div>
+    </header>
+
+    <!-- Sección de Refuerzo Conceptual (Teoría) -->
+    <section class="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4 no-print">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-rose-500">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Conexión en Serie
+            </h3>
+            <p class="text-xs text-slate-600 mt-2">Los componentes comparten un solo camino.</p>
+            <ul class="text-xs text-slate-500 list-disc pl-5 mt-2 space-y-1">
+                <li>La <strong>Corriente (<span id="tex_i_s"></span>)</strong> es la misma en todos.</li>
+                <li>El <strong>Voltaje (<span id="tex_v_s"></span>)</strong> se divide según la resistencia.</li>
+                <li>Resistencia Equivalente: <span id="tex_req_s" class="ml-1 font-semibold text-rose-600"></span></li>
+            </ul>
+        </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 border-l-4 border-l-blue-500">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                Conexión en Paralelo
+            </h3>
+            <p class="text-xs text-slate-600 mt-2">Los componentes comparten los mismos nodos de inicio y fin.</p>
+            <ul class="text-xs text-slate-500 list-disc pl-5 mt-2 space-y-1">
+                <li>El <strong>Voltaje (<span id="tex_v_p"></span>)</strong> es exactamente el mismo en todas las ramas.</li>
+                <li>La <strong>Corriente (<span id="tex_i_p"></span>)</strong> se divide en caminos de menor resistencia.</li>
+                <li>Resistencia Equivalente: <span id="tex_req_p" class="ml-1 font-semibold text-blue-600"></span></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Contenido del Taller (Grid) -->
+    <main class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6" id="taller-content">
+        <!-- GENERACIÓN DINÁMICA -->
+    </main>
+
+    <footer class="mt-12 pt-6 pb-12 border-t border-slate-200 text-center text-xs text-slate-400 no-print">
+        <p>Generado por Physics.10easy Builder • Optimizado para impresión y proyección.</p>
+    </footer>
+
+    <!-- Lógica Principal -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        let isInIframe = (window.parent !== window);
+        let userId = null;
+        let db = null;
+        const appId = 'electro10'; 
+
+        // Firebase Iframe Sync
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.action === 'initSync') {
+                userId = event.data.uid;
+                console.log("Simulador vinculado al Padre con usuario:", userId);
+            }
+        });
+
+        // Firebase Link Directo
+        if (!isInIframe) {
+            const firebaseConfig = {
+                apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+                authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+                projectId: "laboratorio-de-coulomb",
+                storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+                messagingSenderId: "525944850850",
+                appId: "1:525944850850:web:eca9c0b79809358e8d8afb"
+            };
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            const auth = getAuth(app);
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) { userId = user.uid; } 
+                else {
+                    // console.warn("Usuario no logueado.");
+                }
+            });
+        }
+
+        const MI_ID_DE_LECCION = "taller_circuitos"; 
+
+        window.marcarActividadCompletada = async function() {
+            if (isInIframe) {
+                window.parent.postMessage({
+                    action: 'marcarCompletado', lessonId: MI_ID_DE_LECCION, mensaje: '¡Has dominado este circuito!'
+                }, '*');
+            } else if (userId && db) {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'users', userId, 'progress', 'data'), {
+                        [MI_ID_DE_LECCION]: true
+                    }, { merge: true });
+                    console.log("Progreso guardado.");
+                } catch (e) {
+                    console.error("Error guardando progreso", e);
+                }
+            }
+        };
+    </script>
+
+    <script>
+        // ==========================================
+        // 1. ESTADO Y CONFIGURACIÓN GLOBAL
+        // ==========================================
+        let animationTime = 0;
+        let lastTime = 0;
+        let flowType = 'conventional'; 
+        let isDarkMode = false;
+        let ctx = null;              
+        let currentCircuitId = null; 
+
+        // View states for Pan & Zoom per circuit
+        const viewStates = {};
+        for(let i=1; i<=7; i++) viewStates[i] = { x: 0, y: 0, zoom: 1 };
+
+        const state = {
+            1: { Vs: 48, R1: 4, R2: 20, R3: 5, R4a: 15, R4b: 15, R4c: 15, R5: 5, R6: 24, R7: 8 },
+            2: { Vs: 10, R1: 3, R2: 4, R3: 2, R4: 6, R5: 1, R6: 2 },
+            3: { Vs: 40, R1: 5, R2: 15, R3: 60, R4: 12, R5: 6, R6: 20, R7: 80 },
+            4: { Vs: 15, R1: 10, R2: 25, R3: 60, R4: 20, R5: 24, R6: 20, R7: 50, R8: 30 },
+            5: { Vs: 12, R1: 1, R2: 2, R3: 0.5, R4: 0.5, R5: 2, R6: 1, R7: 2, R8: 1, R9: 0.5, R10: 0.5 },
+            6: { Vs: 20, R1: 3, R2: 5, R3: 5, R4: 10, R5: 10, R6: 7, R7: 3, R8: 10 },
+            7: { Vs: 100, R1: 20, R2: 30, R3: 200, R4: 50, R5: 175, R6: 100, R7: 50, R8: 100, R9: 60, R10: 40, R11: 100 }
+        };
+
+        const currentAnswers = { 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {} };
+        const contexts = {};
+
+        const problemTexts = {
+            1: { title: "Circuito Mixto Básico", desc: "Determine la resistencia equivalente, voltajes, corrientes y potencias disipadas para cada componente." },
+            2: { title: "Topología de Escalera", desc: "Analice el circuito en escalera. Emplee reducción sucesiva desde el extremo derecho hacia la fuente." },
+            3: { title: "Nodos Múltiples", desc: "Dado el circuito con nodos distribuidos, calcule con precisión las caídas de tensión en cada rama." },
+            4: { title: "Topología Puente-T", desc: "Resuelva la topología de puente T (T-Bridge). Determine el flujo de corriente en las uniones." },
+            5: { title: "Lazos Anidados Simétricos", desc: "Analice la red. Recomendación: reduzca los paralelos locales primero antes de sumar en serie." },
+            6: { title: "Puente Diagonal Resistivo", desc: "Resuelva el circuito que incluye un puente diagonal resistivo ($R_8$). Emplee reducción serie-paralelo." },
+            7: { title: "Red Compleja Extendida", desc: "Para esta red de alta densidad, evalúe la corriente total suministrada por la fuente." }
+        };
+
+        const tips = {
+            1: "Identifica bloques que comparten nodos. Resuelve R2||R3, luego la tríada R4a||R4b||R4c, y finalmente R6||R7.",
+            2: "Empieza desde el extremo derecho: (R5 + R6) en paralelo con R4. Luego suma R3 en serie y repite.",
+            3: "La línea inferior común actúa como referencia (0V). Identifica los resistores conectados al mismo nodo superior.",
+            4: "Agrupa por la derecha (R7+R8)||R6. En la rama inferior R3||R4. Luego consolida el nodo central.",
+            5: "Reduce paralelos locales: (R3+R4)||R2, R6||R7, R8||R9. Luego suma las mallas simplificadas.",
+            6: "El lado derecho tiene R6+R7 en paralelo con la diagonal R8. Luego esto queda en serie con R4||R5.",
+            7: "Agrupa por etapas desde la derecha: R9+R10, paralelo con R8. Añade R6, paralelo con R7. Y así hasta la fuente."
+        };
+
+        // ==========================================
+        // 2. GENERACIÓN DEL DOM (TARJETAS)
+        // ==========================================
+        function buildGridDOM() {
+            const main = document.getElementById('taller-content');
+            for(let i=1; i<=7; i++) {
+                const isLarge = (i === 7); 
+                const cardHtml = `
+                <section class="problem-card bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col gap-3 ${isLarge ? 'lg:col-span-2' : ''}">
+                    <div class="flex justify-between items-start">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">EJERCICIO 0${i}</span>
+                        <button onclick="toggleHint(this)" class="text-slate-400 text-[10px] uppercase font-semibold hover:text-blue-500 transition-colors flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Pista
+                        </button>
+                        <div class="hint-content w-full absolute left-0 mt-8 z-20 shadow-lg dark:bg-slate-700 dark:border-slate-600 dark:text-blue-200" style="position:relative;">${tips[i]}</div>
+                    </div>
+                    
+                    <div class="problem-text compact-text border-l-blue-400 dark:text-slate-300">
+                        <strong class="dark:text-slate-100">${i}. ${problemTexts[i].title}:</strong> ${problemTexts[i].desc}
+                    </div>
+
+                    <!-- Controles de Canvas y Botón Editor -->
+                    <div class="flex flex-wrap gap-2 justify-between items-center bg-slate-50 dark:bg-slate-900 p-2 rounded-lg border border-slate-100 dark:border-slate-700">
+                        <button onclick="toggleValuesPanel(${i})" class="flex items-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            Ajustar Parámetros
+                        </button>
+                        <div class="text-[10px] text-slate-400 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg> Arrastra o Scroll para Zoom
+                        </div>
+                    </div>
+
+                    <!-- Panel de Valores Amplio (Oculto por defecto) -->
+                    <div id="values-panel-${i}" class="values-panel bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div class="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Modificar Valores del Circuito</div>
+                        <div id="editor-${i}" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"></div>
+                    </div>
+
+                    <!-- Canvas y Simulador -->
+                    <div id="neon-container-${i}" class="neon-container" style="padding-top: 56.47%;">
+                        <div class="circuit-scale-wrapper" id="wrapper-${i}">
+                            <canvas id="canvas-${i}" width="850" height="480"></canvas>
+                            <div id="labels-${i}" class="labels-overlay"></div>
+                        </div>
+                        <!-- Controles Internos de Zoom -->
+                        <div class="canvas-controls no-print">
+                            <button onclick="zoomCanvas(${i}, 1.2)" title="Acercar"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"></path></svg></button>
+                            <button onclick="zoomCanvas(${i}, 0.8)" title="Alejar"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg></button>
+                            <button onclick="resetZoom(${i})" title="Restaurar Vista"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg></button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Verificación -->
+                    <div class="mt-2 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800 px-3 py-2 text-[11px] font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700 flex justify-between">
+                            <span>Tabla de Verificación Analítica (Use 2 Decimales)</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="verify-table">
+                                <thead>
+                                    <tr>
+                                        <th>Componente</th><th>Voltaje (V)</th><th>Corriente (A)</th><th>Potencia (W)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-${i}"></tbody>
+                            </table>
+                        </div>
+                        <div class="p-3 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
+                            <button onclick="verifyAnswers(${i})" class="w-full flex justify-center items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-md transition-colors shadow-sm">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Validar Cálculos 
+                            </button>
+                            <div id="feedback-${i}" class="hidden mt-3 p-2 rounded-md text-xs font-semibold text-center border"></div>
+                        </div>
+                    </div>
+                </section>
+                `;
+                main.innerHTML += cardHtml;
+            }
+        }
+
+        // ==========================================
+        // 3. MOTOR MATEMÁTICO
+        // ==========================================
+        const calcP = (...res) => 1 / res.reduce((acc, val) => acc + 1/val, 0);
+
+        function solveCircuit(id) {
+            const s = state[id];
+            let ans = {};
+            
+            if (id === 1) {
+                let eqP1 = calcP(s.R2, s.R3), eqP2 = calcP(s.R4a, s.R4b, s.R4c), eqP3 = calcP(s.R6, s.R7);
+                let rTot = s.R1 + eqP1 + eqP2 + s.R5 + eqP3;
+                let iTot = s.Vs / rTot;
+                let vP1 = iTot * eqP1, vP2 = iTot * eqP2, vP3 = iTot * eqP3;
+                ans = {
+                    R1: { v: iTot*s.R1, i: iTot },
+                    R2: { v: vP1, i: vP1/s.R2 }, R3: { v: vP1, i: vP1/s.R3 },
+                    R4a: { v: vP2, i: vP2/s.R4a }, R4b: { v: vP2, i: vP2/s.R4b }, R4c: { v: vP2, i: vP2/s.R4c },
+                    R5: { v: iTot*s.R5, i: iTot },
+                    R6: { v: vP3, i: vP3/s.R6 }, R7: { v: vP3, i: vP3/s.R7 }
+                };
+                ans.total = {i: iTot};
+            } 
+            else if (id === 2) {
+                let rb3 = s.R5 + s.R6; let rnB = calcP(s.R4, rb3);
+                let rb2 = s.R3 + rnB; let rnA = calcP(s.R2, rb2);
+                let rTot = s.R1 + rnA;
+                let iTot = s.Vs / rTot;
+                let vR1 = iTot * s.R1; let vNodeA = s.Vs - vR1;
+                let iR2 = vNodeA / s.R2, iB2 = iTot - iR2;
+                let vR3 = iB2 * s.R3, vNodeB = vNodeA - vR3;
+                let iR4 = vNodeB / s.R4, iB3 = iB2 - iR4;
+                ans = {
+                    R1: { v: vR1, i: iTot }, R2: { v: vNodeA, i: iR2 },
+                    R3: { v: vR3, i: iB2 },  R4: { v: vNodeB, i: iR4 },
+                    R5: { v: iB3*s.R5, i: iB3 }, R6: { v: iB3*s.R6, i: iB3 }
+                };
+                ans.total = {i: iTot};
+            }
+            else if (id === 3) {
+                let reqAB = calcP(s.R4, s.R5); let reqBGnd = calcP(s.R6, s.R7);
+                let reqMid = reqAB + reqBGnd; let reqAGnd = calcP(s.R2, s.R3, reqMid);
+                let rTot = s.R1 + reqAGnd;
+                let iTot = s.Vs / rTot;
+                let vNodeA = s.Vs - (iTot * s.R1);
+                let iMid = vNodeA / reqMid;
+                let vAB = iMid * reqAB, vNodeB = iMid * reqBGnd;
+                ans = {
+                    R1: { v: iTot*s.R1, i: iTot },
+                    R2: { v: vNodeA, i: vNodeA/s.R2 }, R3: { v: vNodeA, i: vNodeA/s.R3 },
+                    R4: { v: vAB, i: vAB/s.R4 }, R5: { v: vAB, i: vAB/s.R5 },
+                    R6: { v: vNodeB, i: vNodeB/s.R6 }, R7: { v: vNodeB, i: vNodeB/s.R7 }
+                };
+                ans.total = {i: iTot};
+            }
+            else if (id === 4) {
+                let eqP_down = calcP(s.R3, s.R4); let r_branch_down = s.R2 + eqP_down; 
+                let eqP_right = calcP(s.R6, s.R7 + s.R8); let r_branch_right = s.R5 + eqP_right; 
+                let rTot = s.R1 + calcP(r_branch_down, r_branch_right); 
+                let iTot = s.Vs / rTot; 
+                let vNodeA = s.Vs - (iTot * s.R1); 
+                let i_down = vNodeA / r_branch_down; let v_Pdown = vNodeA - (i_down * s.R2); 
+                let i_right = vNodeA / r_branch_right; let vNodeB = vNodeA - (i_right * s.R5); 
+                let i_far_right = vNodeB / (s.R7 + s.R8);
+                ans = {
+                    R1: { v: iTot*s.R1, i: iTot }, R2: { v: i_down*s.R2, i: i_down },
+                    R3: { v: v_Pdown, i: v_Pdown/s.R3 }, R4: { v: v_Pdown, i: v_Pdown/s.R4 },
+                    R5: { v: i_right*s.R5, i: i_right }, R6: { v: vNodeB, i: vNodeB/s.R6 },
+                    R7: { v: i_far_right*s.R7, i: i_far_right }, R8: { v: i_far_right*s.R8, i: i_far_right }
+                };
+                ans.total = {i: iTot};
+            }
+            else if (id === 5) {
+                let eqP_left = calcP(s.R2, s.R3 + s.R4);
+                let r_branch_right = calcP(s.R8, s.R9) + s.R10;
+                let r_branch_main = s.R5 + calcP(calcP(s.R6, s.R7), r_branch_right);
+                let rTot = s.R1 + calcP(eqP_left, r_branch_main);
+                let iTot = s.Vs / rTot;
+                let vNodeA = s.Vs - (iTot * s.R1);
+                let iR34 = vNodeA / (s.R3 + s.R4);
+                let i_main = vNodeA / r_branch_main;
+                let vNodeB = vNodeA - (i_main * s.R5);
+                let i_right = vNodeB / r_branch_right;
+                let v_top_right = i_right * calcP(s.R8, s.R9);
+                ans = {
+                    R1: { v: iTot*s.R1, i: iTot }, R2: { v: vNodeA, i: vNodeA/s.R2 },
+                    R3: { v: iR34 * s.R3, i: iR34 }, R4: { v: iR34 * s.R4, i: iR34 },
+                    R5: { v: i_main*s.R5, i: i_main }, R6: { v: vNodeB, i: vNodeB/s.R6 }, R7: { v: vNodeB, i: vNodeB/s.R7 },
+                    R8: { v: v_top_right, i: v_top_right/s.R8 }, R9: { v: v_top_right, i: v_top_right/s.R9 },
+                    R10: { v: i_right * s.R10, i: i_right }
+                };
+                ans.total = {i: iTot};
+            }
+            else if (id === 6) {
+                let r_right_branch = calcP(s.R4, s.R5) + calcP(s.R8, s.R6 + s.R7); 
+                let rTot = s.R1 + calcP(calcP(s.R2, s.R3), r_right_branch); 
+                let iTot = s.Vs / rTot; 
+                let vNodeA = s.Vs - (iTot * s.R1); 
+                let i_rb = vNodeA / r_right_branch; 
+                let v_eqP_top = i_rb * calcP(s.R4, s.R5); 
+                let vNodeB = vNodeA - v_eqP_top; 
+                let i_sr = vNodeB / (s.R6 + s.R7); 
+                ans = {
+                    R1: { v: iTot*s.R1, i: iTot }, R2: { v: vNodeA, i: vNodeA/s.R2 }, R3: { v: vNodeA, i: vNodeA/s.R3 },
+                    R4: { v: v_eqP_top, i: v_eqP_top/s.R4 }, R5: { v: v_eqP_top, i: v_eqP_top/s.R5 },
+                    R6: { v: i_sr * s.R6, i: i_sr }, R7: { v: i_sr * s.R7, i: i_sr },
+                    R8: { v: vNodeB, i: vNodeB/s.R8 }
+                };
+                ans.total = {i: iTot};
+            }
+            else if (id === 7) {
+                let r_de = calcP(s.R8, s.R9 + s.R10);
+                let r_ce = calcP(s.R7, s.R6 + r_de);
+                let r_cb = calcP(s.R5, r_ce + s.R11);
+                let r_ab = calcP(s.R3, s.R4 + r_cb);
+                let rTot = s.R1 + r_ab + s.R2;
+                let iTot = s.Vs / rTot;
+                let vAB = iTot * r_ab;
+                let iAtoC = vAB / (s.R4 + r_cb); let vCB = iAtoC * r_cb;
+                let iCtoE = vCB / (r_ce + s.R11); let vCE = iCtoE * r_ce;
+                let iCtoD = vCE / (s.R6 + r_de); let vDE = iCtoD * r_de;
+                let iDtoF = vDE / (s.R9 + s.R10);
+                ans = {
+                    R1: { v: iTot*s.R1, i: iTot }, R2: { v: iTot*s.R2, i: iTot }, R3: { v: vAB, i: vAB/s.R3 },
+                    R4: { v: iAtoC*s.R4, i: iAtoC }, R5: { v: vCB, i: vCB/s.R5 }, R6: { v: iCtoD*s.R6, i: iCtoD },
+                    R7: { v: vCE, i: vCE/s.R7 }, R8: { v: vDE, i: vDE/s.R8 }, R9: { v: iDtoF*s.R9, i: iDtoF },
+                    R10: { v: iDtoF*s.R10, i: iDtoF }, R11: { v: iCtoE*s.R11, i: iCtoE }
+                };
+                ans.total = {i: iTot};
+            }
+            currentAnswers[id] = ans;
+        }
+
+        // ==========================================
+        // 4. GENERACIÓN DE INTERFACES POR CIRCUITO
+        // ==========================================
+        function toggleValuesPanel(id) {
+            const panel = document.getElementById(`values-panel-${id}`);
+            panel.classList.toggle('active');
+        }
+
+        function buildEditorPanel(id) {
+            const panel = document.getElementById(`editor-${id}`);
+            panel.innerHTML = '';
+            Object.keys(state[id]).forEach(key => {
+                const isVolt = key === 'Vs';
+                const texName = key.replace(/([0-9a-c]+)/, "_{$1}");
+                
+                const div = document.createElement('div');
+                div.className = 'editor-input-box';
+                
+                const label = document.createElement('label');
+                label.className = "text-xs font-semibold text-slate-500 dark:text-slate-400 flex justify-between";
+                
+                const spanName = document.createElement('span');
+                katex.render(texName, spanName, {throwOnError: false});
+                const spanUnit = document.createElement('span');
+                katex.render(isVolt ? 'V' : '\\Omega', spanUnit, {throwOnError: false});
+
+                label.appendChild(spanName); label.appendChild(spanUnit);
+
+                const input = document.createElement('input');
+                input.type = 'number'; input.step = '0.1'; input.min = '0.01';
+                input.value = state[id][key];
+                
+                input.oninput = (e) => {
+                    const val = parseFloat(e.target.value);
+                    if(val > 0) {
+                        state[id][key] = val;
+                        solveCircuit(id);
+                        buildLabelsDOM(id);
+                        document.querySelectorAll(`#tbody-${id} .verify-cell`).forEach(i => i.className = "verify-cell");
+                        document.getElementById(`feedback-${id}`).style.display = 'none';
+                    }
+                };
+
+                div.appendChild(label); div.appendChild(input);
+                panel.appendChild(div);
+            });
+        }
+
+        function buildTable(id) {
+            const tbody = document.getElementById(`tbody-${id}`);
+            tbody.innerHTML = '';
+            Object.keys(state[id]).filter(k => k !== 'Vs').forEach(comp => {
+                const texName = comp.replace(/([0-9a-c]+)/, "_{$1}"); 
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="font-bold text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700"><span id="tbl_${id}_${comp}"></span></td>
+                    <td><input type="number" id="v_${id}_${comp}" class="verify-cell" step="0.01"></td>
+                    <td><input type="number" id="i_${id}_${comp}" class="verify-cell" step="0.01"></td>
+                    <td><input type="number" id="p_${id}_${comp}" class="verify-cell" step="0.01"></td>
+                `;
+                tbody.appendChild(tr);
+                katex.render(texName, document.getElementById(`tbl_${id}_${comp}`), {throwOnError: false});
+            });
+        }
+
+        function buildLabelsDOM(id) {
+            const overlay = document.getElementById(`labels-${id}`);
+            overlay.innerHTML = '';
+            const s = state[id];
+
+            const addLabel = (tex, x, y) => {
+                const div = document.createElement('div');
+                div.className = 'katex-label'; div.style.left = `${x}px`; div.style.top = `${y}px`;
+                katex.render(tex, div, {throwOnError: false});
+                overlay.appendChild(div);
+            };
+
+            if (id === 1) {
+                addLabel(`R_1 = ${s.R1}\\Omega`, 170, 50); addLabel(`R_2 = ${s.R2}\\Omega`, 320, 15);
+                addLabel(`R_3 = ${s.R3}\\Omega`, 320, 145); addLabel(`R_{4a} = ${s.R4a}\\Omega`, 500, 5);
+                addLabel(`R_{4b} = ${s.R4b}\\Omega`, 500, 55); addLabel(`R_{4c} = ${s.R4c}\\Omega`, 500, 155);
+                addLabel(`R_5 = ${s.R5}\\Omega`, 685, 180); addLabel(`R_6 = ${s.R6}\\Omega`, 390, 235);
+                addLabel(`R_7 = ${s.R7}\\Omega`, 390, 370); addLabel(`V_s = ${s.Vs}V`, 25, 225);
+            } 
+            else if (id === 2) {
+                addLabel(`R_1 = ${s.R1}\\Omega`, 160, 50); addLabel(`R_2 = ${s.R2}\\Omega`, 190, 180);
+                addLabel(`R_3 = ${s.R3}\\Omega`, 310, 50); addLabel(`R_4 = ${s.R4}\\Omega`, 330, 180);
+                addLabel(`R_5 = ${s.R5}\\Omega`, 460, 50); addLabel(`R_6 = ${s.R6}\\Omega`, 575, 180);
+                addLabel(`V_s = ${s.Vs}V`, 25, 225);
+            }
+            else if (id === 3) {
+                addLabel(`R_1 = ${s.R1}\\Omega`, 170, 120); addLabel(`R_2 = ${s.R2}\\Omega`, 210, 245);
+                addLabel(`R_3 = ${s.R3}\\Omega`, 420, 25); addLabel(`R_4 = ${s.R4}\\Omega`, 360, 75);
+                addLabel(`R_5 = ${s.R5}\\Omega`, 360, 125); addLabel(`R_6 = ${s.R6}\\Omega`, 410, 245);
+                addLabel(`R_7 = ${s.R7}\\Omega`, 555, 245); addLabel(`V_s = ${s.Vs}V`, 25, 225);
+            }
+            else if (id === 4) {
+                addLabel(`R_1 = ${s.R1}\\Omega`, 140, 35); addLabel(`R_2 = ${s.R2}\\Omega`, 170, 130);
+                addLabel(`R_3 = ${s.R3}\\Omega`, 130, 250); addLabel(`R_4 = ${s.R4}\\Omega`, 315, 250);
+                addLabel(`R_5 = ${s.R5}\\Omega`, 340, 35); addLabel(`R_6 = ${s.R6}\\Omega`, 370, 170);
+                addLabel(`R_7 = ${s.R7}\\Omega`, 540, 35); addLabel(`R_8 = ${s.R8}\\Omega`, 675, 170);
+                addLabel(`V_s = ${s.Vs}V`, 25, 225);
+            }
+            else if (id === 5) {
+                addLabel(`R_1 = ${s.R1}\\Omega`, 100, 35); addLabel(`R_2 = ${s.R2}\\Omega`, 120, 200);
+                addLabel(`R_3 = ${s.R3}\\Omega`, 250, 75); addLabel(`R_4 = ${s.R4}\\Omega`, 250, 325);
+                addLabel(`R_5 = ${s.R5}\\Omega`, 250, 35); addLabel(`R_6 = ${s.R6}\\Omega`, 280, 240);
+                addLabel(`R_7 = ${s.R7}\\Omega`, 440, 240); addLabel(`R_8 = ${s.R8}\\Omega`, 480, 35);
+                addLabel(`R_9 = ${s.R9}\\Omega`, 480, 115); addLabel(`R_{10} = ${s.R10}\\Omega`, 630, 240);
+                addLabel(`V_s = ${s.Vs}V`, 10, 225);
+            }
+            else if (id === 6) {
+                addLabel(`R_1 = ${s.R1}\\Omega`, 150, 365); addLabel(`R_2 = ${s.R2}\\Omega`, 250, 210);
+                addLabel(`R_3 = ${s.R3}\\Omega`, 350, 210); addLabel(`R_4 = ${s.R4}\\Omega`, 440, 10);
+                addLabel(`R_5 = ${s.R5}\\Omega`, 440, 110); addLabel(`R_6 = ${s.R6}\\Omega`, 710, 210);
+                addLabel(`R_7 = ${s.R7}\\Omega`, 570, 365); addLabel(`R_8 = ${s.R8}\\Omega`, 480, 230);
+                addLabel(`V_s = ${s.Vs}V`, 25, 225);
+            }
+            else if (id === 7) {
+                addLabel(`R_1 = ${s.R1}\\Omega`, 160, 95); addLabel(`R_2 = ${s.R2}\\Omega`, 160, 305);
+                addLabel(`R_3 = ${s.R3}\\Omega`, 185, 200); addLabel(`R_4 = ${s.R4}\\Omega`, 330, 175);
+                addLabel(`R_5 = ${s.R5}\\Omega`, 320, 305); addLabel(`R_6 = ${s.R6}\\Omega`, 385, 200);
+                addLabel(`R_7 = ${s.R7}\\Omega`, 520, 305); addLabel(`R_8 = ${s.R8}\\Omega`, 530, 175);
+                addLabel(`R_9 = ${s.R9}\\Omega`, 520, 95); addLabel(`R_{10} = ${s.R10}\\Omega`, 655, 200);
+                addLabel(`R_{11} = ${s.R11}\\Omega`, 460, 405); addLabel(`V_s = ${s.Vs}V`, 25, 200);
+            }
+        }
+
+        // ==========================================
+        // 5. RUTINAS DE DIBUJO NEÓN REUTILIZABLES
+        // ==========================================
+        function drawNode(x, y) {
+            ctx.beginPath(); ctx.arc(x, y, 4, 0, 2*Math.PI);
+            ctx.fillStyle = isDarkMode ? "#ffffff" : "#1e293b"; 
+            if(isDarkMode){
+                ctx.shadowBlur = 8; ctx.shadowColor = "#ffffff";
+            }
+            ctx.fill(); ctx.shadowBlur = 0; 
+        }
+
+        function drawArrowTip(x, y, angle, color) {
+            ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+            ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(-4, 4); ctx.lineTo(-2, 0); ctx.lineTo(-4, -4); ctx.closePath();
+            ctx.fillStyle = color; 
+            if(isDarkMode) { ctx.shadowBlur = 10; ctx.shadowColor = color; }
+            ctx.fill(); ctx.restore();
+        }
+
+        function drawWire(points, current, drawPhysicalLine = true) {
+            let pathLengths = [], totalLen = 0;
+            
+            const outerStroke = isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)";
+            const outerGlow   = isDarkMode ? "rgba(56, 189, 248, 0.4)" : "transparent";
+            const innerStroke = isDarkMode ? "rgba(255, 255, 255, 0.6)" : "#64748b";
+
+            if(drawPhysicalLine) {
+                ctx.beginPath(); ctx.strokeStyle = outerStroke; 
+                ctx.lineWidth = 7; ctx.lineCap = "round"; ctx.lineJoin = "round";
+                ctx.shadowBlur = isDarkMode ? 10 : 0; ctx.shadowColor = outerGlow; 
+                ctx.moveTo(points[0].x, points[0].y);
+                for(let i=1; i<points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+                ctx.stroke();
+
+                ctx.beginPath(); ctx.strokeStyle = innerStroke; 
+                ctx.lineWidth = 1.5; ctx.shadowBlur = 0; 
+                ctx.moveTo(points[0].x, points[0].y);
+                for(let i=1; i<points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+                ctx.stroke();
+            }
+
+            for(let i=1; i<points.length; i++) {
+                let dx = points[i].x - points[i-1].x; let dy = points[i].y - points[i-1].y;
+                let len = Math.hypot(dx, dy); pathLengths.push(len); totalLen += len;
+            }
+
+            if (!current || Math.abs(current) < 0.0001) return;
+            
+            let iTot = currentAnswers[currentCircuitId].total.i || 1;
+            let speedFactor = Math.abs(current / iTot);
+            let speed = Math.max(30, Math.min(220, 150 * speedFactor)); 
+            let spacing = flowType === 'electron' ? 25 : 45; 
+            let numDots = Math.floor(totalLen / spacing) + 1;
+            
+            for(let i=0; i<=numDots; i++) {
+                let validTotalLen = Math.max(0.1, totalLen);
+                let distance = ((animationTime * speed + i * spacing) % validTotalLen + validTotalLen) % validTotalLen;
+                if (flowType === 'electron') distance = validTotalLen - distance;
+
+                let accumulated = 0, dotPos = null, angle = 0;
+                for(let j=0; j<pathLengths.length; j++) {
+                    if (distance <= accumulated + pathLengths[j]) {
+                        let ratio = (distance - accumulated) / pathLengths[j];
+                        dotPos = { x: points[j].x + (points[j+1].x - points[j].x) * ratio, y: points[j].y + (points[j+1].y - points[j].y) * ratio };
+                        angle = Math.atan2(points[j+1].y - points[j].y, points[j+1].x - points[j].x);
+                        break;
+                    }
+                    accumulated += pathLengths[j];
+                }
+                
+                if (dotPos) {
+                    if (flowType === 'electron') {
+                        ctx.beginPath(); ctx.arc(dotPos.x, dotPos.y, 3, 0, Math.PI*2); 
+                        ctx.fillStyle = isDarkMode ? '#38bdf8' : '#0284c7'; 
+                        if(isDarkMode) { ctx.shadowBlur = 12; ctx.shadowColor = '#0ea5e9'; }
+                        ctx.fill(); ctx.shadowBlur = 0;
+                    } else {
+                        drawArrowTip(dotPos.x, dotPos.y, angle, isDarkMode ? '#f43f5e' : '#e11d48'); 
+                    }
+                }
+            }
+        }
+
+        function drawResistor(x1, y1, x2, y2) {
+            const dx = x2 - x1, dy = y2 - y1, dist = Math.hypot(dx, dy), angle = Math.atan2(dy, dx);
+            ctx.save(); ctx.translate(x1, y1); ctx.rotate(angle);
+            
+            const zW = 36, startZ = (dist - zW) / 2, s = zW / 6;
+
+            const outerStroke = isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)";
+            const innerStroke = isDarkMode ? "rgba(255, 255, 255, 0.9)" : "#334155";
+            const innerShadow = isDarkMode ? "rgba(56, 189, 248, 1)" : "transparent";
+
+            ctx.beginPath(); ctx.strokeStyle = outerStroke; ctx.lineWidth = 7; ctx.lineCap = "round"; ctx.lineJoin = "round";
+            ctx.moveTo(0, 0); ctx.lineTo(startZ, 0);
+            ctx.lineTo(startZ + s, -10); ctx.lineTo(startZ + 2*s, 10); ctx.lineTo(startZ + 3*s, -10); ctx.lineTo(startZ + 4*s, 10); ctx.lineTo(startZ + 5*s, -10); ctx.lineTo(startZ + 6*s, 0);
+            ctx.lineTo(dist, 0); ctx.stroke();
+
+            ctx.beginPath(); ctx.strokeStyle = innerStroke; 
+            if(isDarkMode) { ctx.shadowBlur = 8; ctx.shadowColor = innerShadow; }
+            ctx.lineWidth = 1.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+            ctx.moveTo(0, 0); ctx.lineTo(startZ, 0);
+            ctx.lineTo(startZ + s, -10); ctx.lineTo(startZ + 2*s, 10); ctx.lineTo(startZ + 3*s, -10); ctx.lineTo(startZ + 4*s, 10); ctx.lineTo(startZ + 5*s, -10); ctx.lineTo(startZ + 6*s, 0);
+            ctx.lineTo(dist, 0); ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawSource(x, y) {
+            const bgFill = isDarkMode ? "rgba(15, 23, 42, 1)" : "#f8fafc";
+            const borderCol = isDarkMode ? "rgba(255, 255, 255, 0.9)" : "#334155";
+            
+            ctx.save();
+            ctx.beginPath(); ctx.arc(x, y, 22, 0, 2*Math.PI); ctx.fillStyle = bgFill; ctx.fill();
+            ctx.lineWidth = 2.5; ctx.strokeStyle = borderCol; 
+            if(isDarkMode) { ctx.shadowBlur = 12; ctx.shadowColor = "#ffffff"; }
+            ctx.stroke();
+
+            ctx.shadowBlur = isDarkMode ? 10 : 0; 
+            ctx.fillStyle = isDarkMode ? "#f43f5e" : "#e11d48"; 
+            ctx.shadowColor = isDarkMode ? "#e11d48" : "transparent"; 
+            ctx.font = "bold 22px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("+", x, y - 10);
+            
+            ctx.fillStyle = isDarkMode ? "#38bdf8" : "#0284c7"; 
+            ctx.shadowColor = isDarkMode ? "#0ea5e9" : "transparent"; 
+            ctx.font = "bold 26px Arial"; ctx.fillText("-", x, y + 8);
+            ctx.restore();
+        }
+
+        // ==========================================
+        // 6. RENDERIZADO ESPECÍFICO DE CADA CIRCUITO
+        // ==========================================
+        function renderC1() {
+            const ans = currentAnswers[1];
+            let iTot = ans.R1 ? ans.R1.i : 0, iR2 = ans.R2 ? ans.R2.i : 0, iR3 = ans.R3 ? ans.R3.i : 0;
+            let iR4a = ans.R4a ? ans.R4a.i : 0, iR4b = ans.R4b ? ans.R4b.i : 0, iR4c = ans.R4c ? ans.R4c.i : 0;
+            let iR6 = ans.R6 ? ans.R6.i : 0, iR7 = ans.R7 ? ans.R7.i : 0;
+
+            drawWire([{x:80,y:203}, {x:80,y:80}, {x:120,y:80}], iTot); drawResistor(120, 80, 220, 80); drawWire([{x:120,y:80}, {x:220,y:80}], iTot, false); 
+            drawWire([{x:220,y:80}, {x:260,y:80}], iTot); drawNode(260, 80);
+            drawWire([{x:260,y:80}, {x:260,y:40}, {x:280,y:40}], iR2); drawResistor(280, 40, 360, 40); drawWire([{x:280,y:40}, {x:360,y:40}], iR2, false); drawWire([{x:360,y:40}, {x:380,y:40}, {x:380,y:80}], iR2);
+            drawWire([{x:260,y:80}, {x:260,y:120}, {x:280,y:120}], iR3); drawResistor(280, 120, 360, 120); drawWire([{x:280,y:120}, {x:360,y:120}], iR3, false); drawWire([{x:360,y:120}, {x:380,y:120}, {x:380,y:80}], iR3); drawNode(380, 80);
+            drawWire([{x:380,y:80}, {x:440,y:80}], iTot); drawNode(440, 80);
+            drawWire([{x:440,y:80}, {x:440,y:30}, {x:460,y:30}], iR4a); drawResistor(460, 30, 540, 30); drawWire([{x:460,y:30}, {x:540,y:30}], iR4a, false); drawWire([{x:540,y:30}, {x:560,y:30}, {x:560,y:80}], iR4a);
+            drawWire([{x:440,y:80}, {x:460,y:80}], iR4b); drawResistor(460, 80, 540, 80); drawWire([{x:460,y:80}, {x:540,y:80}], iR4b, false); drawWire([{x:540,y:80}, {x:560,y:80}], iR4b);
+            drawWire([{x:440,y:80}, {x:440,y:130}, {x:460,y:130}], iR4c); drawResistor(460, 130, 540, 130); drawWire([{x:460,y:130}, {x:540,y:130}], iR4c, false); drawWire([{x:540,y:130}, {x:560,y:130}, {x:560,y:80}], iR4c); drawNode(560, 80);
+            drawWire([{x:560,y:80}, {x:640,y:80}, {x:640,y:120}], iTot); drawResistor(640, 120, 640, 240); drawWire([{x:640,y:120}, {x:640,y:240}], iTot, false); drawWire([{x:640,y:240}, {x:640,y:300}, {x:460,y:300}], iTot); drawNode(460, 300);
+            drawWire([{x:460,y:300}, {x:460,y:260}, {x:440,y:260}], iR6); drawResistor(440, 260, 340, 260); drawWire([{x:440,y:260}, {x:340,y:260}], iR6, false); drawWire([{x:340,y:260}, {x:320,y:260}, {x:320,y:300}], iR6);
+            drawWire([{x:460,y:300}, {x:460,y:340}, {x:440,y:340}], iR7); drawResistor(440, 340, 340, 340); drawWire([{x:440,y:340}, {x:340,y:340}], iR7, false); drawWire([{x:340,y:340}, {x:320,y:340}, {x:320,y:300}], iR7); drawNode(320, 300);
+            drawWire([{x:320,y:300}, {x:80,y:300}, {x:80,y:247}], iTot);
+            drawSource(80, 225);
+        }
+
+        function renderC2() {
+            const ans = currentAnswers[2];
+            let iTot = ans.R1 ? ans.R1.i : 0, iR2 = ans.R2 ? ans.R2.i : 0, iB2 = ans.R3 ? ans.R3.i : 0;
+            let iR4 = ans.R4 ? ans.R4.i : 0, iB3 = ans.R5 ? ans.R5.i : 0;
+
+            drawWire([{x:80,y:203}, {x:80,y:80}, {x:120,y:80}], iTot); drawResistor(120, 80, 200, 80); drawWire([{x:120,y:80}, {x:200,y:80}], iTot, false); drawWire([{x:200,y:80}, {x:240,y:80}], iTot); drawNode(240, 80);
+            drawWire([{x:240,y:80}, {x:240,y:110}], iR2); drawResistor(240, 110, 240, 250); drawWire([{x:240,y:110}, {x:240,y:250}], iR2, false); drawWire([{x:240,y:250}, {x:240,y:280}], iR2); drawNode(240, 280);
+            drawWire([{x:240,y:80}, {x:260,y:80}], iB2); drawResistor(260, 80, 360, 80); drawWire([{x:260,y:80}, {x:360,y:80}], iB2, false); drawWire([{x:360,y:80}, {x:380,y:80}], iB2); drawNode(380, 80);
+            drawWire([{x:380,y:80}, {x:380,y:110}], iR4); drawResistor(380, 110, 380, 250); drawWire([{x:380,y:110}, {x:380,y:250}], iR4, false); drawWire([{x:380,y:250}, {x:380,y:280}], iR4); drawNode(380, 280);
+            drawWire([{x:380,y:80}, {x:400,y:80}], iB3); drawResistor(400, 80, 520, 80); drawWire([{x:400,y:80}, {x:520,y:80}], iB3, false); 
+            drawWire([{x:520,y:80}, {x:520,y:110}], iB3); drawResistor(520, 110, 520, 250); drawWire([{x:520,y:110}, {x:520,y:250}], iB3, false); drawWire([{x:520,y:250}, {x:520,y:280}], iB3); drawNode(520, 280);
+            drawWire([{x:520,y:280}, {x:380,y:280}], iB3); drawWire([{x:380,y:280}, {x:240,y:280}], iB2); drawWire([{x:240,y:280}, {x:80,y:280}, {x:80,y:247}], iTot);
+            drawSource(80, 225);
+        }
+
+        function renderC3() {
+            const ans = currentAnswers[3];
+            let iTot = ans.R1 ? ans.R1.i : 0, iR2 = ans.R2 ? ans.R2.i : 0, iR3 = ans.R3 ? ans.R3.i : 0;
+            let iR4 = ans.R4 ? ans.R4.i : 0, iR5 = ans.R5 ? ans.R5.i : 0;
+            let iR6 = ans.R6 ? ans.R6.i : 0, iR7 = ans.R7 ? ans.R7.i : 0;
+
+            drawWire([{x:80,y:203}, {x:80,y:150}, {x:120,y:150}], iTot); drawResistor(120, 150, 220, 150); drawWire([{x:120,y:150}, {x:220,y:150}], iTot, false); drawWire([{x:220,y:150}, {x:260,y:150}], iTot); drawNode(260, 150);
+            drawWire([{x:260,y:150}, {x:260,y:180}], iR2); drawResistor(260, 180, 260, 310); drawWire([{x:260,y:180}, {x:260,y:310}], iR2, false); drawWire([{x:260,y:310}, {x:260,y:350}], iR2); drawNode(260, 350);
+            let sumUp = iR3 + iR4; drawWire([{x:260,y:150}, {x:260,y:50}], sumUp); drawNode(260, 100); drawNode(260, 50);
+            drawWire([{x:260,y:100}, {x:300,y:100}], iR4); drawResistor(300, 100, 420, 100); drawWire([{x:300,y:100}, {x:420,y:100}], iR4, false); drawWire([{x:420,y:100}, {x:460,y:100}, {x:460,y:150}], iR4);
+            drawWire([{x:260,y:50}, {x:300,y:50}], iR3); drawResistor(300, 50, 540, 50); drawWire([{x:300,y:50}, {x:540,y:50}], iR3, false); drawWire([{x:540,y:50}, {x:600,y:50}, {x:600,y:350}], iR3); drawNode(600, 350);
+            drawWire([{x:260,y:150}, {x:300,y:150}], iR5); drawResistor(300, 150, 420, 150); drawWire([{x:300,y:150}, {x:420,y:150}], iR5, false); drawWire([{x:420,y:150}, {x:460,y:150}], iR5); drawNode(460, 150);
+            drawWire([{x:460,y:150}, {x:460,y:180}], iR6); drawResistor(460, 180, 460, 310); drawWire([{x:460,y:180}, {x:460,y:310}], iR6, false); drawWire([{x:460,y:310}, {x:460,y:350}], iR6); drawNode(460, 350);
+            drawWire([{x:460,y:150}, {x:470,y:175}], iR7); drawResistor(470, 175, 530, 325); drawWire([{x:470,y:175}, {x:530,y:325}], iR7, false); drawWire([{x:530,y:325}, {x:540,y:350}], iR7); drawNode(540, 350);
+            drawWire([{x:600,y:350}, {x:540,y:350}], iR3); drawWire([{x:540,y:350}, {x:460,y:350}], iR3 + iR7); drawWire([{x:460,y:350}, {x:260,y:350}], iR3 + iR7 + iR6); drawWire([{x:260,y:350}, {x:80,y:350}, {x:80,y:247}], iTot);
+            drawSource(80, 225);
+        }
+
+        function renderC4() {
+            const ans = currentAnswers[4];
+            let iTot = ans.R1 ? ans.R1.i : 0, iR2 = ans.R2 ? ans.R2.i : 0, iR3 = ans.R3 ? ans.R3.i : 0, iR4 = ans.R4 ? ans.R4.i : 0;
+            let iR5 = ans.R5 ? ans.R5.i : 0, iR6 = ans.R6 ? ans.R6.i : 0, iR7 = ans.R7 ? ans.R7.i : 0, iR8 = ans.R8 ? ans.R8.i : 0;
+
+            drawWire([{x:80,y:203}, {x:80,y:60}, {x:100,y:60}], iTot); drawResistor(100, 60, 180, 60); drawWire([{x:100,y:60}, {x:180,y:60}], iTot, false); drawWire([{x:180,y:60}, {x:220,y:60}], iTot); drawNode(220, 60);
+            drawWire([{x:220,y:60}, {x:220,y:100}], iR2); drawResistor(220, 100, 220, 160); drawWire([{x:220,y:100}, {x:220,y:160}], iR2, false); drawWire([{x:220,y:160}, {x:220,y:190}], iR2); drawNode(220, 190);
+            drawWire([{x:220,y:190}, {x:180,y:190}, {x:180,y:220}], iR3); drawResistor(180, 220, 180, 280); drawWire([{x:180,y:220}, {x:180,y:280}], iR3, false); drawWire([{x:180,y:280}, {x:180,y:310}, {x:220,y:310}], iR3);
+            drawWire([{x:220,y:190}, {x:260,y:190}, {x:260,y:220}], iR4); drawResistor(260, 220, 260, 280); drawWire([{x:260,y:220}, {x:260,y:280}], iR4, false); drawWire([{x:260,y:280}, {x:260,y:310}, {x:220,y:310}], iR4); drawNode(220, 310);
+            drawWire([{x:220,y:310}, {x:220,y:340}], iR2);
+            drawWire([{x:220,y:60}, {x:300,y:60}], iR5); drawResistor(300, 60, 380, 60); drawWire([{x:300,y:60}, {x:380,y:60}], iR5, false); drawWire([{x:380,y:60}, {x:420,y:60}], iR5); drawNode(420, 60);
+            drawWire([{x:420,y:60}, {x:420,y:120}], iR6); drawResistor(420, 120, 420, 220); drawWire([{x:420,y:120}, {x:420,y:220}], iR6, false); drawWire([{x:420,y:220}, {x:420,y:340}], iR6); drawNode(420, 340);
+            drawWire([{x:420,y:60}, {x:500,y:60}], iR7); drawResistor(500, 60, 580, 60); drawWire([{x:500,y:60}, {x:580,y:60}], iR7, false); drawWire([{x:580,y:60}, {x:620,y:60}], iR7); drawNode(620, 60);
+            drawWire([{x:620,y:60}, {x:620,y:120}], iR8); drawResistor(620, 120, 620, 220); drawWire([{x:620,y:120}, {x:620,y:220}], iR8, false); drawWire([{x:620,y:220}, {x:620,y:340}], iR8); drawNode(620, 340);
+            drawWire([{x:620,y:340}, {x:420,y:340}], iR8); drawWire([{x:420,y:340}, {x:220,y:340}], iR8 + iR6); drawWire([{x:220,y:340}, {x:80,y:340}, {x:80,y:247}], iTot);
+            drawSource(80, 225);
+        }
+
+        function renderC5() {
+            const ans = currentAnswers[5];
+            let iTot = ans.R1 ? ans.R1.i : 0, iR2 = ans.R2 ? ans.R2.i : 0, iR34 = ans.R3 ? ans.R3.i : 0;
+            let iMainR = ans.R5 ? ans.R5.i : 0, iR6 = ans.R6 ? ans.R6.i : 0, iR7 = ans.R7 ? ans.R7.i : 0;
+            let iR89 = ans.R10 ? ans.R10.i : 0, iR8 = ans.R8 ? ans.R8.i : 0, iR9 = ans.R9 ? ans.R9.i : 0;
+
+            drawWire([{x:60,y:203}, {x:60,y:60}, {x:100,y:60}], iTot); drawResistor(100, 60, 160, 60); drawWire([{x:100,y:60}, {x:160,y:60}], iTot, false); drawWire([{x:160,y:60}, {x:200,y:60}], iTot); drawNode(200, 60);
+            drawWire([{x:200,y:60}, {x:200,y:100}], iR2 + iR34); drawNode(200, 100);
+            drawWire([{x:200,y:100}, {x:200,y:160}], iR2); drawResistor(200, 160, 200, 240); drawWire([{x:200,y:160}, {x:200,y:240}], iR2, false); drawWire([{x:200,y:240}, {x:200,y:300}], iR2); drawNode(200, 300);
+            drawWire([{x:200,y:100}, {x:280,y:100}], iR34); drawResistor(280, 100, 340, 100); drawWire([{x:280,y:100}, {x:340,y:100}], iR34, false); drawWire([{x:340,y:100}, {x:340,y:300}], iR34); drawResistor(340, 300, 280, 300); drawWire([{x:340,y:300}, {x:280,y:300}], iR34, false); drawWire([{x:280,y:300}, {x:200,y:300}], iR34);
+            drawWire([{x:200,y:60}, {x:280,y:60}], iMainR); drawResistor(280, 60, 340, 60); drawWire([{x:280,y:60}, {x:340,y:60}], iMainR, false); drawWire([{x:340,y:60}, {x:400,y:60}], iMainR); drawNode(400, 60);
+            drawWire([{x:400,y:60}, {x:400,y:140}], iR6 + iR7); drawNode(400, 140);
+            drawWire([{x:400,y:140}, {x:360,y:140}, {x:360,y:200}], iR6); drawResistor(360, 200, 360, 280); drawWire([{x:360,y:200}, {x:360,y:280}], iR6, false); drawWire([{x:360,y:280}, {x:360,y:380}], iR6); drawNode(360, 380);
+            drawWire([{x:400,y:140}, {x:440,y:140}, {x:440,y:200}], iR7); drawResistor(440, 200, 440, 280); drawWire([{x:440,y:200}, {x:440,y:280}], iR7, false); drawWire([{x:440,y:280}, {x:440,y:380}], iR7); drawNode(440, 380);
+            drawWire([{x:400,y:60}, {x:500,y:60}], iR8); drawResistor(500, 60, 560, 60); drawWire([{x:500,y:60}, {x:560,y:60}], iR8, false); drawWire([{x:560,y:60}, {x:600,y:60}], iR8); drawNode(600, 60);
+            drawWire([{x:400,y:140}, {x:500,y:140}], iR9); drawResistor(500, 140, 560, 140); drawWire([{x:500,y:140}, {x:560,y:140}], iR9, false); drawWire([{x:560,y:140}, {x:600,y:140}], iR9); drawNode(600, 140);
+            drawWire([{x:600,y:60}, {x:600,y:140}], iR8); drawWire([{x:600,y:140}, {x:600,y:200}], iR89); drawResistor(600, 200, 600, 280); drawWire([{x:600,y:200}, {x:600,y:280}], iR89, false); drawWire([{x:600,y:280}, {x:600,y:380}], iR89); drawNode(600, 380);
+            drawWire([{x:600,y:380}, {x:440,y:380}], iR89); drawWire([{x:440,y:380}, {x:360,y:380}], iR89 + iR7); drawWire([{x:360,y:380}, {x:200,y:380}], iR89 + iR7 + iR6); drawWire([{x:200,y:300}, {x:200,y:380}], iR2 + iR34); drawWire([{x:200,y:380}, {x:60,y:380}, {x:60,y:247}], iTot);
+            drawSource(60, 225);
+        }
+
+        function renderC6() {
+            const ans = currentAnswers[6];
+            let iTot = ans.R1 ? ans.R1.i : 0, iR2 = ans.R2 ? ans.R2.i : 0, iR3 = ans.R3 ? ans.R3.i : 0;
+            let iR4 = ans.R4 ? ans.R4.i : 0, iR5 = ans.R5 ? ans.R5.i : 0, iR8 = ans.R8 ? ans.R8.i : 0, iR67 = ans.R6 ? ans.R6.i : 0;
+
+            drawWire([{x:80,y:247}, {x:80,y:340}, {x:110,y:340}], iTot); drawResistor(110, 340, 190, 340); drawWire([{x:110,y:340}, {x:190,y:340}], iTot, false); drawWire([{x:190,y:340}, {x:220,y:340}], iTot); drawNode(220, 340);
+            drawWire([{x:80,y:203}, {x:80,y:80}, {x:220,y:80}], iTot); drawNode(220, 80);
+            drawWire([{x:220,y:80}, {x:220,y:110}], iR2); drawResistor(220, 110, 220, 290); drawWire([{x:220,y:110}, {x:220,y:290}], iR2, false); drawWire([{x:220,y:290}, {x:220,y:340}], iR2);
+            let i_after_r2 = iTot - iR2; drawWire([{x:220,y:80}, {x:320,y:80}], i_after_r2); drawNode(320, 80); drawWire([{x:220,y:340}, {x:320,y:340}], i_after_r2); drawNode(320, 340);
+            drawWire([{x:320,y:80}, {x:320,y:110}], iR3); drawResistor(320, 110, 320, 290); drawWire([{x:320,y:110}, {x:320,y:290}], iR3, false); drawWire([{x:320,y:290}, {x:320,y:340}], iR3);
+            let i_top_right = iR4 + iR5; drawWire([{x:320,y:80}, {x:360,y:80}], i_top_right); drawNode(360, 80);
+            drawWire([{x:360,y:80}, {x:360,y:30}, {x:400,y:30}], iR4); drawResistor(400, 30, 480, 30); drawWire([{x:400,y:30}, {x:480,y:30}], iR4, false); drawWire([{x:480,y:30}, {x:560,y:30}, {x:560,y:80}], iR4);
+            drawWire([{x:360,y:80}, {x:400,y:80}], iR5); drawResistor(400, 80, 480, 80); drawWire([{x:400,y:80}, {x:480,y:80}], iR5, false); drawWire([{x:480,y:80}, {x:560,y:80}], iR5); drawNode(560, 80); 
+            drawWire([{x:560,y:80}, {x:540,y:101}], iR8); drawResistor(540, 101, 340, 319); drawWire([{x:540,y:101}, {x:340,y:319}], iR8, false); drawWire([{x:340,y:319}, {x:320,y:340}], iR8);
+            drawWire([{x:560,y:80}, {x:680,y:80}, {x:680,y:110}], iR67); drawResistor(680, 110, 680, 290); drawWire([{x:680,y:110}, {x:680,y:290}], iR67, false); drawWire([{x:680,y:290}, {x:680,y:340}], iR67); drawNode(680, 340);
+            drawWire([{x:680,y:340}, {x:540,y:340}], iR67); drawResistor(540, 340, 460, 340); drawWire([{x:540,y:340}, {x:460,y:340}], iR67, false); drawWire([{x:460,y:340}, {x:320,y:340}], iR67);
+            drawSource(80, 225);
+        }
+
+        function renderC7() {
+            const ans = currentAnswers[7];
+            let iTot = ans.R1 ? ans.R1.i : 0, iR3 = ans.R3 ? ans.R3.i : 0, iR4 = ans.R4 ? ans.R4.i : 0, iR5 = ans.R5 ? ans.R5.i : 0;
+            let iR6 = ans.R6 ? ans.R6.i : 0, iR7 = ans.R7 ? ans.R7.i : 0, iR8 = ans.R8 ? ans.R8.i : 0, iR910 = ans.R9 ? ans.R9.i : 0, iR11 = ans.R11 ? ans.R11.i : 0;
+
+            drawWire([{x:80,y:178}, {x:80,y:120}, {x:120,y:120}], iTot); drawResistor(120, 120, 200, 120); drawWire([{x:120,y:120}, {x:200,y:120}], iTot, false); drawWire([{x:200,y:120}, {x:220,y:120}], iTot); drawNode(220, 120);
+            drawWire([{x:80,y:222}, {x:80,y:280}, {x:120,y:280}], iTot); drawResistor(120, 280, 200, 280); drawWire([{x:120,y:280}, {x:200,y:280}], iTot, false); drawWire([{x:200,y:280}, {x:220,y:280}], iTot); drawNode(220, 280);
+            drawWire([{x:220,y:120}, {x:220,y:160}], iR3); drawResistor(220, 160, 220, 240); drawWire([{x:220,y:160}, {x:220,y:240}], iR3, false); drawWire([{x:220,y:240}, {x:220,y:280}], iR3);
+            drawWire([{x:220,y:120}, {x:250,y:144}], iR4); drawResistor(250, 144, 390, 256); drawWire([{x:250,y:144}, {x:390,y:256}], iR4, false); drawWire([{x:390,y:256}, {x:420,y:280}], iR4); drawNode(420, 280);
+            drawWire([{x:220,y:280}, {x:280,y:280}], iR5); drawResistor(280, 280, 360, 280); drawWire([{x:280,y:280}, {x:360,y:280}], iR5, false); drawWire([{x:360,y:280}, {x:420,y:280}], iR5);
+            drawWire([{x:420,y:280}, {x:420,y:240}], iR6); drawResistor(420, 240, 420, 160); drawWire([{x:420,y:240}, {x:420,y:160}], iR6, false); drawWire([{x:420,y:160}, {x:420,y:120}], iR6); drawNode(420, 120);
+            drawWire([{x:420,y:280}, {x:480,y:280}], iR7); drawResistor(480, 280, 560, 280); drawWire([{x:480,y:280}, {x:560,y:280}], iR7, false); drawWire([{x:560,y:280}, {x:620,y:280}], iR7); drawNode(620, 280);
+            drawWire([{x:420,y:120}, {x:450,y:144}], iR8); drawResistor(450, 144, 590, 256); drawWire([{x:450,y:144}, {x:590,y:256}], iR8, false); drawWire([{x:590,y:256}, {x:620,y:280}], iR8);
+            drawWire([{x:420,y:120}, {x:480,y:120}], iR910); drawResistor(480, 120, 560, 120); drawWire([{x:480,y:120}, {x:560,y:120}], iR910, false); drawWire([{x:560,y:120}, {x:620,y:120}], iR910); drawNode(620, 120);
+            drawWire([{x:620,y:120}, {x:620,y:160}], iR910); drawResistor(620, 160, 620, 240); drawWire([{x:620,y:160}, {x:620,y:240}], iR910, false); drawWire([{x:620,y:240}, {x:620,y:280}], iR910);
+            drawWire([{x:620,y:280}, {x:620,y:380}, {x:540,y:380}], iR11); drawResistor(540, 380, 460, 380); drawWire([{x:540,y:380}, {x:460,y:380}], iR11, false); drawWire([{x:460,y:380}, {x:220,y:380}, {x:220,y:280}], iR11);
+            drawSource(80, 200);
+        }
+
+        // ==========================================
+        // 7. BUCLE DE ANIMACIÓN Y CONTROL DE ESCALA (PAN/ZOOM)
+        // ==========================================
+        function animate(time) {
+            if(!lastTime) lastTime = time;
+            const dt = (time - lastTime) / 1000; 
+            lastTime = time; animationTime += dt;
+
+            for(let id=1; id<=7; id++) {
+                if(contexts[id]) {
+                    ctx = contexts[id];
+                    currentCircuitId = id;
+                    ctx.clearRect(0, 0, 850, 480);
+                    window[`renderC${id}`]();
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        function resizeCanvases() {
+            for(let id=1; id<=7; id++) {
+                applyPanZoomTransform(id);
+            }
+        }
+
+        function initPanZoomEvents() {
+            for(let id=1; id<=7; id++) {
+                const container = document.getElementById(`neon-container-${id}`);
+                if(!container) continue;
+
+                let isDragging = false, startX, startY;
+
+                container.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    startX = e.clientX - viewStates[id].x;
+                    startY = e.clientY - viewStates[id].y;
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if(!isDragging) return;
+                    viewStates[id].x = e.clientX - startX;
+                    viewStates[id].y = e.clientY - startY;
+                    applyPanZoomTransform(id);
+                });
+
+                window.addEventListener('mouseup', () => { isDragging = false; });
+                container.addEventListener('mouseleave', () => { isDragging = false; });
+
+                container.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const zoomFactor = 1.1;
+                    if(e.deltaY < 0) viewStates[id].zoom = Math.min(viewStates[id].zoom * zoomFactor, 3);
+                    else viewStates[id].zoom = Math.max(viewStates[id].zoom / zoomFactor, 0.4);
+                    applyPanZoomTransform(id);
+                }, {passive: false});
+            }
+        }
+
+        function applyPanZoomTransform(id) {
+            const wrapper = document.getElementById(`wrapper-${id}`);
+            if(!wrapper) return;
+            const parentWidth = wrapper.parentElement.clientWidth;
+            const baseScale = parentWidth / 850;
+            // Primero trasladar, luego escalar con respecto al origen
+            wrapper.style.transform = `translate(${viewStates[id].x}px, ${viewStates[id].y}px) scale(${baseScale * viewStates[id].zoom})`;
+        }
+
+        function zoomCanvas(id, factor) {
+            viewStates[id].zoom = Math.max(0.4, Math.min(viewStates[id].zoom * factor, 3));
+            applyPanZoomTransform(id);
+        }
+
+        function resetZoom(id) {
+            viewStates[id].zoom = 1;
+            viewStates[id].x = 0;
+            viewStates[id].y = 0;
+            applyPanZoomTransform(id);
+        }
+
+        // ==========================================
+        // 8. LOGICA DE INTERACCIÓN Y UI GLOBAL
+        // ==========================================
+        function toggleCanvasTheme() {
+            isDarkMode = !isDarkMode;
+            if(isDarkMode) {
+                document.body.classList.remove('light-theme');
+                document.body.classList.add('dark-theme');
+            } else {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+            }
+        }
+
+        function verifyAnswers(id) {
+            solveCircuit(id);
+            const keys = Object.keys(state[id]).filter(k => k !== 'Vs');
+            let allCorrect = true, totalFields = 0, filledFields = 0;
+            
+            keys.forEach(comp => {
+                const correct = currentAnswers[id][comp];
+                const checkField = (type, correctVal) => {
+                    totalFields++;
+                    const input = document.getElementById(`${type}_${id}_${comp}`);
+                    if(!input || !input.value) return; 
+                    filledFields++;
+                    
+                    const userVal = parseFloat(input.value);
+                    const roundedCorrect = Math.round(correctVal * 100) / 100;
+                    if (Math.abs(userVal - roundedCorrect) <= 0.011) {
+                        input.className = "verify-cell correct";
+                    } else {
+                        input.className = "verify-cell incorrect";
+                        allCorrect = false;
+                    }
+                };
+                checkField('v', correct.v); checkField('i', correct.i); checkField('p', correct.v * correct.i);
+            });
+
+            const feedback = document.getElementById(`feedback-${id}`);
+            feedback.style.display = 'block';
+            if (filledFields === 0) {
+                feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200";
+                feedback.innerHTML = "⚠️ Ingresa al menos un valor.";
+            } else if (allCorrect && filledFields === totalFields) {
+                feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:border-green-800 dark:text-green-200";
+                feedback.innerHTML = "🎉 ¡Perfecto! Cálculos exactos.";
+                // Llamar a Firebase si todos están perfectos
+                if(window.marcarActividadCompletada) window.marcarActividadCompletada();
+            } else if (allCorrect) {
+                feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-200";
+                feedback.innerHTML = "👍 Vas bien, continúa.";
+            } else {
+                feedback.className = "mt-3 p-2 rounded-md text-xs font-semibold text-center border bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:border-red-800 dark:text-red-200";
+                feedback.innerHTML = "❌ Hay errores. Revisa tu redondeo.";
+            }
+        }
+
+        function toggleFlowType() {
+            const btn = document.getElementById('btnFlowToggle');
+            const spanText = document.getElementById('flowText');
+            if(flowType === 'conventional') {
+                flowType = 'electron';
+                btn.className = 'toolbar-btn bg-cyan-100 text-cyan-800 border border-cyan-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-cyan-200 transition-colors';
+                spanText.innerHTML = 'Electrones (- a +)';
+            } else {
+                flowType = 'conventional';
+                btn.className = 'toolbar-btn bg-rose-100 text-rose-800 border border-rose-300 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-rose-200 transition-colors';
+                spanText.innerHTML = 'Convencional (+ a -)';
+            }
+        }
+
+        function toggleHint(btn) { btn.nextElementSibling.classList.toggle('show'); }
+        function toggleAllHints() { document.querySelectorAll('.hint-content').forEach(h => h.classList.toggle('show')); }
+
+        // Lógica de Lápiz y Borrador (Global Paint)
+        const globalCanvas = document.getElementById('globalDrawingCanvas');
+        const gCtx = globalCanvas.getContext('2d');
+        let isDrawing = false, drawMode = 'pen';
+
+        function resizeGlobalCanvas() {
+            globalCanvas.width = window.innerWidth; globalCanvas.height = window.innerHeight;
+        }
+        function toggleDrawing() {
+            globalCanvas.classList.toggle('active');
+            const btn = document.getElementById('toggleDrawBtn');
+            if (globalCanvas.classList.contains('active')) {
+                btn.innerText = "Dibujo ON"; btn.classList.add('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                btn.innerText = "Dibujo OFF"; btn.classList.remove('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'auto';
+            }
+            resizeGlobalCanvas();
+        }
+        function setDrawingMode(mode) {
+            drawMode = mode;
+            document.getElementById('penBtn').classList.toggle('bg-white', mode === 'pen');
+            document.getElementById('eraserBtn').classList.toggle('bg-white', mode === 'eraser');
+        }
+        function clearCanvas() { gCtx.clearRect(0, 0, globalCanvas.width, globalCanvas.height); }
+
+        globalCanvas.addEventListener('mousedown', startDraw); globalCanvas.addEventListener('mousemove', draw);
+        globalCanvas.addEventListener('mouseup', endDraw); globalCanvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+        globalCanvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+        globalCanvas.addEventListener('touchend', endDraw);
+
+        function startDraw(e) {
+            if(!globalCanvas.classList.contains('active')) return;
+            isDrawing = true; gCtx.beginPath(); gCtx.moveTo(e.clientX, e.clientY);
+        }
+        function draw(e) {
+            if (!isDrawing) return;
+            gCtx.lineWidth = drawMode === 'pen' ? 3 : 40; gCtx.lineCap = 'round';
+            gCtx.strokeStyle = drawMode === 'pen' ? '#ef4444' : '#f8fafc';
+            gCtx.globalCompositeOperation = drawMode === 'pen' ? 'source-over' : 'destination-out';
+            gCtx.lineTo(e.clientX, e.clientY); gCtx.stroke();
+        }
+        function endDraw() { isDrawing = false; }
+
+        function exportToPDF() {
+            const element = document.body;
+            // Para forzar colores correctos en PDF ocultamos elementos interactivos temporamente si lo deseamos.
+            const opt = {
+                margin: 0.2, filename: 'Taller_Circuitos.pdf', image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // ==========================================
+        // 9. INICIALIZACIÓN
+        // ==========================================
+        function initKaTeXUI() {
+            katex.render("I", document.getElementById('tex_i_s'), {throwOnError: false});
+            katex.render("V", document.getElementById('tex_v_s'), {throwOnError: false});
+            katex.render("R_{eq} = \\sum R_i", document.getElementById('tex_req_s'), {throwOnError: false});
+            katex.render("V", document.getElementById('tex_v_p'), {throwOnError: false});
+            katex.render("I", document.getElementById('tex_i_p'), {throwOnError: false});
+            katex.render("R_{eq} = (\\sum R_i^{-1})^{-1}", document.getElementById('tex_req_p'), {throwOnError: false});
+        }
+
+        window.onload = () => {
+            buildGridDOM();
+            initKaTeXUI();
+            
+            for(let i=1; i<=7; i++) {
+                const c = document.getElementById(`canvas-${i}`);
+                if(c) contexts[i] = c.getContext('2d');
+                solveCircuit(i);
+                buildLabelsDOM(i);
+                buildEditorPanel(i);
+                buildTable(i);
+            }
+            
+            resizeGlobalCanvas();
+            resizeCanvases();
+            initPanZoomEvents();
+            requestAnimationFrame(animate);
+        };
+        
+        window.onresize = () => { resizeGlobalCanvas(); resizeCanvases(); };
+    </script>
+</body>
+</html>

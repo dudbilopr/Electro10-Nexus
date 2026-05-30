@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Electrodinámica de Distribuciones Lineales de Carga</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #1e293b, #0f172a);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden;
+        }
+        .canvas-wrapper canvas { cursor: grab; }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+        
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+        .dcl-wrapper { background: #1e293b; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.95);
+            padding: 6px 12px; border-radius: 6px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #1e293b; pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10;
+            border-left: 4px solid #3b82f6;
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; cursor: pointer; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; }
+
+        #paint-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; touch-action: none; pointer-events: none; }
+        .paint-mode-active { cursor: crosshair !important; pointer-events: auto !important; }
+
+        .btn-ui { padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.85em; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .btn-ui:hover { opacity: 0.8; transform: scale(1.05); }
+
+        .eq-input { width: 60px; padding: 0.1rem; border-radius: 0.25rem; border: 1px solid #94a3b8; font-family: monospace; font-size: 0.85em; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-500">
+                <h1 class="font-bold tracking-wide flex items-center gap-3" style="font-size: clamp(20px, 2vw, 36px);">
+                    🔬 Laboratorio Interactivo: Distribuciones Lineales de Carga
+                </h1>
+                <p class="text-blue-300" style="font-size: clamp(12px, 1vw, 18px);">
+                    Líneas finitas e infinitas, Superposición, Trabajo Eléctrico y Trayectorias
+                </p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍA -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BASE COMÚN -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span>Para una distribución continua de carga unidimensional con densidad lineal $\lambda = dq/dy$, el <strong>Campo Eléctrico ($\vec{E}$)</strong> se obtiene mediante el principio de superposición integrando las contribuciones de cada diferencial de carga $dq$.</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Densidad Lineal:</strong> Representa la cantidad de carga por unidad de longitud ($C/m$). Si $\lambda$ es constante, la carga total es $Q = \lambda L$.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$d\vec{E} = \frac{1}{4\pi\epsilon_0} \frac{dq}{r^2} \hat{r} \quad \implies \quad \vec{E} = \int \frac{k \lambda \, dy}{r^2} \hat{r}$$</div>
+                    </div>
+
+                    <!-- CASO 1: LÍNEA FINITA -->
+                    <div id="teoria-finita" class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg relative flex-1 mb-[1vmin]">
+                        <p class="font-bold text-indigo-800 flex items-center">
+                            1. Línea Finita de Carga (Longitud $L$)
+                        </p>
+                        <p class="text-sm mt-1">Calculamos el campo en un punto $P(x,y,z)$ integrando desde $-L/2$ hasta $L/2$. Las componentes del campo en el plano $z=0$ resultan ser:</p>
+                        <div class="math-display">
+                            \begin{aligned}
+                            E_x &= \frac{k\lambda}{x} \left[ \frac{y+L/2}{\sqrt{x^2+(y+L/2)^2}} - \frac{y-L/2}{\sqrt{x^2+(y-L/2)^2}} \right] \\
+                            E_y &= k\lambda \left[ \frac{1}{\sqrt{x^2+(y-L/2)^2}} - \frac{1}{\sqrt{x^2+(y+L/2)^2}} \right]
+                            \end{aligned}
+                        </div>
+                        <p class="font-bold text-sm text-indigo-900 mt-2">⚠️ Advertencia Física</p>
+                        <p class="text-xs">Cerca de los extremos de la línea, el campo eléctrico se curva fuertemente ("efecto de borde"), generando una fuerza que empuja las partículas hacia el centro o hacia afuera dependiendo del signo.</p>
+                    </div>
+
+                    <!-- CASO 2: LÍNEA INFINITA -->
+                    <div id="teoria-infinita" class="hidden flex-col bg-emerald-50 p-[1.5vmin] border border-emerald-200 shadow-sm rounded-lg relative flex-1 mb-[1vmin]">
+                        <p class="font-bold text-emerald-800 flex items-center">
+                            2. Línea Infinita de Carga ($L \to \infty$)
+                        </p>
+                        <p class="text-sm mt-1">Al tomar el límite cuando $L$ tiende a infinito (o aplicando la Ley de Gauss en una superficie cilíndrica), la componente paralela $E_y$ se cancela por simetría.</p>
+                        <div class="math-display">$$\vec{E}(r) = \frac{1}{2\pi\epsilon_0} \frac{\lambda}{r} \hat{r} = \frac{2k\lambda}{r} \hat{r}$$</div>
+                        <p class="text-xs mt-1 text-emerald-700">Donde $r$ es la distancia perpendicular a la línea. El potencial eléctrico asociado toma una forma logarítmica: $V(r) = -2k\lambda \ln(r/r_0)$.</p>
+                    </div>
+
+                    <!-- CASO 3: DOS LÍNEAS INFINITAS -->
+                    <div id="teoria-dos_lineas" class="hidden flex-col bg-amber-50 p-[1.5vmin] border border-amber-200 shadow-sm rounded-lg relative flex-1 mb-[1vmin]">
+                        <p class="font-bold text-amber-800 flex items-center">
+                            3. Dos Líneas Infinitas (Dipolo 2D)
+                        </p>
+                        <p class="text-sm mt-1">Dos hilos conductores paralelos con densidades $+\lambda$ y $-\lambda$ separados una distancia $2d$. Aplicamos superposición vectorial:</p>
+                        <div class="math-display">$$\vec{E}_{total} = \vec{E}_+ + \vec{E}_-$$</div>
+                        <p class="text-xs mt-1 text-amber-700">Las líneas de campo abandonan la línea positiva y convergen en la negativa. Si una partícula se coloca entre ellas, experimentará un campo uniforme aproximado en el centro, similar a un condensador cilíndrico abierto.</p>
+                    </div>
+
+                    <!-- CASO 4: INTERACCIÓN Y TRABAJO -->
+                    <div id="teoria-interaccion" class="hidden flex-col bg-purple-50 p-[1.5vmin] border border-purple-200 shadow-sm rounded-lg relative flex-1 mb-[1vmin]">
+                        <p class="font-bold text-purple-800 flex items-center">
+                            4. Dinámica y Trabajo Eléctrico
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Potencial vs Trabajo:</strong> El potencial $V$ es energía por unidad de carga. El campo realiza trabajo a expensas de reducir esta energía potencial.</span>
+                            </span>
+                        </p>
+                        <p class="text-sm mt-1">La fuerza sobre una partícula puntual es $\vec{F} = q\vec{E}$. El <strong>Trabajo Eléctrico ($W$)</strong> realizado por el campo al mover la carga desde el punto $A$ al punto $B$ es independiente de la trayectoria:</p>
+                        <div class="math-display">$$W = \int_{A}^{B} \vec{F} \cdot d\vec{r} = -q \Delta V = -q(V_B - V_A)$$</div>
+                        <p class="text-xs mt-1 text-purple-700">Arrastra la partícula en la simulación para visualizar los cambios de potencial y el trabajo efectuado durante su desplazamiento libre.</p>
+                    </div>
+
+                    <!-- CASO 5: EJE Y FUERA DEL EJE -->
+                    <div id="teoria-eje_fuera" class="hidden flex-col bg-rose-50 p-[1.5vmin] border border-rose-200 shadow-sm rounded-lg relative flex-1 mb-[1vmin]">
+                        <p class="font-bold text-rose-800 flex items-center">
+                            5. Análisis: Sobre el Eje vs Fuera del Eje
+                        </p>
+                        <p class="text-sm mt-1">Dada una línea finita en el eje Y:</p>
+                        <ul class="text-sm list-disc pl-5 mt-1">
+                            <li><strong>Sobre el plano bisector ($y=0$):</strong> La componente $E_y = 0$. El campo es puramente radial y perpendicular a la barra.</li>
+                            <li><strong>Sobre el eje de la línea ($x=0, z=0$):</strong> El campo es paralelo a la línea. $\vec{E} = E_y \hat{j}$.</li>
+                        </ul>
+                        <div class="math-display">$$E_{y(eje)} = k\lambda \left( \frac{1}{|y-L/2|} - \frac{1}{|y+L/2|} \right)$$</div>
+                        <p class="text-xs text-rose-700">⚠️ Advertencia: Si $y = \pm L/2$ (justo en la punta), el campo matemático diverge al infinito ($\to \infty$).</p>
+                    </div>
+
+                    <!-- NUEVO CASO 6: DENSIDAD VARIABLE E INTEGRACIÓN -->
+                    <div id="teoria-variable" class="hidden flex-col bg-fuchsia-50 p-[1.5vmin] border border-fuchsia-200 shadow-sm rounded-lg relative flex-1 mb-[1vmin]">
+                        <p class="font-bold text-fuchsia-800 flex items-center">
+                            6. Densidad Variable e Integración Visual
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Diferencial:</strong> $dq = \lambda(y) dy$. Observa cómo la contribución $d\vec{E}$ cambia en magnitud y dirección al recorrer la línea.</span>
+                            </span>
+                        </p>
+                        <p class="text-sm mt-1">Cuando la densidad de carga no es constante ($\lambda = f(y)$), no podemos sacar $\lambda$ de la integral. El campo exacto se computa mediante la suma (integración) de infinitos elementos de carga $dq$:</p>
+                        <div class="math-display">$$\vec{E} = \int_{-L/2}^{L/2} \frac{k \cdot \lambda(y) dy}{|\vec{r}|^2} \hat{r}$$</div>
+                        <p class="text-xs mt-1 text-fuchsia-700">Utiliza el control "Barrido Integral" para visualizar cómo cada elemento $dq$ aporta su diferencial de campo $d\vec{E}$ formando el campo total por superposición.</p>
+                    </div>
+
+                    <!-- CONCLUSIÓN -->
+                    <div class="bg-slate-800 text-white p-[1.5vmin] shadow-sm rounded-lg border border-slate-600 mt-[1vmin]">
+                        <p class="font-bold text-amber-400 mb-1 text-center">Datos Cinemáticos y Energéticos (Tiempo Real)</p>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs">Fuerza Neta $|\vec{F}_{neta}|$:</span>
+                                <span id="ui-mag-f" class="font-mono font-bold text-yellow-400">0.00</span> <span class="text-xs">N</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs">Velocidad $|v|$:</span>
+                                <span id="ui-mag-v" class="font-mono font-bold text-emerald-400">0.00</span> <span class="text-xs">m/s</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs">Potencial ($V$ local):</span>
+                                <span id="ui-pot-v" class="font-mono font-bold text-cyan-400">0.00</span> <span class="text-xs">V</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs">Trabajo Efectuado ($W$):</span>
+                                <span id="ui-work" class="font-mono font-bold text-rose-400">0.00</span> <span class="text-xs">J</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL AVANZADO -->
+                    <div class="control-panel shadow-sm relative z-20 flex-col !items-start">
+                        
+                        <!-- Fila 1 -->
+                        <div class="flex w-full gap-[1.5vmin] border-b border-slate-300 pb-1 mb-1 items-center">
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800">Vista:</label>
+                                <button id="btn-toggle-3d" class="btn-ui bg-indigo-100 text-indigo-800 border-indigo-300">Modo 2D</button>
+                            </div>
+                            
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800">Modelo:</label>
+                                <select id="select-config" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500 cursor-pointer">
+                                    <option value="finita">1. Línea Finita</option>
+                                    <option value="infinita">2. Línea Infinita</option>
+                                    <option value="dos_lineas">3. Dos Líneas (Dipolo)</option>
+                                    <option value="interaccion">4. Interacción y Trabajo</option>
+                                    <option value="eje_fuera">5. Eje vs Fuera del Eje</option>
+                                    <option value="variable">6. Densidad Variable λ(y)</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end gap-1">
+                                <button id="btn-play" class="btn-ui bg-emerald-100 text-emerald-700 border-emerald-300" title="Iniciar Integración Numérica">▶ Play</button>
+                                <button id="btn-pause" class="btn-ui bg-amber-100 text-amber-700 border-amber-300" title="Pausar">⏸ Pausa</button>
+                                <button id="btn-reset" class="btn-ui bg-red-100 text-red-700 border-red-300" title="Reiniciar Partícula">🔄 Reset</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2 -->
+                        <div class="flex w-full gap-[1.5vmin] items-center">
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-red-700 text-xs md:text-sm" title="Carga de la partícula">Carga $q$:</label>
+                                <input type="range" id="slider-q" min="-5" max="5" step="0.5" value="1" class="w-[3.5vw]">
+                                <span id="val-q" class="font-mono font-bold w-[1.5vw] text-right text-red-600">1.0</span>
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-blue-700 text-xs md:text-sm" title="Inercia/Masa">Masa $m$:</label>
+                                <input type="range" id="slider-m" min="0.1" max="10" step="0.1" value="1.0" class="w-[3.5vw]">
+                                <span id="val-m" class="font-mono font-bold w-[1.5vw] text-right text-blue-600">1.0</span>
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-purple-700 text-xs md:text-sm" title="Densidad Lineal de Carga">Densidad $\lambda$:</label>
+                                <input type="range" id="slider-e" min="0.5" max="10" step="0.5" value="5" class="w-[3.5vw]">
+                                <span id="val-e" class="font-mono font-bold w-[1.5vw] text-right text-purple-600">5.0</span>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-xs font-semibold text-slate-700">
+                                <label class="flex items-center cursor-pointer text-emerald-700 bg-emerald-50 px-1 border border-emerald-200 rounded hover:bg-emerald-100" title="Habilitar Vector m*g">
+                                    <input type="checkbox" id="toggle-grav" class="mr-1"> Gravedad ($\vec{g}$)
+                                </label>
+                                <label class="flex items-center cursor-pointer hover:text-blue-600">
+                                    <input type="checkbox" id="toggle-grid" checked class="mr-1"> Campo Vectorial
+                                </label>
+                                <label class="flex items-center cursor-pointer text-indigo-700 border border-indigo-200 bg-indigo-50 px-1 rounded hover:bg-indigo-100">
+                                    <input type="checkbox" id="toggle-paint" class="mr-1"> ✏️
+                                </label>
+                                <button id="btn-clear-paint" class="btn-ui bg-red-100 text-red-700 border-red-300 hidden">Borrar</button>
+                            </div>
+                        </div>
+
+                        <!-- Fila 3 -->
+                        <div class="flex w-full gap-[1.5vmin] items-center border-t border-slate-300 pt-1 mt-1">
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-800 text-xs md:text-sm">Velocidad Inicial $\vec{v}_0$:</label>
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-600 text-xs">vx:</label>
+                                <input type="number" id="in-vx" value="0" step="1" class="eq-input bg-white w-[50px]">
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-600 text-xs">vy:</label>
+                                <input type="number" id="in-vy" value="0" step="1" class="eq-input bg-white w-[50px]">
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-slate-600 text-xs">vz:</label>
+                                <input type="number" id="in-vz" value="0" step="1" class="eq-input bg-white w-[50px]">
+                            </div>
+                            <div class="control-group flex-1 text-[10px] md:text-xs text-slate-500 italic text-right">
+                                🔄 Presiona Reset o ajusta para aplicar
+                            </div>
+                        </div>
+
+                        <!-- NUEVA Fila 4: Controles de Integración y dq -->
+                        <div class="flex w-full gap-[1.5vmin] items-center border-t border-slate-300 pt-1 mt-1 flex-wrap bg-slate-100 p-1 rounded">
+                            <div class="control-group border-r border-slate-300 pr-2 text-xs">
+                                <label class="font-bold text-fuchsia-800" title="Elemento diferencial de carga">Elem. $dq$:</label>
+                                <input type="checkbox" id="toggle-dq" checked class="accent-fuchsia-600">
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2 text-xs">
+                                <label title="Posición del diferencial en la línea">Pos $y_{dq}$:</label>
+                                <input type="range" id="slider-dq" min="-5" max="5" step="0.1" value="0" class="w-[3.5vw] accent-fuchsia-500">
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2 text-xs">
+                                <label title="Longitud de la línea finita">Long $L$:</label>
+                                <input type="range" id="slider-L" min="2" max="20" step="1" value="10" class="w-[3.5vw]">
+                            </div>
+                            
+                            <!-- NUEVO: Control de escala para el vector dE -->
+                            <div class="control-group border-r border-slate-300 pr-2 text-xs">
+                                <label title="Escalar visualmente la flecha dE para mejor visibilidad" class="text-fuchsia-700">Escala $d\vec{E}$:</label>
+                                <input type="range" id="slider-scale-de" min="1" max="100" step="1" value="10" class="w-[3.5vw] accent-fuchsia-500">
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-2 text-xs">
+                                <label class="font-bold text-slate-700">Ver:</label>
+                                <label title="Vector de Posición Relativa" class="cursor-pointer text-gray-600"><input type="checkbox" id="toggle-r" checked> $\vec{r}$</label>
+                                <label title="Vector Diferencial de Campo" class="cursor-pointer text-fuchsia-600 ml-1"><input type="checkbox" id="toggle-de" checked> $d\vec{E}$</label>
+                                <label title="Componentes del Campo" class="cursor-pointer text-blue-600 ml-1"><input type="checkbox" id="toggle-de-comp"> Comp.</label>
+                            </div>
+                            <div class="control-group border-r border-slate-300 pr-2 text-xs hidden" id="ui-lambda-var">
+                                <label class="font-bold text-fuchsia-700">$\lambda(y)=$</label>
+                                <input type="text" id="in-lambda-y" value="y" class="eq-input bg-fuchsia-50 w-[50px]" title="Ej: y, Math.sin(y), y*y">
+                            </div>
+                            <div class="control-group flex-1 justify-end gap-1">
+                                <button id="btn-integrate" class="btn-ui bg-fuchsia-200 text-fuchsia-800 border-fuchsia-400 text-xs font-bold" title="Animar barrido de la integral">∫ Barrido Integral</button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas / Paint Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper relative" id="canvas-wrapper-3d">
+                            <div class="hint-overlay shadow-md flex flex-col gap-1">
+                                <span>👆 <strong>Arrastra la partícula o el $dq$</strong> para reubicarlos e inspeccionar el sistema.</span>
+                                <span id="hint-3d" class="text-xs text-indigo-600 hidden">🔄 Arrastra el fondo para rotar en 3D</span>
+                            </div>
+                            
+                            <!-- Contenedor del Motor 3D -->
+                            <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                            
+                            <!-- Pizarra Overlay (Herramienta Paint) -->
+                            <canvas id="paint-canvas"></canvas>
+                        </div>
+
+                        <!-- 2D Graph & DCL -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Diagrama de Cuerpo Libre (DCL) -->
+                            <div class="h-[55%] dcl-wrapper p-[1vmin] flex flex-col">
+                                <div class="text-center font-bold text-emerald-400 mb-1" style="font-size: clamp(12px, 1vw, 15px);">
+                                    DCL: Dinámica Neta
+                                </div>
+                                <div class="flex-1 relative w-full" id="dcl-container">
+                                    <canvas id="dcl-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                                <div class="text-center text-xs text-slate-300 mt-1 font-mono flex flex-col items-center">
+                                    <span>F_eléctrica: <span id="ui-dcl-fe" class="text-yellow-400">0.0</span> N</span>
+                                    <span>W_gravedad: <span id="ui-dcl-wg" class="text-emerald-300">0.0</span> N</span>
+                                </div>
+                            </div>
+
+                            <!-- Gráfica Perfil del Campo -->
+                            <div class="h-[45%] graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 15px);">
+                                    Gráfica $X(t)$ vs Tiempo
+                                </div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS, INTERACCIÓN Y MATEMÁTICAS -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS Y ESCENA
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        
+        const aspect = cont3D.clientWidth / cont3D.clientHeight;
+        const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio); 
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true;
+        
+        // Luces
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(5, 10, 15); 
+        scene.add(light);
+
+        // Grid estético de fondo (Plano XY)
+        const gridHelper = new THREE.GridHelper(40, 40, 0x475569, 0x1e293b);
+        gridHelper.rotation.x = Math.PI / 2;
+        gridHelper.material.opacity = 0.2;
+        gridHelper.material.transparent = true;
+        gridHelper.position.z = -0.5; 
+        scene.add(gridHelper);
+
+        // --- GEOMETRÍAS DE DISTRIBUCIÓN DE CARGA ---
+        const linesGroup = new THREE.Group();
+        scene.add(linesGroup);
+        
+        // Materiales
+        const posLineMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.2, metalness: 0.1 }); // Positiva Roja
+        const negLineMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.2, metalness: 0.1 }); // Negativa Azul
+        
+        // Cilindros
+        const lineGeoFinite = new THREE.CylinderGeometry(0.15, 0.15, 10, 16); // L = 10
+        const lineGeoInfinite = new THREE.CylinderGeometry(0.15, 0.15, 60, 16); // L = 60 (aprox infinita visualmente)
+
+        const rod1 = new THREE.Mesh(lineGeoFinite, posLineMat); // Barra Central (Finita o Infinita)
+        const rod2 = new THREE.Mesh(lineGeoInfinite, negLineMat); // Segunda barra (Dos líneas)
+        
+        linesGroup.add(rod1);
+        linesGroup.add(rod2);
+
+        // --- NUEVOS ELEMENTOS PARA dq Y DIFERENCIALES ---
+        const dqGroup = new THREE.Group();
+        scene.add(dqGroup);
+
+        // Malla del elemento dq (anillo resaltado)
+        const dqGeo = new THREE.CylinderGeometry(0.20, 0.20, 0.4, 16); // Se agrandó ligeramente para mejor "agarre" con el mouse
+        const dqMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, opacity: 0.8 });
+        const dqMesh = new THREE.Mesh(dqGeo, dqMat);
+        dqGroup.add(dqMesh);
+
+        // Vectores visuales del diferencial
+        const rArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xd6d3d1, 0.2, 0.15); // Gris para vector r
+        const dEArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xff00ff, 0.3, 0.2); // Magenta para dE
+        const dExArrow = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,0,0), 1, 0xef4444, 0.2, 0.15); // Rojo para dEx
+        const dEyArrow = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,0), 1, 0x22c55e, 0.2, 0.15); // Verde para dEy
+        const dEzArrow = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,0), 1, 0x3b82f6, 0.2, 0.15); // Azul para dEz
+
+        dqGroup.add(rArrow);
+        dqGroup.add(dEArrow);
+        dqGroup.add(dExArrow);
+        dqGroup.add(dEyArrow);
+        dqGroup.add(dEzArrow);
+
+        // Grupo para dejar un rastro visual durante la integración
+        const dETrailGroup = new THREE.Group();
+        scene.add(dETrailGroup);
+
+        // ==========================================
+        // 2. PARÁMETROS FÍSICOS Y ESTADO DE SIMULACIÓN
+        // ==========================================
+        let params = {
+            config: 'finita',
+            q: 1.0,      // Carga
+            m: 1.0,      // Masa
+            E_scale: 5.0, // Multiplicador de campo (lambda)
+            g: 5.0,       // Escala visual de gravedad
+            useGravity: false,
+            is3D: false,
+            isPlaying: false,
+            // Nuevos parámetros para diferenciales
+            L: 10.0,
+            show_dq: true,
+            dq_y: 0.0,
+            show_r: true,
+            show_dE: true,
+            show_dE_comp: false,
+            is_integrating: false,
+            lambda_str: "y",
+            scale_dE: 10.0 // Multiplicador visual para el vector dE
+        };
+        
+        let particle = {
+            mesh: null,
+            pos: new THREE.Vector3(4,0,0),
+            vel: new THREE.Vector3(0,0,0),
+            trail: [],
+            maxTrail: 300,
+            vStart: 0,    // Potencial inicial al soltar
+            wTotal: 0     // Trabajo acumulado
+        };
+
+        // Materiales y Geometrías
+        const geoTest = new THREE.SphereGeometry(0.35, 32, 32);
+        const matTest = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.1, emissive: 0x665500 });
+        particle.mesh = new THREE.Mesh(geoTest, matTest);
+        scene.add(particle.mesh);
+
+        // Anillo de Selección
+        const ringGeoTest = new THREE.RingGeometry(0.45, 0.55, 32);
+        const ringMatTest = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+        const selectionRingTest = new THREE.Mesh(ringGeoTest, ringMatTest);
+        selectionRingTest.visible = false;
+        particle.mesh.add(selectionRingTest);
+
+        // Vectores Globales
+        const gridVectorsGroup = new THREE.Group();
+        scene.add(gridVectorsGroup);
+
+        const trailMat = new THREE.LineBasicMaterial({ color: 0xfbbf24, linewidth: 2 });
+        let trailLine = new THREE.Line(new THREE.BufferGeometry(), trailMat);
+        scene.add(trailLine);
+
+        // ==========================================
+        // 3. VISTA 2D vs 3D
+        // ==========================================
+        function setupView() {
+            if (params.is3D) {
+                cam.position.set(12, -10, 15);
+                ctrl.enableRotate = true;
+                document.getElementById('btn-toggle-3d').textContent = "Modo 3D";
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-purple-100 text-purple-800 border-purple-300";
+                document.getElementById('hint-3d').classList.remove('hidden');
+            } else {
+                cam.position.set(0, 0, 20);
+                cam.rotation.set(0,0,0);
+                ctrl.enableRotate = false;
+                document.getElementById('btn-toggle-3d').textContent = "Modo 2D";
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-indigo-100 text-indigo-800 border-indigo-300";
+                document.getElementById('hint-3d').classList.add('hidden');
+                
+                particle.pos.z = 0; // Aplanar
+            }
+            updateBackgroundGrid();
+        }
+
+        document.getElementById('btn-toggle-3d').addEventListener('click', () => {
+            params.is3D = !params.is3D;
+            setupView();
+        });
+
+        // ==========================================
+        // 4. LÓGICA MATEMÁTICA: CAMPO Y POTENCIAL
+        // ==========================================
+        
+        // Función evaluadora para densidad variable
+        function getLambdaAt(y) {
+            if (params.config === 'variable') {
+                try {
+                    let f = new Function('y', 'return ' + params.lambda_str.replace(/sin/g, 'Math.sin').replace(/cos/g, 'Math.cos'));
+                    let val = f(y);
+                    return isNaN(val) ? 0 : val * params.E_scale;
+                } catch(e) { return 0; }
+            }
+            return params.E_scale;
+        }
+
+        function calculateE(pos) {
+            let x = pos.x, y = pos.y, z = pos.z;
+            let E = new THREE.Vector3(0,0,0);
+            let k = params.E_scale; // proporcional a la densidad lambda
+            
+            // Radio perpendicular al eje Y
+            let r2 = x*x + z*z + 1e-6; // Prevenir div by 0
+            let r = Math.sqrt(r2);
+
+            switch (params.config) {
+                case 'finita':
+                case 'interaccion':
+                case 'eje_fuera':
+                    // Línea finita dinámica
+                    let L_half = params.L / 2.0;
+                    let denom1 = Math.sqrt(r2 + Math.pow(y + L_half, 2));
+                    let denom2 = Math.sqrt(r2 + Math.pow(y - L_half, 2));
+                    
+                    let Ex = k * (x/r2) * ( (y+L_half)/denom1 - (y-L_half)/denom2 );
+                    let Ez = k * (z/r2) * ( (y+L_half)/denom1 - (y-L_half)/denom2 );
+                    let Ey = k * ( 1/denom2 - 1/denom1 );
+                    
+                    E.set(Ex, Ey, Ez);
+                    break;
+                    
+                case 'infinita':
+                    // E = 2k \lambda / r (radial)
+                    E.set(2*k*x/r2, 0, 2*k*z/r2);
+                    break;
+                    
+                case 'dos_lineas':
+                    // Dos líneas infinitas en x = -d y x = +d
+                    let d = 3.0;
+                    
+                    // Línea + en x = -d
+                    let rp2 = Math.pow(x+d, 2) + z*z + 1e-6;
+                    let E1x = 2*k*(x+d)/rp2;
+                    let E1z = 2*k*z/rp2;
+                    
+                    // Línea - en x = d (carga -lambda)
+                    let rm2 = Math.pow(x-d, 2) + z*z + 1e-6;
+                    let E2x = -2*k*(x-d)/rm2;
+                    let E2z = -2*k*z/rm2;
+                    
+                    E.set(E1x + E2x, 0, E1z + E2z);
+                    break;
+                    
+                case 'variable':
+                    // Integración numérica (Suma de Riemann) para densidad variable
+                    let Ex_v=0, Ey_v=0, Ez_v=0;
+                    let dy = 0.2; 
+                    let Lh = params.L / 2.0;
+                    for(let yi = -Lh; yi <= Lh; yi += dy) {
+                        let lam = getLambdaAt(yi);
+                        let r2_i = x*x + Math.pow(y-yi, 2) + z*z + 1e-6;
+                        let r_i = Math.sqrt(r2_i);
+                        Ex_v += (lam * dy / r2_i) * (x / r_i);
+                        Ey_v += (lam * dy / r2_i) * ((y-yi) / r_i);
+                        Ez_v += (lam * dy / r2_i) * (z / r_i);
+                    }
+                    E.set(Ex_v, Ey_v, Ez_v);
+                    break;
+            }
+            return E;
+        }
+
+        function calculateV(pos) {
+            let x = pos.x, y = pos.y, z = pos.z;
+            let k = params.E_scale;
+            let r2 = x*x + z*z + 1e-6;
+            
+            if (params.config === 'finita' || params.config === 'interaccion' || params.config === 'eje_fuera') {
+                let L_half = params.L / 2.0;
+                let num = (y + L_half) + Math.sqrt(r2 + Math.pow(y + L_half, 2));
+                let den = (y - L_half) + Math.sqrt(r2 + Math.pow(y - L_half, 2));
+                return k * Math.log(Math.abs(num/den) + 1e-10);
+            } 
+            else if (params.config === 'infinita') {
+                return -2 * k * Math.log(Math.sqrt(r2));
+            } 
+            else if (params.config === 'dos_lineas') {
+                let d = 3.0;
+                let r_plus = Math.sqrt(Math.pow(x+d, 2) + z*z + 1e-6);
+                let r_minus = Math.sqrt(Math.pow(x-d, 2) + z*z + 1e-6);
+                // V = -2k ln(r+) + 2k ln(r-) = 2k ln(r-/r+)
+                return 2 * k * Math.log(r_minus / r_plus);
+            }
+            else if (params.config === 'variable') {
+                // Integración de potencial
+                let V_v = 0;
+                let dy = 0.2;
+                let Lh = params.L / 2.0;
+                for(let yi = -Lh; yi <= Lh; yi += dy) {
+                    let lam = getLambdaAt(yi);
+                    let dist = Math.sqrt(x*x + Math.pow(y-yi, 2) + z*z + 1e-6);
+                    V_v += (lam * dy) / dist; // K ya está incluido en E_scale/lam visualmente
+                }
+                return V_v;
+            }
+            return 0;
+        }
+
+        // ==========================================
+        // 5. RENDERIZADO DEL CAMPO VECTORIAL (GRID)
+        // ==========================================
+        function updateBackgroundGrid() {
+            gridVectorsGroup.clear();
+            
+            if (!document.getElementById('toggle-grid').checked) return;
+
+            const spacing = params.is3D ? 3.0 : 2.0; 
+            const sizeX = 14, sizeY = 10;
+            const sizeZ = params.is3D ? 6 : 0; 
+            
+            for (let x = -sizeX; x <= sizeX; x += spacing) {
+                for (let y = -sizeY; y <= sizeY; y += spacing) {
+                    for (let z = -sizeZ; z <= sizeZ; z += spacing) {
+                        
+                        // Evitar dibujar flechas dentro de las varillas
+                        if (params.config !== 'dos_lineas' && Math.abs(x) < 0.5 && Math.abs(z) < 0.5 && Math.abs(y) <= 5.5) continue;
+                        if (params.config === 'dos_lineas' && (Math.abs(x-3) < 0.5 || Math.abs(x+3) < 0.5) && Math.abs(z) < 0.5) continue;
+
+                        let pos = new THREE.Vector3(x, y, z);
+                        let E = calculateE(pos);
+                        let mag = E.length();
+                        
+                        if (mag < 0.1 || !isFinite(mag)) continue;
+
+                        let dir = E.clone().normalize();
+                        let visualLen = Math.min(Math.pow(mag/5, 0.4), spacing * 0.8); 
+                        
+                        let color = new THREE.Color();
+                        color.setHSL(0.6 - Math.min(mag/30, 0.6), 0.8, 0.6); 
+                        
+                        let arrow = new THREE.ArrowHelper(dir, pos, visualLen, color, visualLen*0.3, visualLen*0.2);
+                        
+                        let opacity = params.is3D ? 0.3 : 0.5;
+                        arrow.line.material.transparent = true; arrow.line.material.opacity = opacity;
+                        arrow.cone.material.transparent = true; arrow.cone.material.opacity = opacity + 0.1;
+
+                        gridVectorsGroup.add(arrow);
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 6. MOTOR DE INTEGRACIÓN (FÍSICA DE LA PARTÍCULA)
+        // ==========================================
+        let lastTime = performance.now();
+        let graphDataX = []; // Almacena (t, x)
+        let simTime = 0;
+
+        // Función para actualizar los visualizadores de la integral y dq
+        function updateDQVisuals() {
+            let validConfigs = ['finita', 'eje_fuera', 'interaccion', 'variable'];
+            if (!params.show_dq || !validConfigs.includes(params.config)) {
+                dqGroup.visible = false;
+                dETrailGroup.visible = false;
+                return;
+            }
+            dqGroup.visible = true;
+            dETrailGroup.visible = true;
+
+            let limitY = params.L / 2.0;
+
+            // Animación del barrido de la integral
+            if (params.is_integrating) {
+                params.dq_y += 0.15; // Velocidad de integración
+                if (params.dq_y > limitY) {
+                    params.dq_y = -limitY; // Reset
+                    params.is_integrating = false; // Finaliza barrido
+                    setTimeout(() => dETrailGroup.clear(), 2000); // Limpiar rastro tras terminar
+                }
+                document.getElementById('slider-dq').value = params.dq_y;
+            }
+
+            let y_dq = params.dq_y;
+            
+            // Asegurar que dq no se sale de los límites de L
+            if (y_dq > limitY) y_dq = limitY;
+            if (y_dq < -limitY) y_dq = -limitY;
+
+            dqMesh.position.set(0, y_dq, 0);
+
+            // Matemáticas vectoriales del dq específico
+            let dq_pos = new THREE.Vector3(0, y_dq, 0);
+            let r_vec = new THREE.Vector3().subVectors(particle.pos, dq_pos);
+            let r_dist = r_vec.length();
+            let r_dir = r_vec.clone().normalize();
+
+            let lam = getLambdaAt(y_dq);
+            let dl = 0.5; // Escala representativa diferencial
+            // dE = k * dq / r^2
+            let dE_mag = (lam * dl) / (r_dist * r_dist + 1e-6); 
+            let dE_vec = r_dir.clone().multiplyScalar(dE_mag);
+
+            // Actualizar Vectores
+            rArrow.setDirection(r_dir);
+            rArrow.position.copy(dq_pos);
+            rArrow.setLength(r_dist, r_dist * 0.1, r_dist * 0.05);
+            rArrow.visible = params.show_r;
+
+            // Uso del multiplicador visual (scale_dE) sobre la magnitud física real
+            let vis_dE_len = Math.abs(dE_mag) * params.scale_dE; 
+
+            if (lam < 0) dEArrow.setDirection(dE_vec.clone().normalize().negate());
+            else dEArrow.setDirection(dE_vec.clone().normalize());
+            
+            dEArrow.position.copy(particle.pos);
+            dEArrow.setLength(vis_dE_len, vis_dE_len*0.3, vis_dE_len*0.2);
+            dEArrow.visible = params.show_dE && vis_dE_len > 0.01;
+
+            // Componentes Rectangulares
+            if (params.show_dE_comp && vis_dE_len > 0.01) {
+                let vis_dEx_len = Math.abs(dE_vec.x) * params.scale_dE;
+                dExArrow.visible = vis_dEx_len > 0.01;
+                if (dExArrow.visible) {
+                    dExArrow.setDirection(new THREE.Vector3(Math.sign(dE_vec.x),0,0));
+                    dExArrow.position.copy(particle.pos);
+                    dExArrow.setLength(vis_dEx_len, vis_dEx_len*0.3, vis_dEx_len*0.2);
+                }
+
+                let vis_dEy_len = Math.abs(dE_vec.y) * params.scale_dE;
+                dEyArrow.visible = vis_dEy_len > 0.01;
+                if (dEyArrow.visible) {
+                    dEyArrow.setDirection(new THREE.Vector3(0,Math.sign(dE_vec.y),0));
+                    dEyArrow.position.copy(particle.pos);
+                    dEyArrow.setLength(vis_dEy_len, vis_dEy_len*0.3, vis_dEy_len*0.2);
+                }
+
+                let vis_dEz_len = Math.abs(dE_vec.z) * params.scale_dE;
+                dEzArrow.visible = vis_dEz_len > 0.01;
+                if (dEzArrow.visible) {
+                    dEzArrow.setDirection(new THREE.Vector3(0,0,Math.sign(dE_vec.z)));
+                    dEzArrow.position.copy(particle.pos);
+                    dEzArrow.setLength(vis_dEz_len, vis_dEz_len*0.3, vis_dEz_len*0.2);
+                }
+            } else {
+                dExArrow.visible = dEyArrow.visible = dEzArrow.visible = false;
+            }
+
+            // Rastro de Superposición (Suma visual de la integral)
+            if (params.is_integrating && vis_dE_len > 0.01) {
+                let ghostArrow = new THREE.ArrowHelper(dEArrow.dir, particle.pos, vis_dE_len, 0xec4899, vis_dE_len*0.3, vis_dE_len*0.2);
+                ghostArrow.line.material.transparent = true; ghostArrow.line.material.opacity = 0.15;
+                ghostArrow.cone.material.transparent = true; ghostArrow.cone.material.opacity = 0.15;
+                dETrailGroup.add(ghostArrow);
+            }
+        }
+
+        function updatePhysics() {
+            let now = performance.now();
+            let dt = (now - lastTime) / 1000.0;
+            lastTime = now;
+            
+            if (dt > 0.1) dt = 0.016; 
+
+            // Control the rod meshes based on config
+            if (params.config === 'finita' || params.config === 'interaccion' || params.config === 'eje_fuera' || params.config === 'variable') {
+                rod1.scale.set(1, params.L / 10.0, 1); // Escalar barra según slider L
+                rod1.position.set(0,0,0);
+                rod1.visible = true;
+                rod2.visible = false;
+            } else if (params.config === 'infinita') {
+                rod1.scale.set(1, 1, 1);
+                rod1.geometry = lineGeoInfinite;
+                rod1.position.set(0,0,0);
+                rod1.visible = true;
+                rod2.visible = false;
+            } else if (params.config === 'dos_lineas') {
+                rod1.geometry = lineGeoInfinite;
+                rod1.position.set(-3,0,0);
+                rod1.visible = true;
+                
+                rod2.geometry = lineGeoInfinite;
+                rod2.position.set(3,0,0);
+                rod2.visible = true;
+            }
+
+            if (params.isPlaying) {
+                simTime += dt;
+                
+                let E = calculateE(particle.pos);
+                let Fe = E.clone().multiplyScalar(params.q);
+                let W_grav = new THREE.Vector3(0, 0, 0);
+                if (params.useGravity) W_grav.set(0, -params.m * params.g, 0);
+
+                let Fnet = Fe.clone().add(W_grav);
+                let mass = Math.max(params.m, 0.01);
+                let acc = Fnet.clone().divideScalar(mass);
+
+                // Euler
+                particle.vel.add(acc.multiplyScalar(dt));
+                particle.vel.multiplyScalar(0.995); // Fricción suave
+                particle.pos.add(particle.vel.clone().multiplyScalar(dt));
+
+                // Colisiones con las varillas (cilindros r=0.15)
+                const checkRodCollision = (rX, rZ, limitY) => {
+                    let dX = particle.pos.x - rX;
+                    let dZ = particle.pos.z - rZ;
+                    let rSq = dX*dX + dZ*dZ;
+                    if (rSq < 0.25 && Math.abs(particle.pos.y) < limitY) {
+                        // Empujar hacia afuera
+                        let rVec = new THREE.Vector3(dX, 0, dZ).normalize().multiplyScalar(0.51);
+                        particle.pos.x = rX + rVec.x;
+                        particle.pos.z = rZ + rVec.z;
+                        particle.vel.x *= -0.5;
+                        particle.vel.z *= -0.5;
+                    }
+                };
+
+                if (params.config === 'finita' || params.config === 'interaccion' || params.config === 'eje_fuera') {
+                    checkRodCollision(0, 0, params.L / 2.0 + 0.3); // Usando longitud dinámica
+                } else if (params.config === 'infinita') {
+                    checkRodCollision(0, 0, 30);
+                } else if (params.config === 'dos_lineas') {
+                    checkRodCollision(-3, 0, 30);
+                    checkRodCollision(3, 0, 30);
+                }
+
+                if(!params.is3D) particle.pos.z = 0;
+                
+                // Bordes
+                const B = 20;
+                if(particle.pos.x > B || particle.pos.x < -B) particle.vel.x *= -0.5;
+                if(particle.pos.y > B || particle.pos.y < -B) particle.vel.y *= -0.5;
+                if(params.is3D && (particle.pos.z > B || particle.pos.z < -B)) particle.vel.z *= -0.5;
+
+                // Trail
+                if(particle.trail.length === 0 || particle.pos.distanceTo(particle.trail[particle.trail.length-1]) > 0.1) {
+                    particle.trail.push(particle.pos.clone());
+                    if (particle.trail.length > particle.maxTrail) particle.trail.shift();
+                    trailLine.geometry.setFromPoints(particle.trail);
+                }
+
+                // Trabajo Eléctrico Acumulado = -q(V_actual - V_start)
+                let currentV = calculateV(particle.pos);
+                particle.wTotal = -params.q * (currentV - particle.vStart);
+
+                // Datos Gráfica
+                if (Math.random() < 0.2) { 
+                    graphDataX.push({ t: simTime, x: particle.pos.x });
+                    if(graphDataX.length > 100) graphDataX.shift();
+                }
+            }
+
+            particle.mesh.position.copy(particle.pos);
+            
+            if (params.q < 0) matTest.color.setHex(0x10b981); 
+            else if (params.q > 0) matTest.color.setHex(0xfacc15); 
+            else matTest.color.setHex(0x9ca3af);
+
+            updateDQVisuals();
+            updateUI();
+            drawDCL();
+        }
+
+        function updateUI() {
+            let E = calculateE(particle.pos);
+            let Fe = E.clone().multiplyScalar(params.q);
+            let W_grav = params.useGravity ? new THREE.Vector3(0, -params.m * params.g, 0) : new THREE.Vector3();
+            let Fnet = Fe.clone().add(W_grav);
+            let currentV = calculateV(particle.pos);
+
+            document.getElementById('ui-mag-f').textContent = Fnet.length().toFixed(2);
+            document.getElementById('ui-mag-v').textContent = particle.vel.length().toFixed(2);
+            
+            document.getElementById('ui-pot-v').textContent = currentV.toFixed(2);
+            document.getElementById('ui-work').textContent = (params.isPlaying || isDragging ? particle.wTotal.toFixed(2) : "0.00");
+
+            document.getElementById('ui-dcl-fe').textContent = Fe.length().toFixed(2);
+            document.getElementById('ui-dcl-wg').textContent = W_grav.length().toFixed(2);
+        }
+
+        // ==========================================
+        // 7. ARRASTRE DE PARTÍCULA Y dq (DRAG)
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
+        let isDragging = false;
+        let isDraggingDQ = false; // Nueva variable de estado para el arrastre del diferencial
+        const canvasEl = renderer.domElement;
+
+        canvasEl.addEventListener('pointerdown', (e) => {
+            if (document.getElementById('toggle-paint').checked) return; 
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, cam);
+            raycaster.params.Points.threshold = 0.5;
+
+            const intersectsParticle = raycaster.intersectObject(particle.mesh);
+            const intersectsDQ = raycaster.intersectObject(dqMesh);
+
+            // Determinar a quién hemos cliqueado
+            if (intersectsParticle.length > 0) {
+                isDragging = true;
+                selectionRingTest.visible = true;
+                
+                particle.vel.set(0,0,0);
+                particle.trail = [];
+                trailLine.geometry.setFromPoints([]);
+                particle.vStart = calculateV(particle.pos); // Resetear referencia de trabajo
+
+                canvasEl.setPointerCapture(e.pointerId);
+                document.body.style.cursor = 'grabbing';
+                ctrl.enabled = false; 
+            } else if (intersectsDQ.length > 0 && params.show_dq && dqGroup.visible) {
+                isDraggingDQ = true;
+                params.is_integrating = false; // Parar animación visual al agarrar manualmente
+                canvasEl.setPointerCapture(e.pointerId);
+                document.body.style.cursor = 'ns-resize'; // Cursor que indica arrastre vertical
+                ctrl.enabled = false;
+            }
+        });
+
+        canvasEl.addEventListener('pointermove', (e) => {
+            if (document.getElementById('toggle-paint').checked) return;
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (isDragging) {
+                raycaster.setFromCamera(mouse, cam);
+                
+                if(params.is3D) {
+                     dragPlane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1), particle.mesh.position);
+                } else {
+                     dragPlane.set(new THREE.Vector3(0,0,1), 0);
+                }
+
+                const intersect = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, intersect);
+                if (intersect) {
+                    intersect.x = Math.max(-15, Math.min(15, intersect.x));
+                    intersect.y = Math.max(-10, Math.min(10, intersect.y));
+                    if(!params.is3D) intersect.z = 0;
+                    
+                    particle.pos.copy(intersect);
+                    
+                    // Al arrastrar recalculamos el trabajo visual
+                    let currentV = calculateV(particle.pos);
+                    particle.wTotal = -params.q * (currentV - particle.vStart);
+
+                    updateDQVisuals();
+                    updateUI();
+                    drawDCL();
+                }
+            } else if (isDraggingDQ) {
+                // Lógica de arrastre especial para el diferencial (solo en eje Y)
+                raycaster.setFromCamera(mouse, cam);
+                
+                if(params.is3D) {
+                     dragPlane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1), dqMesh.position);
+                } else {
+                     dragPlane.set(new THREE.Vector3(0,0,1), 0);
+                }
+
+                const intersect = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, intersect);
+                if (intersect) {
+                    let limitY = params.L / 2.0;
+                    params.dq_y = Math.max(-limitY, Math.min(limitY, intersect.y));
+                    document.getElementById('slider-dq').value = params.dq_y;
+                    
+                    dETrailGroup.clear(); // Limpiar rastro de integracion mientras movemos
+                    updateDQVisuals();
+                    drawDCL(); // Refrescar gráfica inmediatamente
+                }
+            } else {
+                // Estado "Hover" para cambiar el puntero
+                raycaster.setFromCamera(mouse, cam);
+                if (raycaster.intersectObject(particle.mesh).length > 0) {
+                    document.body.style.cursor = 'grab';
+                } else if (raycaster.intersectObject(dqMesh).length > 0 && params.show_dq && dqGroup.visible) {
+                    document.body.style.cursor = 'ns-resize'; // Cursor vertical para dq
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            }
+        });
+
+        const onPointerUp = (e) => {
+            if (isDragging) {
+                selectionRingTest.visible = false;
+                isDragging = false;
+                document.body.style.cursor = 'default';
+                ctrl.enabled = true; 
+                
+                // Fijar el punto inicial para la dinámica
+                particle.vStart = calculateV(particle.pos);
+                particle.wTotal = 0;
+
+                try { canvasEl.releasePointerCapture(e.pointerId); } catch(err){}
+            }
+            if (isDraggingDQ) {
+                isDraggingDQ = false;
+                document.body.style.cursor = 'default';
+                ctrl.enabled = true;
+                try { canvasEl.releasePointerCapture(e.pointerId); } catch(err){}
+            }
+        };
+
+        canvasEl.addEventListener('pointerup', onPointerUp);
+        canvasEl.addEventListener('pointercancel', onPointerUp);
+
+        // ==========================================
+        // 8. DIAGRAMA DE CUERPO LIBRE (DCL) 2D
+        // ==========================================
+        const dclCont = document.getElementById('dcl-container');
+        const dclCanvas = document.getElementById('dcl-canvas');
+        const dclCtx = dclCanvas.getContext('2d');
+
+        function resizeDCL() {
+            dclCanvas.width = dclCont.clientWidth;
+            dclCanvas.height = dclCont.clientHeight;
+            drawDCL(); 
+        }
+
+        function drawDCL() {
+            const w = dclCanvas.width; const h = dclCanvas.height;
+            const cx = w/2; const cy = h/2;
+            dclCtx.clearRect(0, 0, w, h);
+
+            dclCtx.beginPath(); dclCtx.strokeStyle = "#334155"; dclCtx.lineWidth = 1;
+            dclCtx.moveTo(0, cy); dclCtx.lineTo(w, cy); 
+            dclCtx.moveTo(cx, 0); dclCtx.lineTo(cx, h); 
+            dclCtx.stroke();
+
+            dclCtx.beginPath(); dclCtx.arc(cx, cy, 8, 0, Math.PI*2);
+            dclCtx.fillStyle = (params.q < 0) ? "#10b981" : (params.q > 0 ? "#facc15" : "#9ca3af");
+            dclCtx.fill(); dclCtx.strokeStyle="#fff"; dclCtx.lineWidth=1.5; dclCtx.stroke();
+
+            let E = calculateE(particle.pos);
+            let Fe = E.clone().multiplyScalar(params.q);
+            let W_grav = params.useGravity ? new THREE.Vector3(0, -params.m * params.g, 0) : new THREE.Vector3();
+            let Fnet = Fe.clone().add(W_grav);
+
+            const scaleVector = 2.5;
+
+            const drawArrowCtx = (vec, color, lineWidth, dashed=false) => {
+                let vLen = vec.length() * scaleVector;
+                if(vLen < 1) return;
+                let endX = cx + vec.x * scaleVector;
+                let endY = cy - vec.y * scaleVector; 
+
+                dclCtx.beginPath(); 
+                dclCtx.strokeStyle = color; dclCtx.lineWidth = lineWidth;
+                if(dashed) dclCtx.setLineDash([4, 4]); else dclCtx.setLineDash([]);
+                
+                var headlen = 8; 
+                var angle = Math.atan2(-vec.y, vec.x);
+
+                dclCtx.moveTo(cx, cy); dclCtx.lineTo(endX, endY);
+                dclCtx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                dclCtx.moveTo(endX, endY);
+                dclCtx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
+                dclCtx.stroke();
+                dclCtx.setLineDash([]); 
+            };
+
+            drawArrowCtx(W_grav, "#34d399", 2); 
+            drawArrowCtx(Fe, "#facc15", 2); 
+            drawArrowCtx(Fnet, "#ef4444", 3, true); 
+
+            // TEXTOS: Parámetros del Elemento Diferencial integrados en la gráfica
+            if (params.show_dq && dqGroup.visible) {
+                dclCtx.fillStyle = "#f472b6"; // Rosa/Fuchsia
+                dclCtx.font = "bold 11px monospace";
+                dclCtx.textAlign = "left";
+                
+                let y_dq = params.dq_y;
+                let lam = getLambdaAt(y_dq);
+                let r_vec = new THREE.Vector3().subVectors(particle.pos, new THREE.Vector3(0, y_dq, 0));
+                let dl = 0.5;
+                let dE_mag = (lam * dl) / (r_vec.lengthSq() + 1e-6);
+
+                dclCtx.fillText(`[ Análisis del Diferencial ]`, 5, 15);
+                dclCtx.fillStyle = "#94a3b8";
+                dclCtx.font = "10px monospace";
+                dclCtx.fillText(`dq = λ(y)·dl`, 5, 30);
+                dclCtx.fillText(`Posición y: ${y_dq.toFixed(2)} m`, 5, 45);
+                dclCtx.fillText(`Densidad λ: ${lam.toFixed(2)} C/m`, 5, 60);
+                dclCtx.fillText(`|r| Dist. : ${r_vec.length().toFixed(2)} m`, 5, 75);
+                dclCtx.fillStyle = "#ff00ff";
+                dclCtx.fillText(`|dE| Mag. : ${Math.abs(dE_mag).toFixed(3)} N/C`, 5, 90);
+                
+                // Mostrar ecuación si es variable
+                if(params.config === 'variable') {
+                    dclCtx.fillStyle = "#8b5cf6";
+                    dclCtx.fillText(`λ(y) = ${params.lambda_str}`, 5, 105);
+                }
+            }
+        }
+
+        // ==========================================
+        // 9. GRÁFICA PERFIL 2D (X vs t)
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const graphCanvas = document.getElementById('graph-2d');
+        const gCtx = graphCanvas.getContext('2d');
+
+        function resizeGraph() {
+            graphCanvas.width = graphCont.clientWidth;
+            graphCanvas.height = graphCont.clientHeight;
+        }
+
+        function drawGraphProfile() {
+            const w = graphCanvas.width; const h = graphCanvas.height;
+            const padX = 35; const padY = 25;
+            gCtx.clearRect(0, 0, w, h);
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#94a3b8"; gCtx.lineWidth = 2;
+            gCtx.moveTo(padX, padY/2); gCtx.lineTo(padX, h - padY); 
+            gCtx.lineTo(w - padX/2, h - padY); 
+            gCtx.stroke();
+
+            gCtx.fillStyle = "#475569"; gCtx.font = "11px sans-serif";
+            gCtx.fillText("X", padX - 18, padY); 
+            gCtx.fillText("t", w - padX + 5, h - padY + 12);
+
+            if (graphDataX.length < 2) return;
+
+            const tMin = graphDataX[0].t;
+            const tMax = Math.max(tMin + 5, graphDataX[graphDataX.length-1].t); 
+            
+            const yMin = -15, yMax = 15; // X Bounds
+
+            const mapX = (t) => padX + ((t - tMin) / (tMax - tMin)) * (w - padX * 1.5);
+            const mapY = (x) => (h - padY) - ((x - yMin) / (yMax - yMin)) * (h - padY * 1.5);
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#cbd5e1"; gCtx.lineWidth = 1; gCtx.setLineDash([2,2]);
+            gCtx.moveTo(padX, mapY(0)); gCtx.lineTo(w - padX/2, mapY(0)); gCtx.stroke(); gCtx.setLineDash([]);
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#6366f1"; gCtx.lineWidth = 2;
+            for(let i=0; i<graphDataX.length; i++) {
+                let px = mapX(graphDataX[i].t);
+                let py = mapY(graphDataX[i].x);
+                if (i===0) gCtx.moveTo(px, py);
+                else gCtx.lineTo(px, py);
+            }
+            gCtx.stroke();
+        }
+
+        // ==========================================
+        // 10. HERRAMIENTA PAINT / PIZARRA
+        // ==========================================
+        const paintCanvas = document.getElementById('paint-canvas');
+        const pCtx = paintCanvas.getContext('2d');
+        let isPainting = false;
+
+        function resizePaint() {
+            paintCanvas.width = paintCanvas.offsetWidth;
+            paintCanvas.height = paintCanvas.offsetHeight;
+            pCtx.lineWidth = 3; pCtx.lineCap = 'round'; pCtx.strokeStyle = '#fbbf24'; 
+        }
+
+        const startPaint = (e) => {
+            isPainting = true;
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.beginPath(); pCtx.moveTo(clientX - rect.left, clientY - rect.top);
+        };
+        const drawPaint = (e) => {
+            if (!isPainting) return;
+            e.preventDefault();
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.lineTo(clientX - rect.left, clientY - rect.top); pCtx.stroke();
+        };
+        const stopPaint = () => { isPainting = false; };
+
+        paintCanvas.addEventListener('mousedown', startPaint);
+        paintCanvas.addEventListener('mousemove', drawPaint);
+        window.addEventListener('mouseup', stopPaint);
+        paintCanvas.addEventListener('touchstart', startPaint, {passive: false});
+        paintCanvas.addEventListener('touchmove', drawPaint, {passive: false});
+        paintCanvas.addEventListener('touchend', stopPaint);
+
+        document.getElementById('btn-clear-paint').addEventListener('click', () => { pCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height); });
+        document.getElementById('toggle-paint').addEventListener('change', (e) => {
+            const btnClear = document.getElementById('btn-clear-paint');
+            if(e.target.checked) {
+                paintCanvas.classList.add('paint-mode-active'); btnClear.classList.remove('hidden'); canvasEl.style.pointerEvents = "none";
+            } else {
+                paintCanvas.classList.remove('paint-mode-active'); btnClear.classList.add('hidden'); canvasEl.style.pointerEvents = "auto";
+            }
+        });
+
+        // ==========================================
+        // 11. EVENTOS UI Y BUCLE DE ANIMACIÓN
+        // ==========================================
+        const syncInitialVelocity = () => {
+            if(!params.isPlaying) {
+                let vx = parseFloat(document.getElementById('in-vx').value) || 0;
+                let vy = parseFloat(document.getElementById('in-vy').value) || 0;
+                let vz = parseFloat(document.getElementById('in-vz').value) || 0;
+                particle.vel.set(vx, vy, vz);
+                updateUI();
+            }
+        };
+        document.getElementById('in-vx').addEventListener('input', syncInitialVelocity);
+        document.getElementById('in-vy').addEventListener('input', syncInitialVelocity);
+        document.getElementById('in-vz').addEventListener('input', syncInitialVelocity);
+
+        function updateTeoriaUI(val) {
+            ['finita', 'infinita', 'dos_lineas', 'interaccion', 'eje_fuera', 'variable'].forEach(c => {
+                const el = document.getElementById('teoria-' + c);
+                if(el) {
+                    if (c === val) { el.classList.remove('hidden'); el.classList.add('flex'); } 
+                    else { el.classList.add('hidden'); el.classList.remove('flex'); }
+                }
+            });
+
+            // Mostrar u ocultar entrada de función lambda
+            const varUI = document.getElementById('ui-lambda-var');
+            if(val === 'variable') varUI.classList.remove('hidden');
+            else varUI.classList.add('hidden');
+        }
+
+        document.getElementById('select-config').addEventListener('change', (e) => { 
+            params.config = e.target.value; 
+            updateTeoriaUI(params.config);
+            
+            // Re-posicionar partícula al cambiar de modo para ilustrar mejor
+            if (params.config === 'dos_lineas') {
+                particle.pos.set(0, 3, 0); // Entre las dos líneas
+            } else if (params.config === 'interaccion') {
+                particle.pos.set(4, 0, 0);
+            } else if (params.config === 'eje_fuera') {
+                particle.pos.set(0, 6, 0); // Sobre el eje (las puntas están en +/- 5)
+            } else {
+                particle.pos.set(4, 0, 0);
+            }
+            
+            particle.vel.set(0,0,0);
+            document.getElementById('in-vx').value = 0;
+            document.getElementById('in-vy').value = 0;
+            document.getElementById('in-vz').value = 0;
+            
+            dETrailGroup.clear(); // Limpiar rastro de integración al cambiar modo
+            particle.trail = [];
+            trailLine.geometry.setFromPoints([]);
+            particle.vStart = calculateV(particle.pos);
+            particle.wTotal = 0;
+
+            updateBackgroundGrid();
+            updateUI();
+        });
+
+        // Controles Nuevos de Diferenciales e Integración
+        document.getElementById('toggle-dq').addEventListener('change', e => { params.show_dq = e.target.checked; });
+        document.getElementById('slider-dq').addEventListener('input', e => { 
+            params.dq_y = parseFloat(e.target.value); 
+            params.is_integrating = false; // Parar animación si usuario arrastra
+        });
+        document.getElementById('slider-L').addEventListener('input', e => {
+            params.L = parseFloat(e.target.value);
+            document.getElementById('slider-dq').min = -params.L / 2;
+            document.getElementById('slider-dq').max = params.L / 2;
+            // Limitar dq_y actual si se sale
+            if(params.dq_y > params.L/2) params.dq_y = params.L/2;
+            if(params.dq_y < -params.L/2) params.dq_y = -params.L/2;
+            document.getElementById('slider-dq').value = params.dq_y;
+            dETrailGroup.clear();
+        });
+        
+        // NUEVO: EventListener para el slider de Escala dE
+        document.getElementById('slider-scale-de').addEventListener('input', e => {
+            params.scale_dE = parseFloat(e.target.value);
+            updateDQVisuals(); // Actualizar el tamaño del vector instantáneamente
+        });
+
+        document.getElementById('toggle-r').addEventListener('change', e => params.show_r = e.target.checked);
+        document.getElementById('toggle-de').addEventListener('change', e => params.show_dE = e.target.checked);
+        document.getElementById('toggle-de-comp').addEventListener('change', e => params.show_dE_comp = e.target.checked);
+        document.getElementById('in-lambda-y').addEventListener('input', e => { params.lambda_str = e.target.value; dETrailGroup.clear(); });
+        
+        document.getElementById('btn-integrate').addEventListener('click', () => {
+            params.is_integrating = !params.is_integrating;
+            if (params.is_integrating) {
+                dETrailGroup.clear();
+                params.dq_y = -params.L / 2; // Iniciar desde abajo
+            }
+        });
+
+        document.getElementById('slider-q').addEventListener('input', (e) => { 
+            params.q = parseFloat(e.target.value);
+            document.getElementById('val-q').textContent = params.q.toFixed(1); 
+            document.getElementById('val-q').className = `font-mono font-bold w-[1.5vw] text-right ${params.q >= 0 ? 'text-red-600' : 'text-emerald-600'}`;
+            if(!params.isPlaying) { updateUI(); drawDCL(); }
+        });
+
+        document.getElementById('slider-m').addEventListener('input', (e) => { 
+            params.m = parseFloat(e.target.value);
+            document.getElementById('val-m').textContent = params.m.toFixed(1); 
+            if(!params.isPlaying) { updateUI(); drawDCL(); }
+        });
+
+        document.getElementById('slider-e').addEventListener('input', (e) => {
+            params.E_scale = parseFloat(e.target.value);
+            document.getElementById('val-e').textContent = params.E_scale.toFixed(1);
+            
+            // Recalcular V base al cambiar campo
+            particle.vStart = calculateV(particle.pos); 
+
+            updateBackgroundGrid();
+            if(!params.isPlaying) { updateUI(); drawDCL(); }
+        });
+
+        document.getElementById('toggle-grav').addEventListener('change', (e) => {
+            params.useGravity = e.target.checked;
+            if(!params.isPlaying) { updateUI(); drawDCL(); }
+        });
+
+        document.getElementById('toggle-grid').addEventListener('change', updateBackgroundGrid);
+        
+        // Play / Pause / Reset
+        document.getElementById('btn-play').addEventListener('click', () => { 
+            if (!params.isPlaying) particle.vStart = calculateV(particle.pos);
+            params.isPlaying = true; 
+            lastTime = performance.now(); 
+        });
+        document.getElementById('btn-pause').addEventListener('click', () => { params.isPlaying = false; params.is_integrating = false; });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            params.isPlaying = false;
+            params.is_integrating = false;
+            
+            let vx = parseFloat(document.getElementById('in-vx').value) || 0;
+            let vy = parseFloat(document.getElementById('in-vy').value) || 0;
+            let vz = parseFloat(document.getElementById('in-vz').value) || 0;
+
+            if (params.config === 'dos_lineas') particle.pos.set(0,3,0);
+            else if (params.config === 'eje_fuera') particle.pos.set(0,6,0);
+            else particle.pos.set(4,0,0);
+
+            particle.vel.set(vx, vy, vz); 
+            particle.trail = [];
+            trailLine.geometry.setFromPoints([]);
+            dETrailGroup.clear();
+            graphDataX = [];
+            simTime = 0;
+            particle.vStart = calculateV(particle.pos);
+            particle.wTotal = 0;
+
+            particle.mesh.position.copy(particle.pos);
+            updateUI(); drawDCL();
+        });
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-wrapper-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height); resizePaint();
+                } else if(entry.target.id === 'dcl-container') resizeDCL(); 
+                else if(entry.target.id === 'graph-container') resizeGraph();
+            }
+        });
+        resizeObserver.observe(document.getElementById('canvas-wrapper-3d')); 
+        resizeObserver.observe(dclCont); resizeObserver.observe(graphCont);
+
+        setupView();
+        updateTeoriaUI(params.config);
+        
+        setTimeout(() => { 
+            particle.vStart = calculateV(particle.pos);
+            resizePaint(); resizeDCL(); resizeGraph(); updateBackgroundGrid(); updateUI(); 
+        }, 100);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePhysics();
+            drawGraphProfile();
+            ctrl.update();
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tip System Global (INMUTABLE)
+        (function () {
+            let globalTip = document.createElement("div"); globalTip.className = "tip-content"; globalTip.style.position = "fixed"; globalTip.style.zIndex = "999999"; globalTip.style.pointerEvents = "none"; globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden";
+            document.body.appendChild(globalTip);
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                const localTip = wrapper.querySelector(".tip-content");
+                wrapper.addEventListener("mouseenter", () => {
+                    const rect = wrapper.getBoundingClientRect(); globalTip.innerHTML = localTip.innerHTML; globalTip.style.top = rect.top + "px"; globalTip.style.left = (rect.right + 10) + "px"; globalTip.style.opacity = "1"; globalTip.style.visibility = "visible";
+                });
+                wrapper.addEventListener("mouseleave", () => { globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden"; });
+            });
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador: Onda Electromagnética</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' }</script>
+    <!-- MathJax -->
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; overflow: hidden; }
+        .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; padding: 6px; border-radius: 6px; width: 100%; font-size: 0.85rem; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        input[type="range"] { accent-color: #10b981; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="h-14 bg-slate-900 border-b border-slate-800 flex items-center px-4 z-20 shrink-0 shadow-md">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-500/20">EM</div>
+            <h1 class="text-lg font-bold text-white">Simulador <span class="text-emerald-400">Onda Electromagnética Plana</span></h1>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Controls Sidebar -->
+        <aside class="w-80 glass-panel border-r border-slate-800 flex flex-col shrink-0 overflow-y-auto z-10 p-4 space-y-6">
+            
+            <div>
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">Propiedades de la Onda</h2>
+                
+                <div class="space-y-4">
+                    <!-- Longitud de onda lambda -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-amber-400 font-medium">Longitud de onda ($\lambda$)</span>
+                            <span id="l-val" class="font-mono text-slate-300">500 nm</span>
+                        </div>
+                        <input type="range" id="l-slider" min="400" max="700" step="10" value="500" class="w-full accent-amber-500">
+                    </div>
+
+                    <!-- Frecuencia -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-blue-400 font-medium">Vel. Animación</span>
+                        </div>
+                        <input type="range" id="f-slider" min="0" max="5" step="0.1" value="2.0" class="w-full accent-blue-500">
+                    </div>
+
+                    <!-- Amplitud E -->
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50">
+                        <div class="flex justify-between text-xs mb-2">
+                            <span class="text-red-400 font-medium">Amplitud $E_{max}$</span>
+                            <span id="E-val" class="font-mono text-slate-300">100 V/m</span>
+                        </div>
+                        <input type="range" id="E-slider" min="10" max="200" step="10" value="100" class="w-full accent-red-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-auto">
+                 <button onclick="resetSim()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-colors border border-slate-700">
+                    Reiniciar
+                </button>
+            </div>
+        </aside>
+
+        <!-- Center Area -->
+        <div class="flex-1 flex flex-col relative bg-slate-950">
+            <!-- 3D Canvas -->
+            <div id="canvas-container" class="w-full h-2/3 border-b border-slate-800 relative cursor-move">
+                <div class="absolute top-4 left-4 z-10 glass-panel px-3 py-2 rounded-lg pointer-events-none">
+                    <div class="text-xs font-bold text-slate-400 mb-1">Propagación en 3D</div>
+                    <div class="text-[10px] text-red-400">Rojo: Campo Eléctrico ($\vec{E}$)</div>
+                    <div class="text-[10px] text-blue-400">Azul: Campo Magnético ($\vec{B}$)</div>
+                </div>
+            </div>
+
+            <!-- Theory and Math (Bottom) -->
+            <div class="w-full h-1/3 p-6 overflow-y-auto bg-slate-900 scrollbar-thin">
+                <h3 class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    Ecuaciones de la Onda (Propagación en $x$)
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-panel p-4 rounded-xl border-emerald-500/30 border">
+                        <div id="math-steps-1" class="text-sm text-slate-300 font-light text-center">
+                            $$ \vec{E}(x,t) = E_{max} \cos(kx - \omega t) \hat{j} $$
+                            $$ \vec{B}(x,t) = B_{max} \cos(kx - \omega t) \hat{k} $$
+                        </div>
+                    </div>
+                    <div class="glass-panel p-4 rounded-xl border-slate-700 border">
+                        <div id="math-steps-2" class="text-sm text-slate-300 font-light text-center">
+                            <!-- Injected -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // State
+        const c = 3e8;
+        let state = {
+            lambda: 500e-9, // 500 nm
+            speed: 2.0,
+            Emax: 100,
+            time: 0
+        };
+
+        // UI Elements
+        const lSlider = document.getElementById('l-slider');
+        const fSlider = document.getElementById('f-slider');
+        const eSlider = document.getElementById('E-slider');
+        const lVal = document.getElementById('l-val');
+        const eVal = document.getElementById('E-val');
+        const mathSteps2 = document.getElementById('math-steps-2');
+
+        // Three.js Setup
+        let scene, camera, renderer, controls;
+        let eVectors = [], bVectors = [];
+        const numPoints = 80;
+        const length = 15;
+        const container = document.getElementById('canvas-container');
+
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(-8, 5, 8);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.target.set(0,0,0);
+
+            // Axes
+            const axes = new THREE.AxesHelper(3);
+            scene.add(axes);
+            
+            // X-axis line for propagation
+            const lineMat = new THREE.LineBasicMaterial({ color: 0x64748b });
+            const points = [new THREE.Vector3(-length/2, 0, 0), new THREE.Vector3(length/2, 0, 0)];
+            const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
+            scene.add(new THREE.Line(lineGeo, lineMat));
+
+            // Create Vectors
+            for(let i=0; i<numPoints; i++) {
+                const x = -length/2 + (i / numPoints) * length;
+                
+                // E vector (Red, Y axis)
+                const eArr = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), new THREE.Vector3(x,0,0), 0.1, 0xef4444, 0.2, 0.1);
+                scene.add(eArr);
+                eVectors.push({ arr: eArr, x: x });
+
+                // B vector (Blue, Z axis)
+                const bArr = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), new THREE.Vector3(x,0,0), 0.1, 0x3b82f6, 0.2, 0.1);
+                scene.add(bArr);
+                bVectors.push({ arr: bArr, x: x });
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            animate3D();
+        }
+
+        let lastTime = 0;
+        function animate3D(time) {
+            requestAnimationFrame(animate3D);
+            if (lastTime === 0) lastTime = time;
+            const dt = (time - lastTime) / 1000;
+            lastTime = time;
+
+            state.time += dt * state.speed;
+
+            // Wavenumber k for visualization
+            // Map lambda 400-700 to a k value that looks good on our L=15 screen.
+            // visual_lambda ranges from 3 to 6
+            const visLambda = (state.lambda * 1e9) / 100; // 400nm -> 4 units
+            const k = (2 * Math.PI) / visLambda;
+            
+            const omega = k * 2; // Arbitrary wave speed
+
+            const visEmax = state.Emax / 50; // visual scaling
+
+            for(let i=0; i<numPoints; i++) {
+                const x = eVectors[i].x;
+                const val = Math.cos(k * x - omega * state.time);
+                
+                const eMag = val * visEmax;
+                const bMag = val * visEmax * 0.8; // B is visually a bit smaller
+
+                // E
+                if (Math.abs(eMag) > 0.01) {
+                    eVectors[i].arr.visible = true;
+                    eVectors[i].arr.setDirection(new THREE.Vector3(0, eMag > 0 ? 1 : -1, 0));
+                    eVectors[i].arr.setLength(Math.abs(eMag), 0.15, 0.08);
+                } else {
+                    eVectors[i].arr.visible = false;
+                }
+
+                // B
+                if (Math.abs(bMag) > 0.01) {
+                    bVectors[i].arr.visible = true;
+                    bVectors[i].arr.setDirection(new THREE.Vector3(0, 0, bMag > 0 ? 1 : -1));
+                    bVectors[i].arr.setLength(Math.abs(bMag), 0.15, 0.08);
+                } else {
+                    bVectors[i].arr.visible = false;
+                }
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function updateUI() {
+            lVal.innerText = `${(state.lambda * 1e9).toFixed(0)} nm`;
+            eVal.innerText = `${state.Emax.toFixed(0)} V/m`;
+
+            const freq = c / state.lambda; // Hz
+            const Bmax = state.Emax / c; // Tesla
+
+            let html = `
+                <div class="grid grid-cols-2 text-left">
+                    <div>
+                        <div class="text-[11px] text-slate-400">Frecuencia ($f = c/\\lambda$)</div>
+                        <div class="text-sm">$$ f = ${(freq).toExponential(2)}\\ \\text{Hz} $$</div>
+                    </div>
+                    <div>
+                        <div class="text-[11px] text-slate-400">Amplitud $B_{max} = E_{max}/c$</div>
+                        <div class="text-sm">$$ B_{max} = ${(Bmax).toExponential(2)}\\ \\text{T} $$</div>
+                    </div>
+                </div>
+            `;
+            
+            mathSteps2.innerHTML = html;
+            if (window.MathJax) MathJax.typesetPromise([mathSteps2]);
+        }
+
+        function handleInput() {
+            state.lambda = parseFloat(lSlider.value) * 1e-9;
+            state.speed = parseFloat(fSlider.value);
+            state.Emax = parseFloat(eSlider.value);
+            updateUI();
+        }
+
+        function resetSim() {
+            lSlider.value = 500;
+            fSlider.value = 2.0;
+            eSlider.value = 100;
+            handleInput();
+        }
+
+        // Listeners
+        lSlider.addEventListener('input', handleInput);
+        fSlider.addEventListener('input', handleInput);
+        eSlider.addEventListener('input', handleInput);
+
+        // Init
+        init3D();
+        handleInput();
+
+    </script>
+</body>
+</html>

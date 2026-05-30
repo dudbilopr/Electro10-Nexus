@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero Didáctico: Anillo, Disco y Cilindro</title>
+    
+    <!-- KaTeX para renderizado matemático -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --table-bg: #ffffff;
+            --header-bg: #e2e8f0;
+            --step-bg: #f8fafc;
+            --text-main: #1e293b;
+            --border-color: #cbd5e1;
+            --primary-color: #047857; /* Verde académico para diferenciar del anterior */
+            
+            /* Paleta Unificada de Física */
+            --dist-color: #65a30d;      
+            --dq-color: #d97706;        
+            --dq-fill: rgba(217, 119, 6, 0.8);
+            --vec-color: #1d4ed8;       
+            --r-color: #0ea5e9;         
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px 20px;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; 
+        }
+
+        /* HEADER & INFO PANELS */
+        header {
+            flex-shrink: 0;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #0f172a;
+            margin: 0 0 10px 0;
+            font-size: 1.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .info-panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .panel {
+            background-color: #ffffff;
+            border-left: 4px solid var(--primary-color);
+            padding: 10px 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-size: 0.95rem;
+            color: #334155;
+        }
+
+        .panel strong {
+            color: var(--primary-color);
+            display: block;
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        /* LAYOUT PRINCIPAL (WIDESCREEN / TABLERO) */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 340px 1fr; 
+            gap: 20px;
+            flex: 1;
+            min-height: 0; 
+        }
+
+        /* BARRA LATERAL: BANCO DE FÓRMULAS */
+        .sidebar {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .formula-bank-title {
+            background: var(--header-bg);
+            padding: 12px;
+            font-weight: 600;
+            color: #0f172a;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .formula-bank {
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex: 1;
+            background-color: #f8fafc;
+        }
+
+        .draggable-formula {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s ease;
+            font-size: 0.9rem; 
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 45px;
+            position: relative;
+        }
+
+        .draggable-formula:hover {
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 8px rgba(4, 120, 87, 0.15);
+        }
+
+        .draggable-formula.selected {
+            border-color: #10b981;
+            background-color: #ecfdf5;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4);
+            transform: scale(1.02);
+            z-index: 50;
+        }
+
+        .draggable-formula * { pointer-events: none; }
+
+        /* TABLA PRINCIPAL */
+        .table-container {
+            background: var(--table-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border: 1px solid var(--border-color);
+            overflow-y: auto; 
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 950px;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            vertical-align: middle;
+            width: 27%;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: #0f172a;
+            font-size: 1.05rem;
+            font-weight: 600;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+
+        td:first-child {
+            width: 19%;
+            background-color: var(--step-bg);
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+
+        /* ZONAS DE SOLTAR / CLIC */
+        .dropzone {
+            background-color: #f8fafc;
+            border: 2px dashed #cbd5e1;
+            min-height: 70px;
+            transition: all 0.2s;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .dropzone:hover {
+            background-color: #f1f5f9;
+            border-color: #94a3b8;
+        }
+
+        .dropzone-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            min-height: 70px;
+            padding: 5px;
+            box-sizing: border-box;
+        }
+
+        .dropzone.drag-over {
+            background-color: #ecfdf5;
+            border: 2px dashed var(--primary-color);
+        }
+
+        .dropzone.filled {
+            background-color: #ffffff; 
+            border: 1px solid #e2e8f0;
+            cursor: default;
+        }
+
+        .dropzone.filled:hover {
+            border-color: #e2e8f0;
+            background-color: #ffffff;
+        }
+
+        /* CONTENEDOR SVG */
+        .svg-cell {
+            padding: 5px !important;
+            text-align: center;
+            position: relative;
+            background-color: #ffffff;
+            height: 200px;
+        }
+
+        .svg-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        svg {
+            max-width: 100%;
+            max-height: 100%;
+            touch-action: none;
+            user-select: none;
+        }
+
+        /* Botón Ampliar */
+        .btn-expandir {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #475569;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        .btn-expandir:hover { background: #f1f5f9; color: var(--primary-color); }
+
+        /* MODAL / PANTALLA FLOTANTE OPTIMIZADA */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90vw;
+            height: 85vh;
+            max-width: 1200px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #64748b;
+            border: none;
+            background: none;
+            z-index: 1001;
+            padding: 5px;
+        }
+        .modal-close:hover { color: #ef4444; }
+
+        #modal-body {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        #modal-body svg {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* FOOTER COPYRIGHT */
+        footer {
+            flex-shrink: 0;
+            text-align: center;
+            padding: 12px 0 0 0;
+            font-size: 0.85rem;
+            color: #64748b;
+            border-top: 1px solid var(--border-color);
+            margin-top: 15px;
+        }
+
+        /* Interacción física */
+        .draggable { cursor: grab; transition: filter 0.2s; }
+        .draggable:hover { filter: brightness(1.1) drop-shadow(0 0 5px rgba(0,0,0,0.3)); }
+        .draggable:active { cursor: grabbing; }
+        .hitbox { fill: transparent; stroke: transparent; cursor: grab; }
+        
+        foreignObject { pointer-events: none; overflow: visible; }
+        .math-label {
+            font-size: 15px; color: #1e293b; display: flex; align-items: center; justify-content: center; white-space: nowrap; font-family: 'Cambria Math', serif;
+        }
+        
+        /* Gráficos Estáticos */
+        .graph-line { fill: none; stroke: var(--vec-color); stroke-width: 2.5; stroke-linecap: round; }
+        .graph-axis { stroke: #94a3b8; stroke-width: 1.5; }
+        .graph-label { font-size: 12px; font-family: 'Cambria Math', serif; fill: #475569; }
+
+        /* RESPONSIVE DESIGN MULTIPLATAFORMA */
+        @media (max-width: 1024px) {
+            body { height: auto; overflow: auto; padding: 10px; }
+            .info-panels { grid-template-columns: 1fr; gap: 10px; }
+            .main-layout { display: flex; flex-direction: column; }
+            .sidebar { max-height: 350px; flex-shrink: 0; }
+            .table-container { overflow-x: auto; }
+            table { min-width: 800px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SVG Oculto con atributos seguros para definiciones globales -->
+    <svg style="position: absolute; width: 0; height: 0; pointer-events: none; z-index: -1;">
+        <defs>
+            <marker id="arrow-axis" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
+            </marker>
+            <marker id="arrow-vec" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="#1d4ed8" />
+            </marker>
+        </defs>
+    </svg>
+
+    <!-- MODAL -->
+    <div id="modal-overlay" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">✖</button>
+            <h2 style="margin-top:0; color:#0f172a; text-align:center; font-size:1.4rem;">Exploración de Simetrías Vectoriales</h2>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <header>
+        <h1>Integración por Recursividad: Anillo, Disco y Cilindro</h1>
+        <div class="info-panels">
+            <div class="panel">
+                <strong>Instrucciones:</strong>
+                Arrastre (o haga clic en) una fórmula del banco izquierdo y colóquela en la celda punteada correspondiente. Interactúe con las figuras moviendo $dq$ y el punto $P$ para comprender el comportamiento de $d\vec{E}$.
+            </div>
+            <div class="panel">
+                <strong>Consejo de Resolución (Recursividad):</strong>
+                Observe cómo la solución del Anillo (1D) se convierte en el diferencial $d\vec{E}$ para calcular el Disco (2D). Asimismo, el campo del Disco es el diferencial para el Cilindro (3D). Preste atención a la notación vectorial $d\vec{E}$.
+            </div>
+        </div>
+    </header>
+
+    <div class="main-layout">
+        <!-- BARRA LATERAL (BANCO DE FÓRMULAS) -->
+        <aside class="sidebar">
+            <div class="formula-bank-title">Fórmulas Disponibles</div>
+            <div id="formula-bank" class="formula-bank">
+                <!-- Fórmulas inyectadas por JS -->
+            </div>
+        </aside>
+
+        <!-- TABLA PRINCIPAL -->
+        <main class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Paso Conceptual</th>
+                        <th>Anillo Cargado (1D)</th>
+                        <th>Disco Cargado (2D)</th>
+                        <th>Cilindro Cargado (3D)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- FILA 1: GRÁFICOS -->
+                    <tr>
+                        <td>1. Figura del sistema <br><br><small style="color:#64748b; font-weight:normal;">[ Utilice "Ampliar" para interactuar ]</small></td>
+                        
+                        <!-- GRÁFICO 1: ANILLO -->
+                        <td class="svg-cell">
+                            <div class="svg-wrapper" id="wrapper-g1">
+                                <button class="btn-expandir" onclick="openModal('svg1', 'wrapper-g1')">Ampliar [ + ]</button>
+                                <svg id="svg1" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet">
+                                    <line id="g1-axis-x" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <line id="g1-axis-y" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <line id="g1-axis-z" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <foreignObject id="g1-lbl-x" width="30" height="30"><div class="math-label">$x$</div></foreignObject>
+                                    <foreignObject id="g1-lbl-y" width="30" height="30"><div class="math-label">$y$</div></foreignObject>
+                                    <foreignObject id="g1-lbl-z" width="30" height="30"><div class="math-label">$z$</div></foreignObject>
+
+                                    <!-- Anillo -->
+                                    <ellipse id="g1-ring" fill="none" stroke="var(--dq-color)" stroke-width="4"/>
+                                    <foreignObject id="g1-lbl-a" width="30" height="30"><div class="math-label">$a$</div></foreignObject>
+
+                                    <line id="g1-r-line" stroke="var(--r-color)" stroke-width="1.5" stroke-dasharray="5,5"/>
+
+                                    <!-- Elemento dq -->
+                                    <g id="g1-dq-group" class="draggable">
+                                        <circle id="g1-dq-point" r="6" fill="var(--dq-color)"/>
+                                        <circle class="hitbox" r="30"/>
+                                        <foreignObject id="g1-lbl-dq" width="100" height="50">
+                                            <div class="math-label" style="color:var(--dq-color); flex-direction:column; font-size:14px">
+                                                <span>$dl$</span><span>$dq$</span>
+                                            </div>
+                                        </foreignObject>
+                                    </g>
+
+                                    <!-- Punto P -->
+                                    <g id="g1-p-group" class="draggable">
+                                        <circle id="g1-p-point" r="6" fill="#0f172a"/>
+                                        <circle class="hitbox" r="30"/>
+                                        <foreignObject id="g1-lbl-p" width="30" height="30"><div class="math-label">$\mathbf{P}$</div></foreignObject>
+                                        <foreignObject id="g1-lbl-x0" width="30" height="30"><div class="math-label">$x_0$</div></foreignObject>
+                                    </g>
+
+                                    <!-- Vectores de Campo -->
+                                    <line id="g1-vec-Ex" stroke="var(--vec-color)" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow-vec)"/>
+                                    <line id="g1-vec-Eperp" stroke="var(--vec-color)" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow-vec)"/>
+                                    <line id="g1-vec-E" stroke="var(--vec-color)" stroke-width="2.5" marker-end="url(#arrow-vec)"/>
+                                    
+                                    <foreignObject id="g1-lbl-Ex" width="50" height="30"><div class="math-label" style="color:var(--vec-color)">$d\vec{E}_x$</div></foreignObject>
+                                    <foreignObject id="g1-lbl-Eperp" width="50" height="30"><div class="math-label" style="color:var(--vec-color)">$d\vec{E}_{||}$</div></foreignObject>
+                                    <foreignObject id="g1-lbl-E" width="40" height="30"><div class="math-label" style="color:var(--vec-color)">$d\vec{E}$</div></foreignObject>
+                                </svg>
+                            </div>
+                        </td>
+
+                        <!-- GRÁFICO 2: DISCO -->
+                        <td class="svg-cell">
+                            <div class="svg-wrapper" id="wrapper-g2">
+                                <button class="btn-expandir" onclick="openModal('svg2', 'wrapper-g2')">Ampliar [ + ]</button>
+                                <svg id="svg2" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet">
+                                    <line id="g2-axis-x" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <line id="g2-axis-y" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <line id="g2-axis-z" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <foreignObject id="g2-lbl-x" width="30" height="30"><div class="math-label">$x$</div></foreignObject>
+                                    <foreignObject id="g2-lbl-y" width="30" height="30"><div class="math-label">$y$</div></foreignObject>
+                                    <foreignObject id="g2-lbl-z" width="30" height="30"><div class="math-label">$z$</div></foreignObject>
+
+                                    <!-- Disco Base -->
+                                    <ellipse id="g2-disk" fill="rgba(101, 163, 13, 0.4)" stroke="var(--dist-color)" stroke-width="1.5"/>
+                                    <foreignObject id="g2-lbl-R" width="30" height="30"><div class="math-label">$R$</div></foreignObject>
+
+                                    <line id="g2-r-line" stroke="var(--r-color)" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+                                    <!-- Anillo Diferencial dq -->
+                                    <g id="g2-dq-group" class="draggable">
+                                        <ellipse id="g2-dq-ring" fill="none" stroke="var(--dq-color)" stroke-width="5"/>
+                                        <circle id="g2-dq-hitbox" class="hitbox" r="60"/>
+                                        <foreignObject id="g2-lbl-a" width="30" height="30"><div class="math-label" style="color:var(--dq-color)">$a$</div></foreignObject>
+                                        <foreignObject id="g2-lbl-dq" width="140" height="30"><div class="math-label" style="color:var(--dq-color)">$dq = \sigma(2\pi a)da$</div></foreignObject>
+                                    </g>
+
+                                    <g id="g2-p-group" class="draggable">
+                                        <circle id="g2-p-point" r="6" fill="#0f172a"/>
+                                        <circle class="hitbox" r="30"/>
+                                        <foreignObject id="g2-lbl-p" width="30" height="30"><div class="math-label">$\mathbf{P}$</div></foreignObject>
+                                        <foreignObject id="g2-lbl-x0" width="30" height="30"><div class="math-label">$x_0$</div></foreignObject>
+                                    </g>
+
+                                    <line id="g2-vec-E" stroke="var(--vec-color)" stroke-width="2.5" marker-end="url(#arrow-vec)"/>
+                                    <foreignObject id="g2-lbl-E" width="40" height="30"><div class="math-label" style="color:var(--vec-color)">$d\vec{E}$</div></foreignObject>
+                                </svg>
+                            </div>
+                        </td>
+
+                        <!-- GRÁFICO 3: CILINDRO -->
+                        <td class="svg-cell">
+                            <div class="svg-wrapper" id="wrapper-g3">
+                                <button class="btn-expandir" onclick="openModal('svg3', 'wrapper-g3')">Ampliar [ + ]</button>
+                                <svg id="svg3" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet">
+                                    <line id="g3-axis-x" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <line id="g3-axis-y" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <line id="g3-axis-z" class="axis" marker-end="url(#arrow-axis)" stroke="#94a3b8" stroke-width="1.5"/>
+                                    <foreignObject id="g3-lbl-x" width="30" height="30"><div class="math-label">$x$</div></foreignObject>
+                                    <foreignObject id="g3-lbl-y" width="30" height="30"><div class="math-label">$y$</div></foreignObject>
+                                    <foreignObject id="g3-lbl-z" width="30" height="30"><div class="math-label">$z$</div></foreignObject>
+
+                                    <!-- Cilindro Base -->
+                                    <g id="g3-cylinder">
+                                        <ellipse id="g3-cyl-back" fill="rgba(101, 163, 13, 0.4)" stroke="var(--dist-color)" stroke-width="1"/>
+                                        <path id="g3-cyl-body" fill="rgba(101, 163, 13, 0.3)" stroke="none"/>
+                                        <line id="g3-cyl-top" stroke="var(--dist-color)" stroke-width="1"/>
+                                        <line id="g3-cyl-bot" stroke="var(--dist-color)" stroke-width="1"/>
+                                        <ellipse id="g3-cyl-front" fill="rgba(101, 163, 13, 0.4)" stroke="var(--dist-color)" stroke-width="1"/>
+                                    </g>
+                                    
+                                    <foreignObject id="g3-lbl-L" width="30" height="30"><div class="math-label">$L$</div></foreignObject>
+
+                                    <line id="g3-r-line" stroke="var(--r-color)" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+                                    <!-- Disco Diferencial dq -->
+                                    <g id="g3-dq-group" class="draggable">
+                                        <ellipse id="g3-dq-disk" fill="var(--dq-fill)" stroke="var(--dq-color)" stroke-width="1"/>
+                                        <rect class="hitbox" id="g3-slice-hitbox" width="60" height="150" y="-75"/>
+                                        <foreignObject id="g3-lbl-dx" width="30" height="30"><div class="math-label" style="color:var(--dq-color)">$dx$</div></foreignObject>
+                                        <foreignObject id="g3-lbl-dq" width="120" height="30"><div class="math-label" style="color:var(--dq-color)">$dq = \rho dV$</div></foreignObject>
+                                    </g>
+
+                                    <g id="g3-p-group" class="draggable">
+                                        <circle id="g3-p-point" r="6" fill="#0f172a"/>
+                                        <circle class="hitbox" r="30"/>
+                                        <foreignObject id="g3-lbl-p" width="30" height="30"><div class="math-label">$\mathbf{P}$</div></foreignObject>
+                                        <foreignObject id="g3-lbl-x1" width="30" height="30"><div class="math-label">$x_1$</div></foreignObject>
+                                    </g>
+
+                                    <line id="g3-vec-E" stroke="var(--vec-color)" stroke-width="2.5" marker-end="url(#arrow-vec)"/>
+                                    <foreignObject id="g3-lbl-E" width="40" height="30"><div class="math-label" style="color:var(--vec-color)">$d\vec{E}$</div></foreignObject>
+                                </svg>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- FILAS DE TEXTO (ZONAS DROP) -->
+                    <tr>
+                        <td>2. Identifique la densidad de carga apropiada</td>
+                        <td class="dropzone" id="dz_l_2"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_p_2"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_v_2"><div class="dropzone-content"></div></td>
+                    </tr>
+                    <tr>
+                        <td>3. Exprese el elemento diferencial $dq$</td>
+                        <td class="dropzone" id="dz_l_3"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_p_3"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_v_3"><div class="dropzone-content"></div></td>
+                    </tr>
+                    <tr>
+                        <td>4. Expresión diferencial del campo $d\vec{E}$ <br><small style="color:var(--primary-color);">(Recursividad de dimensiones)</small></td>
+                        <td class="dropzone" id="dz_l_4"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_p_4"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_v_4"><div class="dropzone-content"></div></td>
+                    </tr>
+                    <tr>
+                        <td>5. Reescriba usando componentes o sustitución trigonométrica</td>
+                        <td class="dropzone" id="dz_l_5"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_p_5"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_v_5"><div class="dropzone-content"></div></td>
+                    </tr>
+                    <tr>
+                        <td>6. Aplique argumentos de simetría (cancelación de vectores)</td>
+                        <td class="dropzone" id="dz_l_6"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_p_6"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_v_6"><div class="dropzone-content"></div></td>
+                    </tr>
+                    <tr>
+                        <td>7. Plantee la integral final ($\vec{E} = \int d\vec{E}$)</td>
+                        <td class="dropzone" id="dz_l_7"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_p_7"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_v_7"><div class="dropzone-content"></div></td>
+                    </tr>
+                    <tr>
+                        <td>8. Solución Analítica Final ($\vec{E}$)</td>
+                        <td class="dropzone" id="dz_l_8"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_p_8"><div class="dropzone-content"></div></td>
+                        <td class="dropzone" id="dz_v_8"><div class="dropzone-content"></div></td>
+                    </tr>
+
+                    <!-- FILA 9: GRÁFICAS DE CAMPO -->
+                    <tr>
+                        <td>9. Comportamiento de magnitud $|\vec{E}|$ vs Distancia ($x_0, x_1$)</td>
+                        <!-- Gráfico E Anillo -->
+                        <td class="svg-cell" style="height: 140px;">
+                            <svg viewBox="0 0 300 150">
+                                <line x1="20" y1="130" x2="280" y2="130" class="graph-axis" marker-end="url(#arrow-axis)"/>
+                                <line x1="20" y1="130" x2="20" y2="10" class="graph-axis" marker-end="url(#arrow-axis)"/>
+                                <text x="280" y="145" class="graph-label">$x_0$</text>
+                                <text x="5" y="15" class="graph-label">$|\vec{E}|$</text>
+                                <path d="M 20 130 Q 80 20 120 50 T 270 125" class="graph-line"/>
+                                <text x="140" y="50" class="graph-label" style="fill:var(--vec-color)">$\propto \frac{x_0}{(a^2+x_0^2)^{3/2}}$</text>
+                            </svg>
+                        </td>
+                        <!-- Gráfico E Disco -->
+                        <td class="svg-cell" style="height: 140px;">
+                            <svg viewBox="0 0 300 150">
+                                <line x1="20" y1="130" x2="280" y2="130" class="graph-axis" marker-end="url(#arrow-axis)"/>
+                                <line x1="20" y1="130" x2="20" y2="10" class="graph-axis" marker-end="url(#arrow-axis)"/>
+                                <text x="280" y="145" class="graph-label">$x_0$</text>
+                                <text x="5" y="15" class="graph-label">$|\vec{E}|$</text>
+                                <path d="M 20 30 Q 150 40 270 125" class="graph-line"/>
+                                <text x="90" y="25" class="graph-label" style="fill:var(--vec-color)">$\rightarrow \frac{\sigma}{2\epsilon_0} \text{ (Cerca)}$</text>
+                            </svg>
+                        </td>
+                        <!-- Gráfico E Cilindro -->
+                        <td class="svg-cell" style="height: 140px;">
+                            <svg viewBox="0 0 300 150">
+                                <line x1="20" y1="130" x2="280" y2="130" class="graph-axis" marker-end="url(#arrow-axis)"/>
+                                <line x1="20" y1="130" x2="20" y2="10" class="graph-axis" marker-end="url(#arrow-axis)"/>
+                                <text x="280" y="145" class="graph-label">$x_1$</text>
+                                <text x="5" y="15" class="graph-label">$|\vec{E}|$</text>
+                                <path d="M 20 40 Q 120 45 270 125" class="graph-line"/>
+                                <text x="130" y="80" class="graph-label" style="fill:var(--vec-color)">Decaimiento complejo</text>
+                            </svg>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </main>
+    </div>
+
+    <footer>
+        &copy; 2026 Tablero Didáctico de Física y Electromagnetismo. Todos los derechos reservados.
+    </footer>
+
+    <script>
+        // === 1. DATOS DEL JUEGO DIDÁCTICO (NUEVAS GEOMETRÍAS Y RECURSIVIDAD) ===
+        const formulas = [
+            // --- ANILLO (1D) ---
+            { id: "f_l_2", target: "dz_l_2", tex: "\\lambda = \\frac{Q}{2\\pi a}" },
+            { id: "f_l_3", target: "dz_l_3", tex: "dq = \\lambda dl = \\lambda a d\\phi" },
+            { id: "f_l_4", target: "dz_l_4", tex: "d\\vec{E} = k_e \\frac{dq}{r^2} \\hat{r}" },
+            { id: "f_l_5", target: "dz_l_5", tex: "d\\vec{E} = k_e \\frac{\\lambda a d\\phi}{a^2 + x_0^2} (\\cos(\\theta)\\hat{i} - \\text{sen}(\\theta)\\hat{r}_{||})" },
+            { id: "f_l_6", target: "dz_l_6", tex: "d\\vec{E}_{||} = 0 \\text{ (Simetría radial)}" },
+            { id: "f_l_7", target: "dz_l_7", tex: "\\vec{E} = k_e \\frac{\\lambda a x_0}{(a^2 + x_0^2)^{3/2}} \\int_{0}^{2\\pi} d\\phi \\, \\hat{i}" },
+            { id: "f_l_8", target: "dz_l_8", tex: "\\vec{E} = k_e \\frac{Q x_0}{(a^2 + x_0^2)^{3/2}} \\hat{i}" },
+            
+            // --- DISCO (2D - Recursividad del Anillo) ---
+            { id: "f_p_2", target: "dz_p_2", tex: "\\sigma = \\frac{Q}{\\pi R^2}" },
+            { id: "f_p_3", target: "dz_p_3", tex: "dq = \\sigma (2\\pi a \\, da) \\; \\text{(Anillo)}" },
+            { id: "f_p_4", target: "dz_p_4", tex: "d\\vec{E} = k_e \\frac{x_0 dq}{(a^2 + x_0^2)^{3/2}} \\hat{i}" }, // Recursividad de 1D
+            { id: "f_p_5", target: "dz_p_5", tex: "d\\vec{E} = k_e x_0 \\frac{\\sigma (2\\pi a \\, da)}{(a^2 + x_0^2)^{3/2}} \\hat{i}" },
+            { id: "f_p_6", target: "dz_p_6", tex: "d\\vec{E}_y = d\\vec{E}_z = 0 \\text{ (Ya aplicada en Anillo)}" },
+            { id: "f_p_7", target: "dz_p_7", tex: "\\vec{E} = k_e x_0 \\sigma \\pi \\int_{0}^{R} \\frac{2a \\, da}{(a^2 + x_0^2)^{3/2}} \\hat{i}" },
+            { id: "f_p_8", target: "dz_p_8", tex: "\\vec{E} = 2k_e x_0 \\frac{Q}{R^2} \\left( \\frac{1}{\\sqrt{x_0^2}} - \\frac{1}{\\sqrt{R^2 + x_0^2}} \\right) \\hat{i}" },
+
+            // --- CILINDRO (3D - Recursividad del Disco) ---
+            { id: "f_v_2", target: "dz_v_2", tex: "\\rho = \\frac{Q}{\\pi R^2 L}" },
+            { id: "f_v_3", target: "dz_v_3", tex: "dq = \\rho (\\pi R^2 dx) \\; \\text{(Disco)}" },
+            { id: "f_v_4", target: "dz_v_4", tex: "d\\vec{E} = 2k_e \\frac{dq}{R^2} \\left( 1 - \\frac{x_1 - x}{\\sqrt{R^2 + (x_1 - x)^2}} \\right) \\hat{i}" }, // Recursividad de 2D
+            { id: "f_v_5", target: "dz_v_5", tex: "d\\vec{E} = 2k_e \\rho \\pi \\, dx \\left( 1 - \\frac{x_1 - x}{\\sqrt{R^2 + (x_1 - x)^2}} \\right) \\hat{i}" },
+            { id: "f_v_6", target: "dz_v_6", tex: "d\\vec{E}_\\perp = 0 \\; \\text{(Simetría axial)}" },
+            { id: "f_v_7", target: "dz_v_7", tex: "\\vec{E} = 2k_e \\rho \\pi \\left( \\int_0^L dx - \\int_0^L \\frac{x_1 - x}{\\sqrt{R^2 + (x_1-x)^2}} dx \\right) \\hat{i}" },
+            { id: "f_v_8", target: "dz_v_8", tex: "\\vec{E} = 2k_e \\frac{Q}{R^2 L} \\left( L + \\sqrt{R^2 + (x_1 - L)^2} - \\sqrt{R^2 + x_1^2} \\right) \\hat{i}" } 
+        ];
+
+        let globallyDraggedId = null; 
+        let selectedFormula = null; // Soporte Multiplataforma (Click)
+
+        function initGame() {
+            const bank = document.getElementById("formula-bank");
+            const shuffled = [...formulas].sort(() => Math.random() - 0.5);
+
+            shuffled.forEach(f => {
+                const div = document.createElement("div");
+                div.className = "draggable-formula";
+                div.draggable = true;
+                div.id = f.id;
+                div.dataset.target = f.target;
+                div.innerHTML = `$$${f.tex}$$`;
+                
+                // Eventos Mouse / Touch Drag
+                div.addEventListener('dragstart', (e) => {
+                    globallyDraggedId = e.target.id;
+                    e.dataTransfer.effectAllowed = "move";
+                    e.dataTransfer.setData('text/plain', e.target.id); 
+                    setTimeout(() => e.target.style.opacity = '0.5', 0);
+                });
+                
+                div.addEventListener('dragend', (e) => {
+                    e.target.style.opacity = '1';
+                    globallyDraggedId = null;
+                });
+
+                // Eventos Multiplataforma (Click to Select)
+                div.addEventListener('click', (e) => {
+                    if (div.parentElement.id === 'formula-bank') {
+                        if (selectedFormula && selectedFormula !== div) {
+                            selectedFormula.classList.remove('selected');
+                        }
+                        if (selectedFormula !== div) {
+                            selectedFormula = div;
+                            div.classList.add('selected');
+                        } else {
+                            selectedFormula.classList.remove('selected');
+                            selectedFormula = null;
+                        }
+                    }
+                });
+
+                bank.appendChild(div);
+            });
+
+            const dropzones = document.querySelectorAll('.dropzone');
+            dropzones.forEach(zone => {
+                // Eventos de Drag & Drop
+                zone.addEventListener('dragenter', (e) => {
+                    e.preventDefault();
+                    if(!zone.classList.contains('filled')) zone.classList.add('drag-over');
+                });
+                
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault(); 
+                    e.dataTransfer.dropEffect = "move";
+                });
+                
+                zone.addEventListener('dragleave', (e) => {
+                    if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag-over');
+                });
+                
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zone.classList.remove('drag-over');
+                    if (zone.classList.contains('filled')) return;
+
+                    const draggedId = globallyDraggedId || e.dataTransfer.getData('text/plain');
+                    if (!draggedId) return;
+                    handlePlacement(document.getElementById(draggedId), zone);
+                });
+
+                // Evento Multiplataforma (Click to Drop)
+                zone.addEventListener('click', (e) => {
+                    if (zone.classList.contains('filled') || !selectedFormula) return;
+                    handlePlacement(selectedFormula, zone);
+                });
+            });
+        }
+
+        function handlePlacement(element, zone) {
+            if (element.dataset.target === zone.id) {
+                // CORRECTO
+                const contentContainer = zone.querySelector('.dropzone-content');
+                contentContainer.innerHTML = '';
+                contentContainer.appendChild(element);
+                
+                zone.classList.add('filled');
+                element.draggable = false;
+                element.classList.remove('selected');
+                element.style.cursor = 'default';
+                element.style.border = 'none';
+                element.style.background = 'transparent';
+                element.style.boxShadow = 'none';
+                element.style.padding = '0';
+                
+                if (selectedFormula === element) selectedFormula = null;
+            } else {
+                // INCORRECTO
+                zone.style.backgroundColor = '#fecaca';
+                zone.style.borderColor = '#ef4444';
+                
+                const prevBg = element.style.backgroundColor;
+                element.style.backgroundColor = '#fca5a5';
+                
+                setTimeout(() => {
+                    zone.style.backgroundColor = '';
+                    zone.style.borderColor = '';
+                    element.style.backgroundColor = prevBg;
+                }, 500);
+
+                if (selectedFormula === element) {
+                    selectedFormula.classList.remove('selected');
+                    selectedFormula = null;
+                }
+            }
+        }
+
+        // === 2. MODAL (PANTALLA FLOTANTE) ===
+        let currentOriginalParent = null;
+        let currentSvgId = null;
+
+        function openModal(svgId, wrapperId) {
+            const modal = document.getElementById('modal-overlay');
+            const modalBody = document.getElementById('modal-body');
+            const svgEl = document.getElementById(svgId);
+            
+            currentOriginalParent = document.getElementById(wrapperId);
+            currentSvgId = svgId;
+
+            modalBody.appendChild(svgEl);
+            modal.style.display = 'flex';
+            
+            if(svgId === 'svg1') renderG1();
+            if(svgId === 'svg2') renderG2();
+            if(svgId === 'svg3') renderG3();
+        }
+
+        function closeModal() {
+            if(currentOriginalParent && currentSvgId) {
+                const svgEl = document.getElementById(currentSvgId);
+                currentOriginalParent.appendChild(svgEl);
+            }
+            document.getElementById('modal-overlay').style.display = 'none';
+            currentOriginalParent = null;
+            currentSvgId = null;
+            
+            renderG1(); renderG2(); renderG3();
+        }
+
+        // === 3. FÍSICA Y SVG (NUEVOS MODELOS GEOMÉTRICOS) ===
+        
+        function setObjPos(id, svgCoord, offsetX = -15, offsetY = -15) {
+            const el = document.getElementById(id);
+            if(el) { el.setAttribute('x', svgCoord.x + offsetX); el.setAttribute('y', svgCoord.y + offsetY); }
+        }
+
+        const state = {
+            g1: { cx: 160, cy: 200, xp: 180, alpha: Math.PI/4, rx: 25, ry: 75, drag: null }, // Anillo
+            g2: { cx: 160, cy: 200, xp: 180, a_ratio: 0.6, rx: 25, ry: 75, drag: null },     // Disco
+            g3: { cx: 100, cy: 200, xp: 260, x_slice: 60, L: 140, rx: 25, ry: 75, drag: null } // Cilindro
+        };
+
+        function renderG1() {
+            const s = state.g1;
+            const org = {x: s.cx, y: s.cy};
+            
+            // Ejes pseudo 3D
+            document.getElementById('g1-axis-x').setAttribute('x1', org.x); document.getElementById('g1-axis-x').setAttribute('y1', org.y);
+            document.getElementById('g1-axis-x').setAttribute('x2', org.x + 300); document.getElementById('g1-axis-x').setAttribute('y2', org.y);
+            document.getElementById('g1-axis-y').setAttribute('x1', org.x); document.getElementById('g1-axis-y').setAttribute('y1', org.y + 110);
+            document.getElementById('g1-axis-y').setAttribute('x2', org.x); document.getElementById('g1-axis-y').setAttribute('y2', org.y - 110);
+            document.getElementById('g1-axis-z').setAttribute('x1', org.x + 60); document.getElementById('g1-axis-z').setAttribute('y1', org.y - 45);
+            document.getElementById('g1-axis-z').setAttribute('x2', org.x - 70); document.getElementById('g1-axis-z').setAttribute('y2', org.y + 55);
+
+            setObjPos('g1-lbl-x', {x: org.x + 305, y: org.y});
+            setObjPos('g1-lbl-y', {x: org.x, y: org.y - 130});
+            setObjPos('g1-lbl-z', {x: org.x - 85, y: org.y + 55});
+
+            // Anillo principal
+            const ring = document.getElementById('g1-ring');
+            ring.setAttribute('cx', org.x); ring.setAttribute('cy', org.y);
+            ring.setAttribute('rx', s.rx); ring.setAttribute('ry', s.ry);
+            setObjPos('g1-lbl-a', {x: org.x, y: org.y - s.ry/2}, -20, -10);
+
+            // Elemento dq
+            const dq_x = org.x + s.rx * Math.cos(s.alpha);
+            const dq_y = org.y - s.ry * Math.sin(s.alpha);
+            document.getElementById('g1-dq-point').setAttribute('cx', dq_x);
+            document.getElementById('g1-dq-point').setAttribute('cy', dq_y);
+            
+            const dqHit = document.getElementById('g1-dq-group').querySelector('.hitbox');
+            dqHit.setAttribute('cx', dq_x); dqHit.setAttribute('cy', dq_y);
+            setObjPos('g1-lbl-dq', {x: dq_x, y: dq_y}, -15, -45);
+
+            // Punto P
+            const p_x = org.x + s.xp;
+            document.getElementById('g1-p-point').setAttribute('cx', p_x);
+            document.getElementById('g1-p-point').setAttribute('cy', org.y);
+            
+            const pHit = document.getElementById('g1-p-group').querySelector('.hitbox');
+            pHit.setAttribute('cx', p_x); pHit.setAttribute('cy', org.y);
+            
+            setObjPos('g1-lbl-p', {x: p_x, y: org.y}, -10, -35); 
+            setObjPos('g1-lbl-x0', {x: org.x + s.xp/2, y: org.y}, -15, 5);
+
+            // Linea r
+            document.getElementById('g1-r-line').setAttribute('x1', dq_x); document.getElementById('g1-r-line').setAttribute('y1', dq_y);
+            document.getElementById('g1-r-line').setAttribute('x2', p_x); document.getElementById('g1-r-line').setAttribute('y2', org.y);
+
+            // Vectores
+            const dx = p_x - dq_x; const dy = org.y - dq_y;
+            const dist2 = dx*dx + dy*dy; const dist = Math.sqrt(dist2);
+            const Emag = 12000 / dist; // Factor de escala visual
+            
+            const Ex = Emag * (dx / dist);
+            const Ey = Emag * (dy / dist);
+
+            document.getElementById('g1-vec-E').setAttribute('x1', p_x); document.getElementById('g1-vec-E').setAttribute('y1', org.y);
+            document.getElementById('g1-vec-E').setAttribute('x2', p_x + Ex); document.getElementById('g1-vec-E').setAttribute('y2', org.y + Ey);
+            
+            document.getElementById('g1-vec-Ex').setAttribute('x1', p_x); document.getElementById('g1-vec-Ex').setAttribute('y1', org.y);
+            document.getElementById('g1-vec-Ex').setAttribute('x2', p_x + Ex); document.getElementById('g1-vec-Ex').setAttribute('y2', org.y);
+            
+            document.getElementById('g1-vec-Eperp').setAttribute('x1', p_x + Ex); document.getElementById('g1-vec-Eperp').setAttribute('y1', org.y);
+            document.getElementById('g1-vec-Eperp').setAttribute('x2', p_x + Ex); document.getElementById('g1-vec-Eperp').setAttribute('y2', org.y + Ey);
+
+            setObjPos('g1-lbl-Ex', {x: p_x + Ex/2, y: org.y}, -10, 5);
+            setObjPos('g1-lbl-Eperp', {x: p_x + Ex, y: org.y + Ey/2}, 5, -15);
+            setObjPos('g1-lbl-E', {x: p_x + Ex, y: org.y + Ey}, 5, -5);
+        }
+
+        function renderG2() {
+            const s = state.g2;
+            const org = {x: s.cx, y: s.cy};
+            
+            // Ejes pseudo 3D
+            document.getElementById('g2-axis-x').setAttribute('x1', org.x); document.getElementById('g2-axis-x').setAttribute('y1', org.y);
+            document.getElementById('g2-axis-x').setAttribute('x2', org.x + 300); document.getElementById('g2-axis-x').setAttribute('y2', org.y);
+            document.getElementById('g2-axis-y').setAttribute('x1', org.x); document.getElementById('g2-axis-y').setAttribute('y1', org.y + 110);
+            document.getElementById('g2-axis-y').setAttribute('x2', org.x); document.getElementById('g2-axis-y').setAttribute('y2', org.y - 110);
+            document.getElementById('g2-axis-z').setAttribute('x1', org.x + 60); document.getElementById('g2-axis-z').setAttribute('y1', org.y - 45);
+            document.getElementById('g2-axis-z').setAttribute('x2', org.x - 70); document.getElementById('g2-axis-z').setAttribute('y2', org.y + 55);
+
+            setObjPos('g2-lbl-x', {x: org.x + 305, y: org.y});
+            setObjPos('g2-lbl-y', {x: org.x, y: org.y - 130});
+            setObjPos('g2-lbl-z', {x: org.x - 85, y: org.y + 55});
+
+            // Disco Completo
+            const disk = document.getElementById('g2-disk');
+            disk.setAttribute('cx', org.x); disk.setAttribute('cy', org.y);
+            disk.setAttribute('rx', s.rx); disk.setAttribute('ry', s.ry);
+            setObjPos('g2-lbl-R', {x: org.x, y: org.y + s.ry/2}, -25, 0);
+
+            // Anillo dq
+            const dq_rx = s.rx * s.a_ratio; const dq_ry = s.ry * s.a_ratio;
+            const ring = document.getElementById('g2-dq-ring');
+            ring.setAttribute('cx', org.x); ring.setAttribute('cy', org.y);
+            ring.setAttribute('rx', dq_rx); ring.setAttribute('ry', dq_ry);
+            
+            const hit = document.getElementById('g2-dq-hitbox');
+            hit.setAttribute('cx', org.x); hit.setAttribute('cy', org.y);
+            
+            setObjPos('g2-lbl-a', {x: org.x, y: org.y - dq_ry/2}, -20, -10);
+            setObjPos('g2-lbl-dq', {x: org.x, y: org.y - s.ry - 25}, -50, 0);
+
+            // Punto P
+            const p_x = org.x + s.xp;
+            document.getElementById('g2-p-point').setAttribute('cx', p_x);
+            document.getElementById('g2-p-point').setAttribute('cy', org.y);
+            
+            const pHit = document.getElementById('g2-p-group').querySelector('.hitbox');
+            pHit.setAttribute('cx', p_x); pHit.setAttribute('cy', org.y);
+            
+            setObjPos('g2-lbl-p', {x: p_x, y: org.y}, -10, -35); 
+            setObjPos('g2-lbl-x0', {x: org.x + s.xp/2, y: org.y}, -15, 5);
+
+            // Linea r (desde el borde superior del anillo dq hasta P)
+            document.getElementById('g2-r-line').setAttribute('x1', org.x); document.getElementById('g2-r-line').setAttribute('y1', org.y - dq_ry);
+            document.getElementById('g2-r-line').setAttribute('x2', p_x); document.getElementById('g2-r-line').setAttribute('y2', org.y);
+
+            // Vector E neto (en el eje x)
+            const Emag = 15000 * dq_ry / (Math.pow(s.xp*s.xp + dq_ry*dq_ry, 1.5));
+            document.getElementById('g2-vec-E').setAttribute('x1', p_x); document.getElementById('g2-vec-E').setAttribute('y1', org.y);
+            document.getElementById('g2-vec-E').setAttribute('x2', p_x + Emag); document.getElementById('g2-vec-E').setAttribute('y2', org.y);
+            setObjPos('g2-lbl-E', {x: p_x + Emag, y: org.y}, 5, -15);
+        }
+
+        function renderG3() {
+            const s = state.g3;
+            const org = {x: s.cx, y: s.cy};
+            
+            // Ejes
+            document.getElementById('g3-axis-x').setAttribute('x1', org.x - 30); document.getElementById('g3-axis-x').setAttribute('y1', org.y);
+            document.getElementById('g3-axis-x').setAttribute('x2', org.x + 350); document.getElementById('g3-axis-x').setAttribute('y2', org.y);
+            document.getElementById('g3-axis-y').setAttribute('x1', org.x); document.getElementById('g3-axis-y').setAttribute('y1', org.y + 110);
+            document.getElementById('g3-axis-y').setAttribute('x2', org.x); document.getElementById('g3-axis-y').setAttribute('y2', org.y - 110);
+            document.getElementById('g3-axis-z').setAttribute('x1', org.x + 60); document.getElementById('g3-axis-z').setAttribute('y1', org.y - 45);
+            document.getElementById('g3-axis-z').setAttribute('x2', org.x - 70); document.getElementById('g3-axis-z').setAttribute('y2', org.y + 55);
+
+            setObjPos('g3-lbl-x', {x: org.x + 355, y: org.y});
+            setObjPos('g3-lbl-y', {x: org.x, y: org.y - 130});
+            setObjPos('g3-lbl-z', {x: org.x - 85, y: org.y + 55});
+
+            // Cilindro Base
+            document.getElementById('g3-cyl-back').setAttribute('cx', org.x); document.getElementById('g3-cyl-back').setAttribute('cy', org.y);
+            document.getElementById('g3-cyl-back').setAttribute('rx', s.rx); document.getElementById('g3-cyl-back').setAttribute('ry', s.ry);
+            
+            document.getElementById('g3-cyl-front').setAttribute('cx', org.x + s.L); document.getElementById('g3-cyl-front').setAttribute('cy', org.y);
+            document.getElementById('g3-cyl-front').setAttribute('rx', s.rx); document.getElementById('g3-cyl-front').setAttribute('ry', s.ry);
+
+            document.getElementById('g3-cyl-top').setAttribute('x1', org.x); document.getElementById('g3-cyl-top').setAttribute('y1', org.y - s.ry);
+            document.getElementById('g3-cyl-top').setAttribute('x2', org.x + s.L); document.getElementById('g3-cyl-top').setAttribute('y2', org.y - s.ry);
+            
+            document.getElementById('g3-cyl-bot').setAttribute('x1', org.x); document.getElementById('g3-cyl-bot').setAttribute('y1', org.y + s.ry);
+            document.getElementById('g3-cyl-bot').setAttribute('x2', org.x + s.L); document.getElementById('g3-cyl-bot').setAttribute('y2', org.y + s.ry);
+
+            const pathBody = `M ${org.x} ${org.y - s.ry} L ${org.x + s.L} ${org.y - s.ry} A ${s.rx} ${s.ry} 0 0 1 ${org.x + s.L} ${org.y + s.ry} L ${org.x} ${org.y + s.ry} A ${s.rx} ${s.ry} 0 0 0 ${org.x} ${org.y - s.ry}`;
+            document.getElementById('g3-cyl-body').setAttribute('d', pathBody);
+
+            setObjPos('g3-lbl-L', {x: org.x + s.L/2, y: org.y + s.ry + 20}, -5, 0);
+
+            // Disco dq (Slice)
+            const dq_x = org.x + s.x_slice;
+            const disk = document.getElementById('g3-dq-disk');
+            disk.setAttribute('cx', dq_x); disk.setAttribute('cy', org.y);
+            disk.setAttribute('rx', s.rx); disk.setAttribute('ry', s.ry);
+            
+            const hit = document.getElementById('g3-slice-hitbox');
+            hit.setAttribute('x', dq_x - 30); hit.setAttribute('y', org.y - 75);
+            
+            setObjPos('g3-lbl-dx', {x: dq_x, y: org.y - s.ry - 20}, -5, 0);
+            setObjPos('g3-lbl-dq', {x: dq_x, y: org.y + s.ry + 25}, -20, 0);
+
+            // Punto P
+            const p_x = org.x + s.xp;
+            document.getElementById('g3-p-point').setAttribute('cx', p_x);
+            document.getElementById('g3-p-point').setAttribute('cy', org.y);
+            
+            const pHit = document.getElementById('g3-p-group').querySelector('.hitbox');
+            pHit.setAttribute('cx', p_x); pHit.setAttribute('cy', org.y);
+            
+            setObjPos('g3-lbl-p', {x: p_x, y: org.y}, -10, -35); 
+            setObjPos('g3-lbl-x1', {x: p_x/2 + org.x/2, y: org.y}, -10, 5);
+
+            // Linea r
+            document.getElementById('g3-r-line').setAttribute('x1', dq_x); document.getElementById('g3-r-line').setAttribute('y1', org.y);
+            document.getElementById('g3-r-line').setAttribute('x2', p_x); document.getElementById('g3-r-line').setAttribute('y2', org.y);
+
+            // Vector E neto
+            const dist = Math.max(10, p_x - dq_x);
+            const Emag = 1500 / dist; // Factor de escala
+            document.getElementById('g3-vec-E').setAttribute('x1', p_x); document.getElementById('g3-vec-E').setAttribute('y1', org.y);
+            document.getElementById('g3-vec-E').setAttribute('x2', p_x + Emag); document.getElementById('g3-vec-E').setAttribute('y2', org.y);
+            setObjPos('g3-lbl-E', {x: p_x + Emag, y: org.y}, 5, -15);
+        }
+
+        // --- MANEJO DE EVENTOS DE FÍSICA ---
+        function getMousePos(svgId, evt) {
+            const svg = document.getElementById(svgId);
+            const CTM = svg.getScreenCTM();
+            const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+            const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+            return { x: (clientX - CTM.e) / CTM.a, y: (clientY - CTM.f) / CTM.d };
+        }
+
+        function setupInteractions() {
+            const evts = ['mousedown', 'touchstart'];
+            
+            evts.forEach(evt => {
+                document.getElementById('g1-dq-group').addEventListener(evt, (e) => { state.g1.drag = 'dq'; if(evt==='touchstart') e.preventDefault(); }, {passive:false});
+                document.getElementById('g1-p-group').addEventListener(evt, (e) => { state.g1.drag = 'p'; if(evt==='touchstart') e.preventDefault(); }, {passive:false});
+                document.getElementById('g2-dq-group').addEventListener(evt, (e) => { state.g2.drag = 'dq'; if(evt==='touchstart') e.preventDefault(); }, {passive:false});
+                document.getElementById('g2-p-group').addEventListener(evt, (e) => { state.g2.drag = 'p'; if(evt==='touchstart') e.preventDefault(); }, {passive:false});
+                document.getElementById('g3-dq-group').addEventListener(evt, (e) => { state.g3.drag = 'dq'; if(evt==='touchstart') e.preventDefault(); }, {passive:false});
+                document.getElementById('g3-p-group').addEventListener(evt, (e) => { state.g3.drag = 'p'; if(evt==='touchstart') e.preventDefault(); }, {passive:false});
+            });
+
+            const handleMove = (e) => {
+                if(state.g1.drag) {
+                    const pos = getMousePos('svg1', e);
+                    if(state.g1.drag === 'dq') {
+                        // Calcular ángulo alpha
+                        let dx = pos.x - state.g1.cx;
+                        let dy = state.g1.cy - pos.y;
+                        state.g1.alpha = Math.atan2(dy, dx);
+                    }
+                    else if (state.g1.drag === 'p') state.g1.xp = Math.max(50, Math.min(300, pos.x - state.g1.cx));
+                    renderG1();
+                } else if(state.g2.drag) {
+                    const pos = getMousePos('svg2', e);
+                    if(state.g2.drag === 'dq') {
+                        // Radio en base a la distancia vertical
+                        let dist = Math.abs(state.g2.cy - pos.y);
+                        state.g2.a_ratio = Math.max(0.1, Math.min(1.0, dist / state.g2.ry));
+                    }
+                    else if (state.g2.drag === 'p') state.g2.xp = Math.max(60, Math.min(300, pos.x - state.g2.cx));
+                    renderG2();
+                } else if(state.g3.drag) {
+                    const pos = getMousePos('svg3', e);
+                    if(state.g3.drag === 'dq') state.g3.x_slice = Math.max(0, Math.min(state.g3.L, pos.x - state.g3.cx));
+                    else if (state.g3.drag === 'p') state.g3.xp = Math.max(state.g3.L + 20, Math.min(300, pos.x - state.g3.cx));
+                    renderG3();
+                }
+            };
+
+            const endDrag = () => { state.g1.drag = state.g2.drag = state.g3.drag = null; };
+
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('touchmove', handleMove, {passive: false});
+            window.addEventListener('mouseup', endDrag);
+            window.addEventListener('touchend', endDrag);
+        }
+
+        window.onload = () => {
+            initGame();
+            
+            renderMathInElement(document.body, {
+                delimiters: [ {left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false} ],
+                throwOnError : false
+            });
+
+            renderG1(); renderG2(); renderG3();
+            setupInteractions();
+        };
+    </script>
+</body>
+</html>

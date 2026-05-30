@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Avanzado de Electrización</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #ffffff, #e2e8f0);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; cursor: grab;
+        }
+        .canvas-wrapper:active { cursor: grabbing; }
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 4px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #475569; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 10;
+        }
+
+        .obj-label {
+            position: absolute; transform: translate(-50%, -50%);
+            font-weight: bold; font-family: system-ui; color: #1e293b;
+            background: rgba(255, 255, 255, 0.85); padding: 2px 8px; border-radius: 6px;
+            pointer-events: none; z-index: 20; border: 1px solid #cbd5e1;
+            font-size: clamp(11px, 0.9vw, 14px); display: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-red-600">
+                <h1 class="font-bold tracking-wide" style="font-size: clamp(20px, 2vw, 36px);">Laboratorio: Electrostática y Fenómenos de Carga</h1>
+                <p class="text-red-300" style="font-size: clamp(12px, 1vw, 18px);">Análisis de Triboelectricidad, Contacto, Inducción y Polarización Macroscópica</p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍAS DINÁMICAS -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BASE COMÚN -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span><strong>Ley de Conservación y Signos:</strong> La carga total se conserva. Electrones libres ($\color{blue}{-}$) se mueven, iones positivos ($\color{red}{+}$) quedan fijos en la red.</span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Convención de Benjamin Franklin:</strong> Él asignó los signos arbitrariamente. Hoy sabemos que la corriente real en sólidos es flujo de electrones negativos.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$ \sum Q_i = \text{Constante} $$</div>
+                    </div>
+
+                    <!-- CASO 1: FRICCIÓN VIDRIO -->
+                    <div id="teoria-c1" class="flex flex-col gap-[1vmin] flex-1">
+                        <div class="bg-red-50 p-[1.5vmin] border border-red-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-red-800 flex items-center">1. Frotamiento: Vidrio (+) y Seda (-)</p>
+                            <p class="mt-1 text-sm">El trabajo mecánico arranca electrones del vidrio, que tiene menor afinidad electrónica que la seda.</p>
+                            <div class="math-display"> $$ Q_{\text{vidrio}} = +ne \quad , \quad Q_{\text{seda}} = -ne $$ </div>
+                            <p class="text-sm text-red-700 font-bold mt-1">⚠️ Los electrones fluyen del vidrio a la seda.</p>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: Materiales con distinta afinidad se cargan con la misma magnitud pero signos opuestos tras el contacto íntimo.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 2: FRICCIÓN TEFLÓN -->
+                    <div id="teoria-c2" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-blue-50 p-[1.5vmin] border border-blue-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-blue-800 flex items-center">2. Frotamiento: Teflón (-) y Pelo (+)</p>
+                            <p class="mt-1 text-sm">El teflón es uno de los materiales más electronegativos. "Roba" violentamente electrones de la estructura del cabello.</p>
+                            <div class="math-display"> $$ Q_{\text{teflón}} = -ne \quad , \quad Q_{\text{pelo}} = +ne $$</div>
+                            <p class="text-sm text-blue-700 font-bold mt-1">⚠️ El pelo se eriza por repulsión electrostática (cargas + y + se repelen).</p>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: La acumulación masiva de carga genera fuerzas mecánicas visibles que levantan estructuras ligeras como el cabello.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 3: TRIBOELECTRICIDAD LIBRE -->
+                    <div id="teoria-c3" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-purple-50 p-[1.5vmin] border border-purple-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-purple-800 flex items-center">3. Serie Triboeléctrica Completa
+                                <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                    <span class="tip-btn">💡</span>
+                                    <span class="tip-content"><strong>💡 Tabla de Afinidad:</strong> Orden empírico de materiales según su tendencia a ganar o perder electrones al friccionarse.</span>
+                                </span>
+                            </p>
+                            <p class="text-xs text-slate-700 mb-2">Selecciona dos materiales para frotarlos virtualmente. La diferencia determina la carga.</p>
+                            
+                            <!-- Tabla Interactiva UI -->
+                            <div id="tribo-table" class="mt-1 text-xs border border-slate-300 rounded overflow-hidden shadow-inner">
+                                <div class="bg-red-100 text-red-800 font-bold p-1 text-center border-b border-slate-300">⬆️ TIENDEN A QUEDAR POSITIVOS (+)</div>
+                                <select id="sel-matA" class="w-full p-1.5 outline-none bg-white border-b border-slate-200 font-mono">
+                                    <option value="12">Piel de Conejo (+12)</option>
+                                    <option value="10">Vidrio (+10)</option>
+                                    <option value="8">Cabello Humano (+8)</option>
+                                    <option value="6">Nylon (+6)</option>
+                                    <option value="4">Lana (+4)</option>
+                                    <option value="2">Seda (+2)</option>
+                                    <option value="1">Papel (+1)</option>
+                                </select>
+                                <select id="sel-matB" class="w-full p-1.5 outline-none bg-white border-b border-slate-200 font-mono">
+                                    <option value="0">Algodón (0 - Referencia)</option>
+                                    <option value="-2">Ámbar (-2)</option>
+                                    <option value="-4">Goma Dura (-4)</option>
+                                    <option value="-6">Poliéster (-6)</option>
+                                    <option value="-8">Globo de Látex (-8)</option>
+                                    <option value="-10">PVC (-10)</option>
+                                    <option value="-12">Teflón (-12)</option>
+                                </select>
+                                <div class="bg-blue-100 text-blue-800 font-bold p-1 text-center border-t border-slate-300">⬇️ TIENDEN A QUEDAR NEGATIVOS (-)</div>
+                            </div>
+                            <div class="math-display"> \Delta \text{Afinidad} = | \text{Mat}_1 - \text{Mat}_2 | </div>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: A mayor separación en la lista, mayor es el voltaje electrostático generado al frotarlos.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 4: CHAPAS Y CHISPAS -->
+                    <div id="teoria-c4" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-orange-50 p-[1.5vmin] border border-orange-200 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-orange-800 flex items-center">4. Contacto: Metal y Ruptura Dieléctrica</p>
+                            <p class="mt-1 text-sm">Si el campo eléctrico $\vec{E}$ entre las placas supera la rigidez dieléctrica del aire ($~3 \times 10^6$ V/m), el aire se ioniza volviéndose conductor momentáneo.</p>
+                            <div class="math-display"> $$ E = \frac{\Delta V}{d} > 3\text{ MV/m} \implies \text{Chispa!} $$ </div>
+                            <p class="text-sm text-orange-700 font-bold mt-1">⚠️ La descarga ocurre milisegundos ANTES de que se toquen físicamente.</p>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: Un arco eléctrico transfiere electrones violentamente, disipando energía en forma de luz, calor y sonido.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 5: PENDULO ELECTRICO -->
+                    <div id="teoria-c5" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-slate-50 p-[1.5vmin] border border-slate-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-slate-800 flex items-center">5. Contacto: Péndulo Eléctrico</p>
+                            <p class="mt-1 text-sm">Fase 1: Atracción por polarización inductiva.<br>Fase 2: Contacto físico y salto de carga.<br>Fase 3: Repulsión violenta (mismo signo).</p>
+                            <div class="math-display"> $$ F_{e} = k \frac{q_A q_B}{r^2} \quad \text{(Repulsiva post-contacto)} $$ </div>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: Es el método clásico para detectar presencia de carga y demostrar que cargas iguales se repelen.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 6: AGUA -->
+                    <div id="teoria-c6" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-cyan-50 p-[1.5vmin] border border-cyan-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-cyan-800 flex items-center">6. Inducción: Hilo de Agua y Globo</p>
+                            <p class="mt-1 text-sm">El agua (H₂O) es una molécula polar (dipolo permanente). El globo fuertemente negativo obliga a las moléculas de agua a rotar (oxígeno se aleja, hidrógenos se acercan).</p>
+                            <div class="math-display"> $$vF_{\text{atractiva}} > F_{\text{repulsiva}} $$ </div>
+                            <p class="text-sm text-cyan-700 font-bold mt-1">⚠️ El hilo se curva alterando su caída parabólica gravitacional.</p>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: Demuestra cómo un campo eléctrico externo no uniforme ejerce una fuerza neta sobre dipolos microscópicos.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 7: LATA -->
+                    <div id="teoria-c7" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-zinc-50 p-[1.5vmin] border border-zinc-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-zinc-800 flex items-center">7. Inducción: Lata de Aluminio y Globo</p>
+                            <p class="mt-1 text-sm">Los electrones libres del metal huyen hacia el lado opuesto del globo (-). El lado cercano de la lata queda positivo.</p>
+                            <div class="math-display"> $$ \Sigma F_X = F_{\text{atracción local (+)}} - F_{\text{repulsión lejana (-)}} > 0 $$ </div>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: Al generarse un torque neto, la lata rueda persiguiendo al globo sin que exista carga neta en la lata ni contacto.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 8: PAPELITOS -->
+                    <div id="teoria-c8" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-yellow-50 p-[1.5vmin] border border-yellow-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-yellow-800 flex items-center">8. Atracción: Papelitos y Lápiz</p>
+                            <p class="mt-1 text-sm">El campo eléctrico extremo inducido por el lápiz plástico frotado levanta pedazos de papel aislante venciendo la gravedad.</p>
+                            <div class="math-display"> $$ q_{\text{inducida}} E > m g $$ </div>
+                            <p class="text-sm text-yellow-700 font-bold mt-1">⚠️ Tras un tiempo (t > 80), el aire y la humedad descargan el sistema y los papeles caen.</p>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: La fuerza electromagnética es órdenes de magnitud más fuerte que la interacción gravitacional terrestre.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 9: PELO ERIZADO -->
+                    <div id="teoria-c9" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-rose-50 p-[1.5vmin] border border-rose-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-rose-800 flex items-center">9. Repulsión Capilar (Pelo que se levanta)</p>
+                            <p class="mt-1 text-sm">Al frotar fuertemente un globo en la cabeza, el cabello cede electrones quedando positivamente cargado. Cada hebra se repele mutuamente.</p>
+                            <div class="math-display"> $$ \vec{F}_{\text{hebra 1 a 2}} = k \frac{(+q)(+q)}{r^2} \hat{r} \quad (\text{Repulsión}) $$</div>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: Las hebras de cabello intentan maximizar su distancia entre sí, alineándose con las líneas de campo eléctrico radial.</p>
+                        </div>
+                    </div>
+
+                    <!-- CASO 10: GLOBO EN LA PARED -->
+                    <div id="teoria-c10" class="hidden flex-col gap-[1vmin] flex-1">
+                        <div class="bg-emerald-50 p-[1.5vmin] border border-emerald-300 shadow-sm rounded-lg relative">
+                            <p class="font-bold text-emerald-800 flex items-center">10. Polarización: Pared y Globo</p>
+                            <p class="mt-1 text-sm">El globo negativo se apoya contra una pared neutra. Deforma las órbitas atómicas de la pared atrayendo los núcleos y repeliendo electrones.</p>
+                            <div class="math-display"> $$ F_{\text{adhesión eléctrica}} = \mu_s N \ge m_{\text{globo}} g $$ </div>
+                            <p class="text-sm text-emerald-700 font-bold mt-1">⚠️ Al final del proceso, la carga se fugará a la pared y el globo caerá.</p>
+                            <p class="text-sm mt-2 text-indigo-800 font-bold">🎯 Conclusión: Genera suficiente fricción estática ($\mu_s N$) mediada por fuerza eléctrica para sostener el peso del globo.</p>
+                        </div>
+                    </div>
+
+                    <!-- BLOQUE COMÚN LECTURAS -->
+                    <div class="bg-indigo-50 p-[1.5vmin] shadow-sm rounded-lg border border-indigo-200 mt-[1vmin]">
+                        <p class="text-sm font-bold text-slate-700 mb-1">Carga Neta del Sistema (Aislado):</p>
+                        <div class="text-center font-bold text-indigo-700" style="font-size: clamp(16px, 1.5vw, 24px);">
+                            <span id="ui-potential-text">\( \sum Q = 0\ e \)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL -->
+                    <div class="control-panel shadow-sm">
+                        
+                        <div class="control-group border-r border-slate-300 pr-3 w-full lg:w-auto">
+                            <label class="font-bold text-slate-800">Experimento:</label>
+                            <select id="select-material" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500 max-w-[220px] truncate">
+                                <option value="c1">1. Vidrio y Seda (Fricción)</option>
+                                <option value="c2">2. Teflón y Pelo (Fricción)</option>
+                                <option value="c3">3. Triboeléctrica (Personalizada)</option>
+                                <option value="c4">4. Chapas y Chispazo (Contacto)</option>
+                                <option value="c5">5. Péndulo Eléctrico (Repulsión)</option>
+                                <option value="c6">6. Globo e Hilo de Agua (Polarización)</option>
+                                <option value="c7">7. Lata Rodante (Inducción)</option>
+                                <option value="c8">8. Lápiz y Papelitos (Atracción)</option>
+                                <option value="c9">9. Globo y Pelo (Erizamiento)</option>
+                                <option value="c10">10. Globo y Pared (Adhesión)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3 flex-1">
+                            <label class="font-bold text-red-700 whitespace-nowrap">Línea de Tiempo ($t$):</label>
+                            <input type="range" id="slider-t" min="0" max="100" step="1" value="0" class="w-full">
+                        </div>
+
+                        <div class="control-group border-r border-slate-300 pr-3">
+                            <label class="font-bold text-amber-600">Intensidad:</label>
+                            <input type="range" id="slider-q" min="2" max="10" step="1" value="8" class="w-[4vw]">
+                        </div>
+
+                        <div class="control-group justify-end gap-2 text-[10px] md:text-xs font-semibold text-slate-700">
+                            <label class="flex items-center gap-1 bg-white p-1 rounded border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" id="toggle-field" checked> Cargas (+/-)</label>
+                            <label class="flex items-center gap-1 bg-white p-1 rounded border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" id="toggle-lines"> Campo $\vec{E}$</label>
+                            <label class="flex items-center gap-1 bg-white p-1 rounded border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" id="toggle-rotate" checked> Girar</label>
+                        </div>
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper" id="canvas-3d">
+                            <div class="hint-overlay">⟲ Rotar | ⚲ Zoom | <strong>Cargas tienen signos + y - reales</strong></div>
+                            <!-- Etiquetas dinámicas -->
+                            <div id="lbl-A" class="obj-label">Objeto A</div>
+                            <div id="lbl-B" class="obj-label">Objeto B</div>
+                        </div>
+
+                        <!-- 2D Graph & Stats -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Gráfica -->
+                            <div class="flex-1 graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 16px);">Evolución de Cargas vs Tiempo</div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Stats Flujo -->
+                            <div class="bg-white border border-slate-200 rounded-lg p-[1.5vmin] text-center shadow-sm">
+                                <div class="text-slate-600 font-serif italic mb-1" style="font-size: clamp(12px, 1vw, 16px);">Fase Cinemática / Dinámica</div>
+                                <div class="font-mono font-bold text-slate-800 bg-amber-50 rounded border border-amber-200 py-1" id="ui-region" style="font-size: clamp(14px, 1.1vw, 18px);">
+                                    Analizando cinemática...
+                                </div>
+                                <div class="mt-2 flex justify-between px-2 text-slate-600 font-semibold bg-slate-100 py-1 rounded border border-slate-200" style="font-size: clamp(12px, 1.1vw, 16px);">
+                                    <span>$Q_A$: <span id="val-qa-local" class="font-bold font-mono text-lg">0</span></span>
+                                    <span>$Q_B$: <span id="val-qb-local" class="font-bold font-mono text-lg">0</span></span>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS Y FÍSICA -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        const cam = new THREE.PerspectiveCamera(40, cont3D.clientWidth / cont3D.clientHeight, 0.1, 100);
+        cam.position.set(0, 5, 20);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.localClippingEnabled = false; 
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true; ctrl.autoRotate = true; ctrl.autoRotateSpeed = 1.0;
+        
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const light = new THREE.DirectionalLight(0xffffff, 0.6);
+        light.position.set(10, 20, 15); scene.add(light);
+
+        // ==========================================
+        // 2. TEXTURAS DE PARTÍCULAS CON SIGNOS REALES
+        // ==========================================
+        function createChargeTexture(sign, colorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.beginPath(); ctx.arc(64, 64, 60, 0, 2*Math.PI);
+            ctx.fillStyle = colorHex; ctx.fill();
+            ctx.fillStyle = 'white'; ctx.font = 'bold 80px sans-serif'; 
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(sign, 64, 64 + 6); // Offset Y
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        const texPos = createChargeTexture('+', '#ef4444');
+        const texNeg = createChargeTexture('-', '#3b82f6');
+
+        const planeGeo = new THREE.PlaneGeometry(0.65, 0.65); // Carteles
+        const matPos = new THREE.MeshBasicMaterial({ map: texPos, transparent: true, alphaTest: 0.5 });
+        const matNeg = new THREE.MeshBasicMaterial({ map: texNeg, transparent: true, alphaTest: 0.5 });
+
+        const maxParticles = 250;
+        const meshPos = new THREE.InstancedMesh(planeGeo, matPos, maxParticles);
+        const meshNeg = new THREE.InstancedMesh(planeGeo, matNeg, maxParticles);
+        scene.add(meshPos); scene.add(meshNeg);
+
+        // LÍNEAS DE CAMPO ELÉCTRICO (Arrows)
+        const fieldGroup = new THREE.Group();
+        scene.add(fieldGroup);
+
+        // ==========================================
+        // 3. GENERACIÓN DE MODELOS 3D ESPECÍFICOS
+        // ==========================================
+        const materials = {
+            glass: new THREE.MeshPhysicalMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.7, roughness: 0.1 }),
+            teflon: new THREE.MeshPhysicalMaterial({ color: 0x334155, roughness: 0.8 }),
+            wood: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 1.0 }),
+            cloth: new THREE.MeshStandardMaterial({ color: 0xfef08a, roughness: 0.9, side: THREE.DoubleSide }),
+            fur: new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 1.0, side: THREE.DoubleSide }),
+            metal: new THREE.MeshPhysicalMaterial({ color: 0xcbd5e1, metalness: 1.0, roughness: 0.2 }),
+            balloon: new THREE.MeshPhysicalMaterial({ color: 0xf87171, transparent: true, opacity: 0.9, roughness: 0.4 }),
+            wall: new THREE.MeshStandardMaterial({ color: 0xfef3c7, roughness: 1.0 }),
+            can: new THREE.MeshPhysicalMaterial({ color: 0xe2e8f0, metalness: 0.9, roughness: 0.3 })
+        };
+
+        const gBox = new THREE.BoxGeometry(4, 4, 1);
+        const gPlate = new THREE.BoxGeometry(1, 4, 4);
+        const gRod = new THREE.CylinderGeometry(0.4, 0.4, 6, 32); gRod.rotateZ(Math.PI/2); 
+        const gPencil = new THREE.CylinderGeometry(0.2, 0.2, 6, 6); gPencil.rotateZ(Math.PI/2);
+        const gCan = new THREE.CylinderGeometry(1.2, 1.2, 4, 32); gCan.rotateZ(Math.PI/2); 
+        const gSphere = new THREE.SphereGeometry(1.5, 32, 32);
+
+        // Globo
+        const balloonGrp = new THREE.Group();
+        const bBody = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), materials.balloon); bBody.scale.set(1, 1.2, 1);
+        const bKnot = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.3, 0.4, 16), materials.balloon); bKnot.position.y = -1.8;
+        balloonGrp.add(bBody, bKnot);
+
+        // Cabeza con Pelos dinámicos
+        const headGrp = new THREE.Group();
+        const headSphere = new THREE.Mesh(new THREE.SphereGeometry(2, 32, 32), new THREE.MeshStandardMaterial({color: 0xfcd34d}));
+        headGrp.add(headSphere);
+        const hairs = [];
+        for(let i=0; i<50; i++) {
+            const hGeo = new THREE.CylinderGeometry(0.02, 0.04, 1.8, 4);
+            hGeo.translate(0, 0.9, 0); 
+            const hMesh = new THREE.Mesh(hGeo, new THREE.MeshBasicMaterial({color: 0x451a03}));
+            const phi = Math.acos(1 - 2*(i+0.5)/50); const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+            if (phi < Math.PI/1.5 && Math.cos(theta) < 0.6) {
+                hMesh.position.setFromSphericalCoords(2, phi, theta);
+                hMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), hMesh.position.clone().normalize());
+                hMesh.userData.baseQuat = hMesh.quaternion.clone();
+                hMesh.userData.normal = hMesh.position.clone().normalize();
+                headGrp.add(hMesh); hairs.push(hMesh);
+            }
+        }
+
+        // Papelitos
+        const papersGrp = new THREE.Group();
+        const papers = [];
+        for(let i=0; i<20; i++) {
+            const p = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.3), new THREE.MeshBasicMaterial({color:0xffffff}));
+            p.position.set((Math.random()-0.5)*3, -3, (Math.random()-0.5)*1.5);
+            p.rotation.set(Math.random(), Math.random(), Math.random());
+            p.userData.basePos = p.position.clone(); 
+            p.userData.flyTarget = new THREE.Vector3((Math.random()-0.5)*2, 0, (Math.random()-0.5)*0.5);
+            papersGrp.add(p); papers.push(p);
+        }
+
+        // Chispa
+        const sparkMat = new THREE.LineBasicMaterial({ color: 0x60a5fa, linewidth: 3 });
+        const sparkGeo = new THREE.BufferGeometry();
+        sparkGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(8 * 3), 3));
+        const sparkLine = new THREE.Line(sparkGeo, sparkMat);
+        scene.add(sparkLine);
+
+        // Agua (Grifo estático + Chorro dinámico)
+        const waterGrp = new THREE.Group();
+        const faucet = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1), materials.metal);
+        faucet.position.set(0, 5, 0); waterGrp.add(faucet);
+        let waterTube = null;
+        const waterMat = new THREE.MeshPhysicalMaterial({ color: 0x93c5fd, transparent: true, opacity: 0.8, transmission: 0.9, roughness: 0.1 });
+        scene.add(waterGrp);
+
+        // Catálogo de objetos
+        const objects = {
+            vidrio: new THREE.Mesh(gRod, materials.glass),
+            teflon: new THREE.Mesh(gRod, materials.teflon),
+            pvc: new THREE.Mesh(gRod, materials.teflon), 
+            lapiz: new THREE.Mesh(gPencil, materials.wood),
+            chapaA: new THREE.Mesh(gPlate, materials.metal),
+            chapaB: new THREE.Mesh(gPlate, materials.metal),
+            esfera: new THREE.Mesh(gSphere, materials.metal),
+            tela1: new THREE.Mesh(gBox, materials.cloth),
+            tela2: new THREE.Mesh(gBox, materials.fur),
+            globo: balloonGrp,
+            cabeza: headGrp,
+            papeles: papersGrp,
+            pared: new THREE.Mesh(new THREE.BoxGeometry(1, 10, 10), materials.wall),
+            lata: new THREE.Mesh(gCan, materials.can)
+        };
+
+        for (let k in objects) { scene.add(objects[k]); objects[k].visible = false; }
+
+        // ==========================================
+        // 4. MOTOR DE ESTADOS (FÍSICA Y TIEMPO)
+        // ==========================================
+        let params = { t: 0, q: 8, mode: 'c1' };
+
+        function getState(t, q0, mode) {
+            let s = { 
+                phase: '', distA: 0, distB: 0, yA: 0, yB: 0, 
+                qA: 0, qB: 0, polarA: false, polarB: false, 
+                spark: false, bend: 0, roll: 0, lift: 0, drop: 0,
+                nameA: '', nameB: '' 
+            };
+            
+            const tA = 30, tS = 70; // Timings clave (Approach, Separate)
+            const factor = t < tA ? 0 : (t <= tS ? (t - tA)/(tS - tA) : 1);
+            
+            // Fases Generales
+            if (t < tA) s.phase = "Acercamiento";
+            else if (t <= tS) s.phase = ["c1","c2","c3"].includes(mode) ? "Fricción en progreso" : "Interacción Física";
+            else s.phase = "Separación / Reposo";
+
+            let gapBase = 0.5, startD = 8;
+            if (mode === 'c4') gapBase = 1.0; 
+            if (mode === 'c5') gapBase = 3.0; 
+            if (mode === 'c6') gapBase = 3.5; 
+            if (mode === 'c7') gapBase = 2.5; 
+            if (mode === 'c8') gapBase = 3.5; 
+            if (mode === 'c9') gapBase = 3.0; 
+            if (mode === 'c10') gapBase = 1.8; 
+
+            // Movimiento X principal
+            let currentGap = t < tA ? startD - (startD - gapBase)*(t/tA) : (t <= tS ? gapBase : gapBase + (startD - gapBase)*((t-tS)/30));
+            s.distA = -currentGap / 2; s.distB = currentGap / 2;
+
+            // Fricción Y Oscillation
+            if (["c1","c2","c3"].includes(mode) && t >= tA && t <= tS) {
+                s.yA = Math.sin(t * 1.0) * 1.5; s.yB = -Math.sin(t * 1.0) * 1.5;
+            }
+
+            switch(mode) {
+                case 'c1': // Vidrio(+)/Seda(-)
+                    s.nameA = "Vidrio"; s.nameB = "Seda";
+                    s.qA = q0 * factor; s.qB = -q0 * factor; break;
+                case 'c2': // Teflón(-)/Pelo(+)
+                    s.nameA = "Teflón"; s.nameB = "Cabello";
+                    s.qA = -q0 * factor; s.qB = q0 * factor; break;
+                case 'c3': // Tribo Libre
+                    const m1 = parseInt(document.getElementById('sel-matA').value);
+                    const m2 = parseInt(document.getElementById('sel-matB').value);
+                    const diff = m1 - m2; 
+                    s.nameA = "Material 1"; s.nameB = "Material 2";
+                    s.qA = (diff > 0 ? q0 : (diff < 0 ? -q0 : 0)) * factor * (Math.abs(diff)/12);
+                    s.qB = -s.qA;
+                    break;
+                case 'c4': // Chapas
+                    s.nameA = "Chapa Carga Inicial"; s.nameB = "Chapa Neutra";
+                    if (t < tA) { s.qA = q0; s.qB = 0; }
+                    else {
+                        if (t > 26 && t < 31) s.spark = true; // Chispazo instantáneo
+                        const eq = Math.min(1, (t - 27) / 3); 
+                        s.qA = q0 - (q0/2)*Math.max(0, eq); s.qB = (q0/2)*Math.max(0, eq);
+                    }
+                    break;
+                case 'c5': // Péndulo
+                    s.nameA = "Barra Cargada"; s.nameB = "Péndulo Neutro";
+                    s.qA = q0; s.distA = -3;
+                    if (t < tA) { s.qB = 0; s.distB = 3; }
+                    else if (t <= 50) {
+                        s.qB = 0; s.polarB = true; s.phase = "1. Atracción Inducida";
+                        s.distB = 3 - (3 - (-1))*((t-30)/20); // Péndulo se acerca
+                    } else {
+                        s.polarB = false; s.phase = "2. Repulsión Violenta";
+                        s.qB = q0 * 0.4; // Se transfiere carga
+                        s.distB = -1 + ((t-50)*0.25); // Péndulo sale disparado
+                    }
+                    break;
+                case 'c6': // Agua
+                    s.nameA = "Globo (-)"; s.nameB = "Dipolos de Agua";
+                    s.qA = -q0; s.qB = 0; s.distB = 2; s.distA = s.distB - currentGap;
+                    if (t >= tA && t <= tS) { s.polarB = true; s.bend = factor; s.phase = "Curvatura de Flujo"; }
+                    if (t > tS) { s.bend = 1 - ((t-tS)/30); }
+                    break;
+                case 'c7': // Lata
+                    s.nameA = "Globo (-)"; s.nameB = "Lata de Aluminio";
+                    s.qA = -q0; s.qB = 0; 
+                    if (t < tA) { s.distA = -4; s.distB = 2; }
+                    else {
+                        s.polarB = true; s.phase = "Torque Inducido (Rueda)";
+                        s.distA = -4 + ((t-tA)*0.12); // Globo se mueve derecha
+                        s.distB = s.distA + gapBase; // Lata mantiene gap y rueda
+                        s.roll = s.distB * 0.8; 
+                    }
+                    break;
+                case 'c8': // Papelitos
+                    s.nameA = "Lápiz (+)"; s.nameB = "Papelitos";
+                    s.qA = q0; s.qB = 0; s.distB = 0; s.distA = 0; 
+                    s.yA = 4 - 3*(t/40 > 1 ? 1 : t/40); // Lápiz baja en Y
+                    if (s.yA < 1.5 && t <= 80) { s.polarB = true; s.lift = (1.5 - s.yA)/1.5; s.phase = "Atracción (Fe > Fg)"; }
+                    if (t > 80) { s.phase = "Descarga y Caída"; s.drop = (t-80)/20; s.lift = 0; s.qA = q0*(1-s.drop); } // Cae
+                    break;
+                case 'c9': // Pelo
+                    s.nameA = "Globo (-)"; s.nameB = "Cabello";
+                    s.qA = -q0; s.qB = 0; s.distB = 2; s.distA = s.distB - currentGap;
+                    if (t >= tA) { 
+                        s.polarB = true; s.bend = factor; s.phase = "Repulsión Capilar"; 
+                        s.qB = q0 * factor; // Pelo adquiere carga + al ceder
+                    }
+                    if (t > tS) { s.bend = 1 - ((t-tS)/30); s.qA = -q0; }
+                    break;
+                case 'c10': // Pared
+                    s.nameA = "Globo (-)"; s.nameB = "Pared";
+                    s.qA = -q0; s.qB = 0; s.distB = 2; s.distA = s.distB - currentGap;
+                    if (t >= tA && t <= 85) { s.polarB = true; s.phase = "Adhesión Electrostática"; }
+                    if (t > tS) { s.distA = s.distB - gapBase; s.polarB = true; } // Pegado
+                    if (t > 85) { s.phase = "Descarga Progresiva"; s.yA = -((t-85)*0.2); s.qA = -q0*(1-(t-85)/15); } // Resbala
+                    break;
+            }
+            return s;
+        }
+
+        // ==========================================
+        // 5. DISTRIBUCIÓN DE PARTÍCULAS
+        // ==========================================
+        const randPos = [], randNeg = [];
+        for(let i=0; i<maxParticles; i++) {
+            randPos.push({u: Math.random(), v: Math.random(), w: Math.random()});
+            randNeg.push({u: Math.random(), v: Math.random(), w: Math.random()});
+        }
+
+        function buildParticles(state, mode) {
+            let pIdx = 0, nIdx = 0;
+            const dummy = new THREE.Object3D();
+            const camQuat = cam.quaternion.clone();
+
+            function addP(q, isObjA, isPolarization) {
+                if (!document.getElementById('toggle-field').checked) return;
+                let count = Math.min(maxParticles/2, Math.floor(Math.abs(q)*5));
+                if (isPolarization) count = Math.min(maxParticles/2, Math.floor(params.q * 5));
+                if (count === 0 && !isPolarization) return;
+
+                const cX = isObjA ? state.distA : state.distB;
+                const cY = isObjA ? state.yA : state.yB;
+
+                for(let i=0; i<count; i++) {
+                    const isPositive = isPolarization ? (i%2===0) : (q > 0);
+                    const rndArr = isPositive ? randPos : randNeg;
+                    const rnd = rndArr[(isObjA?i:i+100)%maxParticles];
+                    let px=0, py=0, pz=0;
+                    
+                    if (['c1','c2','c3'].includes(mode)) {
+                        if (isObjA) { // Rod X
+                            px = (rnd.u - 0.5)*5; py = 0.5*Math.cos(rnd.v*Math.PI*2); pz = 0.5*Math.sin(rnd.v*Math.PI*2);
+                            if(state.phase.includes('Fricción')) px = px/5 + (isPositive?1.5:-1.5); // Focus zone
+                        } else { // Cloth Box
+                            px = 0.3; py = (rnd.u-0.5)*3.5; pz = (rnd.v-0.5)*3.5;
+                        }
+                    } 
+                    else if (mode === 'c4') { // Chapas
+                        px = (isObjA?0.5:-0.5); py = (rnd.u-0.5)*3.8; pz = (rnd.v-0.5)*3.8;
+                    }
+                    else if (['c5','c7'].includes(mode)) { // Rod/Sphere & Can
+                        if (isObjA) {
+                            px = (rnd.u - 0.5)*5; py = 0.5*Math.cos(rnd.v*Math.PI*2); pz = 0.5*Math.sin(rnd.v*Math.PI*2);
+                        } else {
+                            if (mode==='c7') { // Lata
+                                px = (rnd.u - 0.5)*3; py = 1.2*Math.cos(rnd.v*Math.PI*2); pz = 1.2*Math.sin(rnd.v*Math.PI*2);
+                                if (isPolarization) px = isPositive ? 1.5 : -1.5;
+                            } else { // Sphere
+                                const R=1.5, phi=Math.acos(2*rnd.v-1), theta=2*Math.PI*rnd.u;
+                                px=R*Math.sin(phi)*Math.cos(theta); py=R*Math.cos(phi); pz=R*Math.sin(phi)*Math.sin(theta);
+                                if (isPolarization) px = isPositive ? 1.4 : -1.4;
+                            }
+                        }
+                    }
+                    else if (['c6','c9','c10'].includes(mode)) { // Globo
+                        if (isObjA) {
+                            const R=1.5, phi=Math.acos(2*rnd.v-1), theta=2*Math.PI*rnd.u;
+                            px=R*Math.sin(phi)*Math.cos(theta); py=1.2*R*Math.cos(phi); pz=R*Math.sin(phi)*Math.sin(theta);
+                            px = -Math.abs(px); // Concentrado frente
+                        } else {
+                            if(mode==='c6') { // Agua
+                                py = (rnd.u-0.5)*10;
+                                px = state.bend * 1.5 * Math.sin((py+5)/10 * Math.PI); 
+                                if (isPolarization) px += isPositive ? 0.3 : -0.3;
+                            } else if (mode==='c9') { // Cabeza
+                                const R=2.0, phi=Math.acos(2*rnd.v-1), theta=2*Math.PI*rnd.u;
+                                px=R*Math.sin(phi)*Math.cos(theta); py=R*Math.cos(phi); pz=R*Math.sin(phi)*Math.sin(theta);
+                                if (isPolarization) px = isPositive ? -1.8 : 1.8;
+                            } else if (mode==='c10') { // Pared
+                                px = -0.5; py = (rnd.u-0.5)*8; pz = (rnd.v-0.5)*8;
+                                if (isPolarization) px = isPositive ? -0.6 : 0.6;
+                            }
+                        }
+                    } else if (mode === 'c8') {
+                        if (isObjA) { // Lápiz
+                            px = (rnd.u - 0.5)*5; py = 0.2*Math.cos(rnd.v*Math.PI*2); pz = 0.2*Math.sin(rnd.v*Math.PI*2);
+                        } else {
+                            px = 999; // Papeles manejan sus partículas de otra forma o no las mostramos
+                        }
+                    }
+
+                    dummy.position.set(px + cX, py + cY, pz);
+                    dummy.quaternion.copy(camQuat); // Billboard
+                    dummy.updateMatrix();
+
+                    if (isPositive) meshPos.setMatrixAt(pIdx++, dummy.matrix);
+                    else meshNeg.setMatrixAt(nIdx++, dummy.matrix);
+                }
+            }
+
+            addP(state.qA, true, state.polarA);
+            addP(state.qB, false, state.polarB);
+
+            // Hide unused
+            dummy.position.set(999,999,999); dummy.updateMatrix();
+            for(let i=pIdx; i<maxParticles; i++) meshPos.setMatrixAt(i, dummy.matrix);
+            for(let i=nIdx; i<maxParticles; i++) meshNeg.setMatrixAt(i, dummy.matrix);
+
+            meshPos.instanceMatrix.needsUpdate = true;
+            meshNeg.instanceMatrix.needsUpdate = true;
+        }
+
+        // LÍNEAS DE CAMPO
+        function buildFields(state, mode) {
+            fieldGroup.clear();
+            if (!document.getElementById('toggle-lines').checked) return;
+
+            const makeField = (origin, charge, color) => {
+                const count = Math.min(20, Math.floor(Math.abs(charge)*2));
+                for(let i=0; i<count; i++) {
+                    const phi = Math.acos(1 - 2*(i+0.5)/count); const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+                    const dir = new THREE.Vector3(Math.sin(phi)*Math.cos(theta), Math.cos(phi), Math.sin(phi)*Math.sin(theta));
+                    if (charge < 0) dir.negate(); // Líneas entran si es negativo
+                    const arrow = new THREE.ArrowHelper(dir, origin, 2.0, color, 0.4, 0.2);
+                    fieldGroup.add(arrow);
+                }
+            };
+
+            const cX_A = new THREE.Vector3(state.distA, state.yA, 0);
+            const cX_B = new THREE.Vector3(state.distB, state.yB, 0);
+
+            if (Math.abs(state.qA) > 1) makeField(cX_A, state.qA, state.qA>0 ? 0xef4444 : 0x3b82f6);
+            if (Math.abs(state.qB) > 1 && !state.polarB) makeField(cX_B, state.qB, state.qB>0 ? 0xef4444 : 0x3b82f6);
+        }
+
+        // ==========================================
+        // 6. RENDER Y UI UPDATE
+        // ==========================================
+        function updateAll() {
+            const m = params.mode; const t = params.t; const q = params.q;
+
+            // Teoría HTML
+            for(let i=1; i<=10; i++) {
+                const el = document.getElementById('teoria-c'+i);
+                if (el) el.classList.add('hidden');
+            }
+            if (document.getElementById('teoria-'+m)) document.getElementById('teoria-'+m).classList.remove('hidden');
+
+            const state = getState(t, q, m);
+
+            // Objetos 3D
+            for (let k in objects) objects[k].visible = false;
+            waterGrp.visible = false;
+            let oA = null, oB = null;
+
+            if(m==='c1') { oA=objects.vidrio; oB=objects.tela1; }
+            if(m==='c2') { oA=objects.teflon; oB=objects.tela2; }
+            if(m==='c3') { oA=objects.pvc; oB=objects.tela1; }
+            if(m==='c4') { oA=objects.chapaA; oB=objects.chapaB; }
+            if(m==='c5') { oA=objects.vidrio; oB=objects.esfera; }
+            if(m==='c6') { oA=objects.globo; oB=null; waterGrp.visible=true; waterGrp.position.set(state.distB,0,0); }
+            if(m==='c7') { oA=objects.globo; oB=objects.lata; }
+            if(m==='c8') { oA=objects.lapiz; oB=objects.papeles; }
+            if(m==='c9') { oA=objects.globo; oB=objects.cabeza; }
+            if(m==='c10'){ oA=objects.globo; oB=objects.pared; }
+
+            if(oA) { oA.visible = true; oA.position.set(state.distA, state.yA, 0); }
+            if(oB && m!=='c6') { oB.visible = true; oB.position.set(state.distB, state.yB, 0); }
+
+            // Lógicas Especiales y Animaciones Complejas
+            if(m==='c4' && state.spark) { // Chispa dinámica
+                sparkLine.visible = true;
+                const pos = sparkGeo.attributes.position.array;
+                const dx = state.distB - state.distA - 1.0;
+                for(let i=0; i<8; i++) {
+                    pos[i*3] = state.distA + 0.5 + (dx * (i/7));
+                    pos[i*3+1] = (i===0||i===7) ? 0 : (Math.random()-0.5)*2.0;
+                    pos[i*3+2] = (i===0||i===7) ? 0 : (Math.random()-0.5)*2.0;
+                }
+                sparkGeo.attributes.position.needsUpdate = true;
+            } else sparkLine.visible = false;
+
+            if(m==='c6') { // Agua Curva
+                if(waterTube) { scene.remove(waterTube); waterTube.geometry.dispose(); }
+                const curve = new THREE.QuadraticBezierCurve3(
+                    new THREE.Vector3(state.distB, 5, 0),
+                    new THREE.Vector3(state.distB - state.bend*1.8, 0, 0),
+                    new THREE.Vector3(state.distB, -5, 0)
+                );
+                waterTube = new THREE.Mesh(new THREE.TubeGeometry(curve, 20, 0.15, 8, false), waterMat);
+                scene.add(waterTube);
+            } else if(waterTube) { scene.remove(waterTube); waterTube=null; }
+
+            if(m==='c7' && oB) oB.rotation.z = -state.roll; // Lata rueda
+
+            if(m==='c8') { // Papelitos Lápiz
+                papers.forEach(p => {
+                    const diffX = Math.abs(p.userData.targetX - oA.position.x);
+                    if (state.lift > 0 && diffX < 2.5) {
+                        p.position.y = p.userData.basePos.y + state.lift * 3.5; 
+                        p.position.x = oA.position.x + p.userData.targetX*0.3; // Se pegan al lápiz
+                    } else if (state.drop > 0) {
+                        p.position.y = Math.max(p.userData.basePos.y, p.position.y - state.drop*5); // Caen lento
+                    } else {
+                        p.position.copy(p.userData.basePos);
+                    }
+                });
+            }
+
+            if(m==='c9') { // Pelo Erizado
+                hairs.forEach((h, i) => {
+                    if (state.bend > 0) {
+                        const targetPos = oA.position.clone();
+                        // Mix normal (repulsión entre ellos) y target (atracción globo)
+                        const dirGlob = targetPos.sub(h.getWorldPosition(new THREE.Vector3())).normalize();
+                        const dirNorm = h.userData.normal.clone();
+                        // Combina: se erizan (normal) y un poco hacia el globo
+                        const finalDir = dirNorm.lerp(dirGlob, 0.4).normalize();
+                        const targetQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0), finalDir);
+                        h.quaternion.slerpQuaternions(h.userData.baseQuat, targetQuat, state.bend);
+                    } else h.quaternion.copy(h.userData.baseQuat);
+                });
+            }
+
+            buildParticles(state, m);
+            buildFields(state, m);
+
+            // UI Labels 3D
+            const lA = document.getElementById('lbl-A'); const lB = document.getElementById('lbl-B');
+            if (state.nameA && oA) {
+                lA.style.display='block'; lA.textContent=state.nameA;
+                const pW = oA.position.clone(); pW.y += 2.5; pW.project(cam);
+                lA.style.left = ((pW.x*0.5+0.5)*cont3D.clientWidth)+'px'; lA.style.top = (-(pW.y*0.5-0.5)*cont3D.clientHeight)+'px';
+            } else lA.style.display='none';
+
+            if (state.nameB && (oB || m==='c6')) {
+                lB.style.display='block'; lB.textContent=state.nameB;
+                const pW = new THREE.Vector3(state.distB, 2.5, 0).project(cam);
+                lB.style.left = ((pW.x*0.5+0.5)*cont3D.clientWidth)+'px'; lB.style.top = (-(pW.y*0.5-0.5)*cont3D.clientHeight)+'px';
+            } else lB.style.display='none';
+
+            // UI Textos HTML
+            const qaColor = state.qA >= 0 ? 'text-red-600' : 'text-blue-600';
+            const qbColor = state.qB >= 0 ? 'text-red-600' : 'text-blue-600';
+            const qaSign = state.qA > 0 ? '+' : '';
+            const qbSign = state.qB > 0 ? '+' : '';
+
+            document.getElementById('val-qa-local').innerHTML = `<span class="${qaColor}">${qaSign}${state.qA.toLocaleString('es-ES', {maximumFractionDigits: 1})}</span>`;
+            document.getElementById('val-qb-local').innerHTML = `<span class="${qbColor}">${qbSign}${state.qB.toLocaleString('es-ES', {maximumFractionDigits: 1})}</span>`;
+            
+            let pColor = "text-slate-800";
+            if (state.phase.includes('Fricción') || state.phase.includes('Contacto')) pColor = "text-red-600";
+            if (state.polarA || state.polarB || state.phase.includes('Atracción')) pColor = "text-teal-600";
+            document.getElementById('ui-region').innerHTML = `<span class='${pColor}'>${state.phase}</span>`;
+
+            let qTot = (state.qA + state.qB);
+            if (state.polarB || state.polarA) qTot = 0; // Conservación local aparente nula
+            if (m === 'c8' && state.drop > 0) qTot = state.qA; // Descarga
+            const uiPot = document.getElementById('ui-potential-text');
+            const nTxt = `\\( \\sum Q = ${qTot.toFixed(1)} \\ e \\)`;
+            if(uiPot.getAttribute('data-val') !== nTxt) {
+                uiPot.innerHTML = nTxt; uiPot.setAttribute('data-val', nTxt);
+                if(typeof MathJax !== 'undefined' && MathJax.typesetPromise) MathJax.typesetPromise([uiPot]);
+            }
+            drawGraph();
+        }
+
+        // ==========================================
+        // 7. GRÁFICA 2D
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const canvas2D = document.getElementById('graph-2d');
+        const ctx = canvas2D.getContext('2d');
+
+        function resizeGraph() { canvas2D.width = graphCont.clientWidth; canvas2D.height = graphCont.clientHeight; drawGraph(); }
+
+        function drawGraph() {
+            const w = canvas2D.width; const h = canvas2D.height;
+            const pX = 40; const pY = 30;
+            ctx.clearRect(0, 0, w, h);
+
+            ctx.beginPath(); ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = 2;
+            ctx.moveTo(pX, pY/2); ctx.lineTo(pX, h-pY); ctx.moveTo(pX/2, h/2-pY/2); ctx.lineTo(w-pX/2, h/2-pY/2); ctx.stroke();
+            ctx.fillStyle = "#475569"; ctx.font = "14px serif"; ctx.fillText("Q", pX-15, pY); ctx.fillText("t", w-pX+5, h/2-pY/2+15);
+
+            const mx = (t) => pX + (t/100)*(w-pX*1.5);
+            const my = (q) => (h/2-pY/2) - (q/12)*(h/2-pY);
+
+            const m = params.mode;
+            
+            // Curve A
+            ctx.beginPath(); ctx.strokeStyle = "#475569"; ctx.lineWidth = 3;
+            for(let t=0; t<=100; t++) { 
+                const s=getState(t, params.q, m); 
+                ctx.strokeStyle = s.qA >= 0 ? "#ef4444" : "#3b82f6"; // Color por signo real
+                if(t===0) ctx.moveTo(mx(t), my(s.qA)); else ctx.lineTo(mx(t), my(s.qA)); 
+            } 
+            ctx.stroke();
+
+            // Curve B
+            ctx.beginPath(); ctx.strokeStyle = "#475569"; ctx.lineWidth = 3;
+            for(let t=0; t<=100; t++) { 
+                const s=getState(t, params.q, m); 
+                ctx.strokeStyle = s.qB >= 0 ? "#ef4444" : "#3b82f6";
+                if(t===0) ctx.moveTo(mx(t), my(s.qB)); else ctx.lineTo(mx(t), my(s.qB)); 
+            } 
+            ctx.stroke();
+
+            // Time Marker
+            const cS = getState(params.t, params.q, m);
+            ctx.beginPath(); ctx.strokeStyle="#64748b"; ctx.lineWidth=1; ctx.moveTo(mx(params.t), pY); ctx.lineTo(mx(params.t), h-pY); ctx.stroke();
+            
+            // Dot A
+            ctx.beginPath(); ctx.arc(mx(params.t), my(cS.qA), 5, 0, Math.PI*2); ctx.fillStyle=cS.qA>=0?"#ef4444":"#3b82f6"; ctx.fill();
+            // Dot B
+            ctx.beginPath(); ctx.arc(mx(params.t), my(cS.qB), 5, 0, Math.PI*2); ctx.fillStyle=cS.qB>=0?"#ef4444":"#3b82f6"; ctx.fill();
+        }
+
+        // ==========================================
+        // EVENTOS
+        // ==========================================
+        document.getElementById('select-material').addEventListener('change', (e) => { params.mode = e.target.value; updateAll(); });
+        document.getElementById('slider-t').addEventListener('input', (e) => { params.t = parseInt(e.target.value); updateAll(); });
+        document.getElementById('slider-q').addEventListener('input', (e) => { params.q = parseInt(e.target.value); updateAll(); });
+        document.getElementById('sel-matA').addEventListener('change', updateAll);
+        document.getElementById('sel-matB').addEventListener('change', updateAll);
+        document.getElementById('toggle-field').addEventListener('change', updateAll);
+        document.getElementById('toggle-lines').addEventListener('change', updateAll);
+        document.getElementById('toggle-rotate').addEventListener('change', (e) => { ctrl.autoRotate = e.target.checked; });
+
+        const ro = new ResizeObserver(entries => {
+            for (let e of entries) {
+                if(e.target.id === 'canvas-3d') { cam.aspect = e.contentRect.width/e.contentRect.height; cam.updateProjectionMatrix(); renderer.setSize(e.contentRect.width, e.contentRect.height); }
+                else if(e.target.id === 'graph-container') resizeGraph();
+            }
+        });
+        ro.observe(cont3D); ro.observe(graphCont);
+
+        updateAll();
+        function animate() { requestAnimationFrame(animate); ctrl.update(); updateAll(); renderer.render(scene, cam); } 
+        animate();
+
+        // Tooltips INMUTABLE
+      (function () {
+          let globalTip = document.createElement("div");
+          globalTip.className = "tip-content";
+          globalTip.style.position = "fixed";
+          globalTip.style.zIndex = "999999";
+          globalTip.style.pointerEvents = "none";
+          globalTip.style.opacity = "0";
+          globalTip.style.visibility = "hidden";
+          document.body.appendChild(globalTip);
+          document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+            const localTip = wrapper.querySelector(".tip-content");
+            wrapper.addEventListener("mouseenter", () => {
+              const rect = wrapper.getBoundingClientRect();
+              globalTip.innerHTML = localTip.innerHTML;
+              globalTip.style.top = rect.top + "px";
+              globalTip.style.left = (rect.right + 10) + "px";
+              globalTip.style.opacity = "1";
+              globalTip.style.visibility = "visible";
+            });
+            wrapper.addEventListener("mouseleave", () => {
+              globalTip.style.opacity = "0";
+              globalTip.style.visibility = "hidden";
+            });
+          });
+        })();
+    </script>
+</body>
+</html>

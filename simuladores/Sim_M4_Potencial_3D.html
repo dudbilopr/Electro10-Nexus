@@ -1,0 +1,1427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio Virtual: Potencial y Trabajo Eléctrico</title>
+    <meta name="description" content="Simulador de Potencial Eléctrico (V) y Trabajo (W) con sistema de referencia dinámico.">
+    
+    <!-- Librerías Originales -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- LIBRERÍA: Math.js para evaluar el Campo Vectorial -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #1e1e2e;
+            --panel-color: #2b2b3b;
+            --accent-color: #4ecca3;
+            --point-a-color: #2ecc71; 
+            --point-b-color: #e67e22; 
+            --danger-color: #ff6b6b;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --selection-color: #00ff88;
+            --statement-color: #9b59b6;
+            --left-w: 260px;
+            --right-w: 420px; 
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 0;
+            height: 100vh;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        header {
+            background: #151520;
+            padding: 10px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100;
+        }
+
+        h2 { margin: 0; color: #a29bfe; font-size: 1.2rem; }
+        .version { font-size: 0.8rem; color: #666; display: flex; align-items: center; gap: 15px; }
+
+        .room-control { display: flex; align-items: center; gap: 8px; background: #232333; padding: 4px 10px; border-radius: 6px; border: 1px solid #444; }
+        
+        .auth-input { width: 100%; padding: 10px; margin: 8px 0 15px 0; background: #1e1e2e; border: 1px solid #555; color: white; border-radius: 4px; font-size: 0.95rem; }
+        .auth-input:focus { border-color: var(--accent-color); outline: none; }
+        .auth-btn-group { display: flex; gap: 10px; justify-content: center; margin-top: 10px; }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: var(--left-w) 1fr var(--right-w); 
+            height: calc(100vh - 50px);
+            transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .panel {
+            background: var(--panel-color); border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column; padding: 15px; gap: 15px;
+            overflow-y: auto; overflow-x: hidden; transition: opacity 0.2s;
+        }
+        .panel-right { border-right: none; border-left: 1px solid var(--border-color); }
+
+        .panel-toggle {
+            position: absolute; top: 50%; transform: translateY(-50%); width: 24px; height: 48px;
+            background: var(--panel-color); border: 1px solid var(--border-color); color: var(--text-color);
+            display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 50;
+            border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: background 0.2s, color 0.2s;
+        }
+        .panel-toggle:hover { background: var(--accent-color); color: #1e1e2e; }
+        #toggle-left { left: var(--left-w); transform: translate(-50%, -50%); }
+        #toggle-right { right: var(--right-w); transform: translate(50%, -50%); }
+
+        .section-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 8px; font-weight: bold; white-space: nowrap; }
+
+        .toolbar { display: flex; flex-direction: column; gap: 8px; }
+        
+        .btn-tool {
+            padding: 10px 12px; border: 1px solid transparent; border-radius: 6px;
+            background: #3a3a4a; color: white; cursor: pointer; text-align: left; transition: all 0.2s;
+            display: flex; align-items: center; gap: 10px; font-size: 0.9rem; white-space: nowrap;
+        }
+        .btn-tool:hover { background: #4a4a5a; border-color: #666; }
+        .btn-tool.active { background: var(--accent-color); color: #1e1e2e; font-weight: bold; }
+        .btn-action { background: var(--accent-color); color: #1e1e2e; font-weight: bold; justify-content: center; }
+        .btn-toggle { background: #5e35b1; color: white; justify-content: center; }
+        .btn-toggle:hover { background: #7e57c2; }
+        .btn-toggle.on { background: #d1c4e9; color: #5e35b1; font-weight: bold; box-shadow: 0 0 8px #7e57c2; }
+        .btn-danger { background: rgba(255, 107, 107, 0.1); color: var(--danger-color); border: 1px solid var(--danger-color); }
+        .btn-danger:hover { background: var(--danger-color); color: white; }
+
+        .color-picker-container {
+            display: flex; align-items: center; gap: 10px; background: #232333; padding: 10px; border-radius: 6px;
+            border: 1px solid #444; margin-top: 5px; white-space: nowrap;
+        }
+        .color-picker-container input[type="color"] { cursor: pointer; width: 32px; height: 32px; border: none; background: transparent; padding: 0; outline: none; }
+
+        .color-swatch {
+            width: 22px; height: 22px; border-radius: 50%; cursor: pointer; border: 2px solid rgba(255,255,255,0.1); transition: transform 0.1s, border-color 0.2s;
+        }
+        .color-swatch:hover { transform: scale(1.2); border-color: white; }
+        .color-swatch.active { border-color: var(--accent-color); box-shadow: 0 0 5px var(--accent-color); }
+
+        .boards-container { display: flex; flex-direction: column; gap: 5px; background: #232333; padding: 10px; border-radius: 6px; border: 1px solid #444; }
+        .board-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #3a3a4a; border-radius: 4px; font-size: 0.85rem; cursor: pointer; transition: 0.2s; }
+        .board-item:hover { background: #4a4a5a; }
+        .board-item.active { background: var(--accent-color); color: #1e1e2e; font-weight: bold; }
+        .board-actions { display: flex; gap: 5px; margin-top: 5px; }
+
+        .data-card { background: #1a1a24; padding: 10px; border-radius: 6px; border-left: 3px solid #666; margin-bottom: 8px; transition: 0.2s; }
+        .data-card.selected { border-left-color: var(--selection-color); background: #252a28; }
+        .data-card.is-point-A { border-left-color: var(--point-a-color); }
+        .data-card.is-point-B { border-left-color: var(--point-b-color); }
+        
+        .data-header { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: #ccc; }
+        .input-row { display: flex; gap: 5px; align-items: center; margin-top: 5px; }
+        
+        input[type="number"], input[type="text"], select { background: #2b2b3b; border: 1px solid #555; color: white; padding: 4px; border-radius: 4px; width: 100%; font-size: 0.85rem; }
+        input[type="number"]:focus, input[type="text"]:focus { border-color: var(--accent-color); outline: none; }
+
+        .canvas-area {
+            position: relative; background-color: #ffffff;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px; overflow: hidden; display: flex; justify-content: center; align-items: center;
+        }
+        canvas { cursor: crosshair; touch-action: none; z-index: 1; position: absolute; top: 0; left: 0;}
+        
+        #labels-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }
+        .canvas-label { position: absolute; background: rgba(255, 255, 255, 0.95); padding: 2px 6px; border-radius: 4px; border: 1px solid #3498db; font-size: 0.9rem; color: #222; transform: translate(-50%, -100%); box-shadow: 0 2px 5px rgba(0,0,0,0.15); white-space: nowrap; }
+
+        #text-input-overlay { position: absolute; display: none; background: rgba(255,255,255,0.95); border: 2px dashed var(--accent-color); color: #222; font-family: 'Segoe UI', sans-serif; font-size: 20px; padding: 4px 8px; border-radius: 4px; z-index: 100; outline: none; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2); transform: translateY(-50%); }
+
+        #coords-indicator { position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.85); color: var(--accent-color); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; pointer-events: none; z-index: 3; font-family: monospace; border: 1px solid var(--accent-color); }
+        
+        .feedback-card { background: #1a1a24; padding: 12px; border-radius: 8px; border-left: 4px solid var(--accent-color); margin-bottom: 10px; font-size: 0.9rem; }
+        .statement-card { background: #231a29; padding: 12px; border-radius: 8px; border-left: 4px solid var(--statement-color); margin-bottom: 15px; font-size: 0.9rem; line-height: 1.5; color: #e6cdff; transition: all 0.3s; }
+        .tip-card { background: #252530; padding: 10px; border-radius: 6px; border-left: 3px solid #f1c40f; margin-top: 15px; font-size: 0.8rem; color: #ccc; line-height: 1.4; }
+        
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-size: 0.75rem; margin: 2px; }
+        .badge-pos { background: #3498db; color: white; }
+        .badge-neg { background: #e74c3c; color: white; }
+        .badge-point { background: #95a5a6; color: #222; font-weight: bold; }
+        .badge-traj { background: #9b59b6; color: white; }
+
+        .task-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+        .task-check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #555; display: inline-flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; color: transparent; transition: 0.3s; }
+        .task-item.done .task-check { border-color: #4ecca3; background: #4ecca3; color: #1e1e2e; }
+        .task-item.done span { color: #4ecca3; text-decoration: line-through; }
+
+        .latex-box { background: white; color: black; padding: 10px; border-radius: 6px; min-height: 100px; font-size: 0.85rem; overflow-x: auto; display: flex; flex-direction: column; text-align: left; }
+
+        #float-delete { position: absolute; display: none; background: #ff6b6b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; z-index: 10; box-shadow: 0 2px 5px rgba(0,0,0,0.3); transform: translate(-50%, -100%); margin-top: -10px; }
+        #float-delete:hover { background: #ff4444; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: var(--panel-color); padding: 25px; border-radius: 10px; width: 400px; text-align: left; position: relative; color: white; border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .close-btn { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #888;}
+        .close-btn:hover { color: white; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div><h2>⚡ Potencial y Trabajo Eléctrico PRO</h2></div>
+    <div class="version">
+        <span id="user-info" style="color: #a29bfe; font-weight: bold;">Autenticando...</span>
+        <span id="user-stats" style="color: #f1c40f; font-weight: bold; margin-left: 10px; display: none; cursor: pointer; background: #2b2b3b; padding: 2px 8px; border-radius: 4px; border: 1px solid #444;" onclick="abrirModalPerfil()" title="Ver Misiones y Logros">🏆 Lvl 1 | 0 pts</span>
+        <button id="btn-logout" class="btn-tool" style="padding: 4px 8px; display: none;" onclick="cerrarSesion()">Salir</button>
+        <div class="room-control">
+            <span id="room-info">🌐 Sala: Ninguna</span>
+            <button class="btn-tool" style="padding: 4px 8px;" onclick="abrirModalSala()">Unirse a Sala</button>
+            <button id="btn-share-room" class="btn-tool" style="padding: 4px 8px; display: none; background: #9b59b6; color: white;" onclick="copiarInfoSala()" title="Copiar enlace de acceso">🔗 Compartir</button>
+        </div>
+    </div>
+</header>
+
+<div class="workspace" id="main-workspace">
+    <!-- Panel Izquierdo -->
+    <div class="panel" id="panel-left">
+        <div>
+            <div class="section-title">Pizarras de Clase</div>
+            <div class="boards-container">
+                <div id="boards-list">
+                    <!-- Dinámico -->
+                </div>
+                <div class="board-actions">
+                    <button class="btn-tool" style="flex:1; padding: 5px; font-size: 0.75rem; justify-content: center;" onclick="addNewBoard()">➕ Nueva</button>
+                    <button class="btn-tool" style="flex:1; padding: 5px; font-size: 0.75rem; justify-content: center;" onclick="duplicateActiveBoard()">⎘ Duplicar</button>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">Herramientas</div>
+            <div class="toolbar">
+                <button class="btn-tool active" onclick="setTool('draw', this)" title="Dibuja Cargas, Puntos y Trayectorias">🤖 Lápiz IA (Objetos)</button>
+                <button class="btn-tool" onclick="setTool('draw_free', this)" title="Dibuja explicaciones libres">🖌️ Marcador (Libre)</button>
+                <button id="btn-highlighter" class="btn-tool" onclick="setTool('highlighter', this)" title="Resalta áreas importantes con transparencia">🖍️ Resaltador</button>
+                <button class="btn-tool" onclick="setTool('line', this)" title="Dibuja una línea recta">📏 Línea Recta</button>
+                <button class="btn-tool" onclick="setTool('text', this)" title="Escribe texto en el lienzo">🔤 Escribir Texto</button>
+                <button class="btn-tool" onclick="setTool('eraser', this)" title="Haz clic o arrastra para borrar objetos y trazos">🧽 Borrador</button>
+                <button class="btn-tool" onclick="setTool('move', this)" title="Mueve o selecciona objetos. Arrastra el fondo para scroll.">✋ Mover / Navegar</button>
+                <button class="btn-tool" onclick="undo()">↩️ Deshacer</button>
+                <button id="btn-hide-show" class="btn-tool btn-toggle" onclick="toggleVisibility()" title="Oculta temporalmente los trazos y objetos">👻 Ocultar / Mostrar</button>
+                <button class="btn-tool btn-danger" onclick="limpiarTodo()">🗑️ Limpiar Todo</button>
+                <button class="btn-tool" style="background: #e67e22; color: white;" onclick="exportarImagen()" title="Descargar imagen del lienzo con tus resultados">📸 Exportar Imagen</button>
+            </div>
+            
+            <div class="color-picker-container">
+                <input type="color" id="pencil-color" value="#000000" onchange="actualizarColorManual(this.value)">
+                <label for="pencil-color" style="font-size: 0.85rem; color: #ccc;">Selector</label>
+            </div>
+
+            <div class="section-title" style="margin-top: 5px;">Colores Rápidos</div>
+            <div id="palette" style="display: flex; flex-wrap: wrap; gap: 6px; padding: 5px; background: #232333; border-radius: 6px; border: 1px solid #444;">
+                <div class="color-swatch active" style="background: #000000;" onclick="setColor('#000000', this)"></div>
+                <div class="color-swatch" style="background: #ff7675;" onclick="setColor('#ff7675', this)"></div>
+                <div class="color-swatch" style="background: #fab1a0;" onclick="setColor('#fab1a0', this)"></div>
+                <div class="color-swatch" style="background: #ffeaa7;" onclick="setColor('#ffeaa7', this)"></div>
+                <div class="color-swatch" style="background: #55efc4;" onclick="setColor('#55efc4', this)"></div>
+                <div class="color-swatch" style="background: #81ecec;" onclick="setColor('#81ecec', this)"></div>
+                <div class="color-swatch" style="background: #74b9ff;" onclick="setColor('#74b9ff', this)"></div>
+                <div class="color-swatch" style="background: #a29bfe;" onclick="setColor('#a29bfe', this)"></div>
+                <div class="color-swatch" style="background: #fd79a8;" onclick="setColor('#fd79a8', this)"></div>
+                <div class="color-swatch" style="background: #ffffff;" onclick="setColor('#ffffff', this)"></div>
+            </div>
+
+            <div class="color-picker-container" style="margin-top: 5px;">
+                <label style="font-size: 0.85rem; color: #ccc; width: 50px;">Grosor:</label>
+                <input type="range" id="pencil-width" min="1" max="25" value="3" style="flex:1;">
+                <span id="width-val" style="font-size: 0.85rem; color: #ccc; width: 20px; text-align: right;">3</span>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid var(--border-color); margin: 10px 0;">
+            <div class="section-title">Visualización</div>
+            <div class="toolbar">
+                <button id="btn-equipotentials" class="btn-tool btn-toggle on" onclick="toggleEquipotentials()">👁️ Equipotenciales (Puntuales)</button>
+                <button id="btn-vector-field" class="btn-tool btn-toggle" onclick="toggleVectorField()">🏹 Campo Vectorial (Total)</button>
+            </div>
+        </div>
+        <hr style="border:0; border-top:1px solid var(--border-color); margin: 5px 0;">
+        <div>
+            <div class="section-title">Parámetros Físicos</div>
+            
+            <div style="margin-bottom: 10px;">
+                <label style="font-size:0.8rem; color:#aaa;">Carga Móvil ($q_0$):</label>
+                <div class="input-row">
+                    <input type="number" id="q0-input" value="1.0" step="0.1" onchange="analizarFisica(); requestSync(true);">
+                    <span style="font-size:0.8rem;">µC</span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="font-size:0.8rem; color:#aaa;">U. Carga Fuente:</label>
+                <select id="charge-unit" onchange="analizarFisica(); requestSync(true);">
+                    <option value="1e-6">Microcoulombs (µC)</option>
+                    <option value="1e-9">Nanocoulombs (nC)</option>
+                    <option value="1e-3">MiliCoulombs (mC)</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <label style="font-size:0.8rem; color:#aaa;">Escala Distancia:</label>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input type="number" id="scale-input" value="100" style="width:60px" onchange="analizarFisica(); requestSync(true);">
+                    <span style="font-size:0.7rem; color:#888;">px = 1 m</span>
+                </div>
+            </div>
+
+            <hr style="border:0; border-top:1px solid var(--border-color); margin: 5px 0;">
+            <div class="section-title">Campo Vectorial Externo $\vec{E}$</div>
+            <div style="margin-bottom: 5px;">
+                <div class="input-row">
+                    <label style="color:#aaa; width:45px;">Ex =</label>
+                    <input type="text" id="ex-input" value="0" onchange="analizarFisica(); requestSync(true);" title="Ej: 50, 2*x, x*y" placeholder="Ej: 50 o 2*x">
+                </div>
+                <div class="input-row">
+                    <label style="color:#aaa; width:45px;">Ey =</label>
+                    <input type="text" id="ey-input" value="0" onchange="analizarFisica(); requestSync(true);" title="Ej: -50, y, x^2" placeholder="Ej: -50 o y">
+                </div>
+                <div style="font-size: 0.7rem; color: #888; margin-top: 4px;">Utiliza las variables 'x' e 'y'. Ej: 5*x o -2*y</div>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid var(--border-color); margin: 5px 0;">
+            <div class="section-title">Objetos</div>
+            <div id="objects-container"></div>
+        </div>
+        
+        <button class="btn-tool btn-action" style="margin-top:15px;" onclick="analizarFisica()">🔍 CALCULAR</button>
+    </div>
+
+    <div class="panel-toggle" id="toggle-left" onclick="toggleLeft()" title="Ocultar/Mostrar Herramientas">◀</div>
+
+    <div class="canvas-area" id="canvas-wrapper">
+        <canvas id="main-canvas"></canvas>
+        <button id="float-delete" onclick="deleteSelected()">🗑️ Eliminar</button>
+        <input type="text" id="text-input-overlay" placeholder="Escribe aquí y presiona Enter...">
+        <div id="labels-overlay"></div>
+        <div id="coords-indicator">x: 0 m, y: 0 m | V: 0 V</div>
+    </div>
+
+    <div class="panel-toggle" id="toggle-right" onclick="toggleRight()" title="Ocultar/Mostrar Resultados">▶</div>
+
+    <div class="panel panel-right" id="panel-right">
+        <div>
+            <div class="section-title">Enunciado Dinámico</div>
+            <div id="problem-statement" class="statement-card">
+                <i>Dibuja cargas y al menos dos puntos (A y B) para calcular trabajo.</i>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-title">Elementos Detectados</div>
+            <div class="feedback-card" style="border-left-color: #9b59b6;">
+                <div id="detection-list"><i>Esperando...</i></div>
+            </div>
+        </div>
+        
+        <div>
+            <div class="section-title">Cálculos Paso a Paso (Detallado)</div>
+            <div class="latex-box" id="latex-result">$$\text{---}$$</div>
+            
+            <div class="tip-card" id="static-tip">
+                <strong>💡 Tip de Simulación:</strong><br>
+                Enciende la capa <b>"Campo Vectorial"</b> para visualizar la dirección de la fuerza resultante en todo el espacio mediante flechas dinámicas.
+            </div>
+        </div>
+
+        <div id="chat-section" style="display: none;">
+            <div class="section-title" style="margin-top: 15px;">💬 Chat de Grupo</div>
+            <div id="chat-box" style="background: #1a1a24; height: 180px; overflow-y: auto; padding: 10px; border-radius: 6px; border-left: 3px solid #3498db; margin-bottom: 10px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 8px;">
+                <i style="color: #666;">Únete a un cuarto para chatear...</i>
+            </div>
+            <div style="display: flex; gap: 5px;">
+                <input type="text" id="chat-input" placeholder="Escribe un mensaje..." style="flex: 1; background: #2b2b3b; border: 1px solid #555; color: white; padding: 6px; border-radius: 4px; font-size: 0.85rem;" onkeypress="if(event.key === 'Enter') enviarMensajeChat()">
+                <button class="btn-tool btn-action" style="padding: 6px 12px; font-size: 0.85rem;" onclick="enviarMensajeChat()">Enviar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modales -->
+<div class="modal" id="auth-modal" style="display: flex;">
+    <div class="modal-content" style="text-align: center;">
+        <h3 style="margin-top:0; color: #4ecca3;">🔐 Acceso al Laboratorio</h3>
+        <p style="font-size: 0.9rem; color: #ccc; margin-bottom: 20px;">Inicia sesión para jugar en grupo o entra como invitado para modo individual.</p>
+        
+        <div id="auth-error" style="color: #ff6b6b; font-size: 0.85rem; margin-bottom: 10px;"></div>
+        <input type="email" id="auth-email" class="auth-input" placeholder="Correo electrónico" style="margin-bottom: 8px;">
+        <input type="password" id="auth-password" class="auth-input" placeholder="Contraseña" style="margin-top: 0; margin-bottom: 15px;">
+        
+        <div class="auth-btn-group" style="flex-direction: column; gap: 10px;">
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <button class="btn-tool btn-action" id="btn-login-email" style="flex: 1; justify-content: center;">Ingresar</button>
+                <button class="btn-tool" id="btn-register-email" style="flex: 1; justify-content: center; background: #5e35b1; color: white;">Crear Cuenta</button>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid #444; width: 100%; margin: 5px 0;">
+            
+            <button class="btn-tool btn-action" id="btn-login-google" style="background: white; color: #333; justify-content: center; width: 100%;">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G" style="width: 16px; margin-right: 8px;">
+                Ingresar con Google
+            </button>
+            <button class="btn-tool" id="btn-login-guest" style="justify-content: center; width: 100%;">Continuar como Invitado (Individual)</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="room-modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="cerrarModalSala()">&times;</span>
+        <h3 style="margin-top:0; color: #a29bfe;">🌐 Unirse a un Cuarto</h3>
+        <p style="font-size: 0.9rem; color: #ccc;">Ingresa el nombre del cuarto para colaborar.</p>
+        <label>Nombre del Cuarto:</label><input type="text" id="room-name" class="auth-input" placeholder="Ej: equipo_alpha">
+        <label>Contraseña del Cuarto:</label><input type="password" id="room-pass" class="auth-input" placeholder="Contraseña de acceso">
+        <div class="auth-btn-group"><button class="btn-tool btn-action" onclick="intentarUnirseSala()">Entrar al Cuarto</button></div>
+    </div>
+</div>
+
+<div class="modal" id="profile-modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="cerrarModalPerfil()">&times;</span>
+        <h3 style="margin-top:0; color: #f1c40f;">🏆 Mi Perfil Académico</h3>
+        <div style="display: flex; justify-content: space-between; background: #1a1a24; padding: 10px; border-radius: 6px; margin-bottom: 15px; border-left: 3px solid #f1c40f;">
+            <div><strong>Nivel:</strong> <span id="ui-nivel" style="color: #4ecca3; font-size: 1.2rem;">1</span></div>
+            <div><strong>Puntos:</strong> <span id="ui-puntos" style="color: #4ecca3; font-size: 1.2rem;">0</span></div>
+            <div><strong>Minutos:</strong> <span id="ui-tiempo" style="color: #4ecca3; font-size: 1.2rem;">0</span></div>
+        </div>
+        <div class="section-title">Misiones Actuales</div><div id="ui-tareas" style="background: #232333; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem;"></div>
+        <div class="section-title">Logros Desbloqueados</div><div id="ui-logros" style="display: flex; gap: 8px; flex-wrap: wrap;"><i style="color: #666; font-size: 0.85rem;">Interactúa para descubrir logros...</i></div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('main-canvas');
+    const ctx = canvas.getContext('2d');
+    const wrapper = document.getElementById('canvas-wrapper');
+    const labelsOverlay = document.getElementById('labels-overlay');
+    const floatDelete = document.getElementById('float-delete');
+    const textOverlay = document.getElementById('text-input-overlay');
+    const rootStyles = document.documentElement.style;
+    
+    let lastSyncTime = 0;
+    function requestSync(immediate = false) {
+        if (!window.enviarEstadoNube) return;
+        const now = Date.now();
+        if (immediate || now - lastSyncTime > 150) { window.enviarEstadoNube(); lastSyncTime = now; }
+        if (window.registrarInteraccion) window.registrarInteraccion();
+    }
+
+    // Funciones de Modales y Gamificación
+    function abrirModalPerfil() { document.getElementById('profile-modal').style.display = 'flex'; }
+    function cerrarModalPerfil() { document.getElementById('profile-modal').style.display = 'none'; }
+    function abrirModalSala() { document.getElementById('room-modal').style.display = 'flex'; }
+    function cerrarModalSala() { document.getElementById('room-modal').style.display = 'none'; }
+    function copiarInfoSala() { 
+        navigator.clipboard.writeText(document.getElementById('room-info').innerText); 
+    }
+    window.sumarPuntos = function(pts) {
+        let actual = parseInt(document.getElementById('ui-puntos').innerText) || 0;
+        actual += pts;
+        document.getElementById('ui-puntos').innerText = actual;
+        let nivel = Math.floor(actual / 50) + 1;
+        document.getElementById('ui-nivel').innerText = nivel;
+        document.getElementById('user-stats').innerHTML = `🏆 Lvl ${nivel} | ${actual} pts`;
+    };
+
+    let leftOpen = true; let rightOpen = true;
+    function toggleLeft() { leftOpen = !leftOpen; rootStyles.setProperty('--left-w', leftOpen ? '260px' : '0px'); document.getElementById('toggle-left').innerText = leftOpen ? '◀' : '▶'; document.getElementById('panel-left').style.opacity = leftOpen ? '1' : '0'; setTimeout(resizeCanvas, 300); }
+    function toggleRight() { rightOpen = !rightOpen; rootStyles.setProperty('--right-w', rightOpen ? '420px' : '0px'); document.getElementById('toggle-right').innerText = rightOpen ? '▶' : '◀'; document.getElementById('panel-right').style.opacity = rightOpen ? '1' : '0'; setTimeout(resizeCanvas, 300); }
+
+    let state = {
+        tool: 'draw', currentColor: '#000000', lineWidth: 3, 
+        isDrawing: false, isDrawingFree: false, isDragging: false, draggingOrigin: false,
+        isRotating: false, isResizing: false,
+        dragLastX: 0, dragLastY: 0, draggedObject: null, 
+        selectedObject: null, selectedObjects: [], selectionBox: null, 
+        showEquipotentials: true, showVectorField: false,
+        recognitionTimer: null, 
+        rawStrokes: [], currentStroke: [], currentFreeStroke: null, objects: [], calculations: {},
+        origin: { x: null, y: null },
+        isHidden: false, 
+        lineStart: null, currentLine: null,
+        boards: [{ id: 1, name: "Pizarra 1", objects: [], rawStrokes: [], origin: { x: null, y: null } }],
+        activeBoardIndex: 0
+    };
+    window.appState = state;
+    let textPos = {x:0, y:0};
+
+    const dpr = window.devicePixelRatio || 1;
+
+    function resizeCanvas() {
+        const rect = wrapper.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        canvas.style.width = rect.width + 'px';
+        canvas.style.height = rect.height + 'px';
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+        if (state.origin.x === null) { state.origin.x = 80; state.origin.y = rect.height - 80; }
+        redraw();
+    }
+    window.addEventListener('resize', resizeCanvas); setTimeout(resizeCanvas, 100);
+
+    function updateBoardsUI() {
+        const list = document.getElementById('boards-list');
+        list.innerHTML = "";
+        state.boards.forEach((board, index) => {
+            const div = document.createElement('div');
+            div.className = `board-item ${index === state.activeBoardIndex ? 'active' : ''}`;
+            div.innerHTML = `<span>📖 ${board.name}</span>`;
+            if (state.boards.length > 1) {
+                const del = document.createElement('span'); del.innerText = " ✕"; del.style.marginLeft = "auto";
+                del.onclick = (e) => { e.stopPropagation(); deleteBoard(index); };
+                div.appendChild(del);
+            }
+            div.onclick = () => switchBoard(index);
+            list.appendChild(div);
+        });
+    }
+
+    function switchBoard(index) {
+        state.boards[state.activeBoardIndex].objects = JSON.parse(JSON.stringify(state.objects));
+        state.boards[state.activeBoardIndex].rawStrokes = JSON.parse(JSON.stringify(state.rawStrokes));
+        state.boards[state.activeBoardIndex].origin = {...state.origin};
+        state.activeBoardIndex = index;
+        const b = state.boards[index];
+        state.objects = JSON.parse(JSON.stringify(b.objects));
+        state.rawStrokes = JSON.parse(JSON.stringify(b.rawStrokes));
+        state.origin = {...b.origin};
+        updateBoardsUI(); updateUI(); analizarFisica(); redraw(); requestSync(true);
+    }
+
+    function addNewBoard() {
+        const id = state.boards.length + 1;
+        state.boards.push({ id, name: `Pizarra ${id}`, objects: [], rawStrokes: [], origin: { x: 80, y: canvas.clientHeight - 80 } });
+        switchBoard(state.boards.length - 1);
+    }
+
+    function duplicateActiveBoard() {
+        const newBoard = {
+            id: Date.now(),
+            name: `${state.boards[state.activeBoardIndex].name} (Copia)`,
+            objects: JSON.parse(JSON.stringify(state.objects)),
+            rawStrokes: JSON.parse(JSON.stringify(state.rawStrokes)),
+            origin: {...state.origin}
+        };
+        state.boards.push(newBoard);
+        switchBoard(state.boards.length - 1);
+    }
+
+    function deleteBoard(index) {
+        state.boards.splice(index, 1);
+        if (state.activeBoardIndex >= state.boards.length) state.activeBoardIndex = state.boards.length - 1;
+        switchBoard(state.activeBoardIndex);
+    }
+
+    function setColor(color, el) {
+        state.currentColor = color;
+        document.getElementById('pencil-color').value = color;
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+        if(el) el.classList.add('active');
+    }
+
+    function actualizarColorManual(val) {
+        state.currentColor = val;
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    }
+
+    document.getElementById('pencil-width').addEventListener('input', function() {
+        document.getElementById('width-val').innerText = this.value;
+        state.lineWidth = parseInt(this.value);
+    });
+
+    let compEx, compEy;
+    function actualizarFilaCampo() {
+        try {
+            const strEx = document.getElementById('ex-input').value || "0";
+            const strEy = document.getElementById('ey-input').value || "0";
+            compEx = math.compile(strEx);
+            compEy = math.compile(strEy);
+        } catch(e) { compEx = math.compile("0"); compEy = math.compile("0"); }
+    }
+    
+    function getE_ext(px, py) {
+        if(!compEx) actualizarFilaCampo();
+        try {
+            let ex = compEx.evaluate({x: px, y: py});
+            let ey = compEy.evaluate({x: px, y: py});
+            return {x: typeof ex === 'number' ? ex : 0, y: typeof ey === 'number' ? ey : 0};
+        } catch(e) { return {x:0, y:0}; }
+    }
+
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    function getCoords(e) {
+        const r = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - r.left, y: clientY - r.top };
+    }
+
+    function finalizeText() {
+        if(textOverlay.style.display !== 'none' && textOverlay.value.trim() !== '') {
+            state.objects.push({ type: 'text', id: Date.now(), text: textOverlay.value, x: textPos.x, y: textPos.y, color: state.currentColor, rotation: 0, scale: 1 });
+            textOverlay.value = ''; textOverlay.style.display = 'none'; 
+            window.sumarPuntos(2);
+            redraw(); requestSync(true);
+        } else { textOverlay.style.display = 'none'; }
+    }
+    textOverlay.addEventListener('keydown', e => { if(e.key === 'Enter') finalizeText(); });
+    textOverlay.addEventListener('blur', finalizeText);
+
+    function toggleEquipotentials() {
+        state.showEquipotentials = !state.showEquipotentials;
+        const btn = document.getElementById('btn-equipotentials');
+        if (state.showEquipotentials) btn.classList.add('on'); else btn.classList.remove('on');
+        redraw(); requestSync(true);
+    }
+    
+    function toggleVectorField() {
+        state.showVectorField = !state.showVectorField;
+        const btn = document.getElementById('btn-vector-field');
+        if (state.showVectorField) btn.classList.add('on'); else btn.classList.remove('on');
+        redraw(); requestSync(true);
+    }
+    
+    function toggleVisibility() {
+        state.isHidden = !state.isHidden;
+        const btn = document.getElementById('btn-hide-show');
+        if (state.isHidden) btn.classList.add('on'); else btn.classList.remove('on');
+        redraw();
+    }
+
+    function getSafeScale() { return Math.max(parseFloat(document.getElementById('scale-input').value || 100), 1); }
+
+    function getPotentialAt(x, y) {
+        let V = 0; const charges = state.objects.filter(o => o.type.startsWith('charge'));
+        const Ke = 8.99e9; const scale = getSafeScale();
+        const chargeU = parseFloat(document.getElementById('charge-unit').value || 1e-6);
+        const physX = (x - state.origin.x) / scale; const physY = (state.origin.y - y) / scale;
+        if(charges.length > 0) { charges.forEach(src => { const r = Math.hypot(physX - src.physX, physY - src.physY); if (r > 0.001) V += (Ke * src.q * chargeU) / r; }); }
+        let V_ext = 0; const steps = 50;
+        for(let i=0; i<steps; i++) {
+            let t1 = i/steps; let t2 = (i+1)/steps; let midT = (t1+t2)/2;
+            let stepX = physX * midT; let stepY = physY * midT;
+            let E = getE_ext(stepX, stepY); let dx = physX / steps; let dy = physY / steps;
+            V_ext -= (E.x * dx + E.y * dy); 
+        }
+        return V + V_ext;
+    }
+
+    function getVisualPotentialAt(x, y) {
+        let V = 0; const charges = state.objects.filter(o => o.type.startsWith('charge'));
+        if (charges.length === 0) return 0; 
+        charges.forEach(src => {
+            const r = Math.hypot(x - src.x, y - src.y);
+            if (r < 5) { V += (src.type === 'charge_pos' ? 9999 : -9999); return; } 
+            V += (3000 * (src.type === 'charge_pos' ? 1 : -1)) / r; 
+        });
+        return V;
+    }
+
+    function drawEquipotentials(ctx) {
+        if (!state.showEquipotentials || state.isHidden || state.isDrawing || state.isDrawingFree || state.isDragging || state.selectionBox) return;
+        const charges = state.objects.filter(o => o.type.startsWith('charge'));
+        if (charges.length === 0) return;
+        ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(100, 100, 120, 0.3)'; ctx.setLineDash([]); 
+        const gridSize = 8;
+        const cols = Math.ceil(canvas.width / (gridSize * dpr)); 
+        const rows = Math.ceil(canvas.height / (gridSize * dpr));
+        const thresholds = [-200, -100, -50, -25, -10, 10, 25, 50, 100, 200];
+        for (let y = 0; y < rows; y++) {
+            for (let x = 0; x < cols; x++) {
+                const px = x * gridSize; const py = y * gridSize;
+                const valA = getVisualPotentialAt(px, py); const valB = getVisualPotentialAt(px + gridSize, py);
+                const valC = getVisualPotentialAt(px + gridSize, py + gridSize); const valD = getVisualPotentialAt(px, py + gridSize);
+                thresholds.forEach(thresh => {
+                    let mask = 0;
+                    if (valA > thresh) mask |= 8; if (valB > thresh) mask |= 4; if (valC > thresh) mask |= 2; if (valD > thresh) mask |= 1;
+                    if (mask !== 0 && mask !== 15) drawCellLine(ctx, mask, px, py, gridSize, valA, valB, valC, valD, thresh);
+                });
+            }
+        }
+    }
+
+    function drawCellLine(ctx, mask, x, y, s, a, b, c, d, t) {
+        const clamp = (p) => { if(isNaN(p.x)) p.x = x + s/2; if(isNaN(p.y)) p.y = y + s/2; return p; };
+        const top = {x: x + s * (t - a) / (b - a || 1), y: y};
+        const right = {x: x + s, y: y + s * (t - b) / (c - b || 1)};
+        const bottom = {x: x + s * (t - d) / (c - d || 1), y: y + s};
+        const left = {x: x, y: y + s * (t - a) / (d - a || 1)};
+        ctx.beginPath();
+        switch (mask) {
+            case 1: drawSeg(ctx, clamp(left), clamp(bottom)); break; case 2: drawSeg(ctx, clamp(bottom), clamp(right)); break;
+            case 3: drawSeg(ctx, clamp(left), clamp(right)); break; case 4: drawSeg(ctx, clamp(top), clamp(right)); break;
+            case 5: drawSeg(ctx, clamp(left), clamp(top)); drawSeg(ctx, clamp(bottom), clamp(right)); break;
+            case 6: drawSeg(ctx, clamp(top), clamp(bottom)); break; case 7: drawSeg(ctx, clamp(left), clamp(top)); break;
+            case 8: drawSeg(ctx, clamp(left), clamp(top)); break; case 9: drawSeg(ctx, clamp(top), clamp(bottom)); break;
+            case 10: drawSeg(ctx, clamp(left), clamp(bottom)); drawSeg(ctx, clamp(top), clamp(right)); break;
+            case 11: drawSeg(ctx, clamp(top), clamp(right)); break; case 12: drawSeg(ctx, clamp(left), clamp(right)); break;
+            case 13: drawSeg(ctx, clamp(bottom), clamp(right)); break; case 14: drawSeg(ctx, clamp(left), clamp(bottom)); break;
+        }
+        ctx.stroke();
+    }
+    function drawSeg(ctx, p1, p2) { ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); }
+
+    function drawVectorField(ctx) {
+        if (!state.showVectorField || state.isHidden || state.isDrawing || state.isDrawingFree || state.isDragging || state.selectionBox) return;
+        const scale = getSafeScale(); const Ke = 8.99e9;
+        const chargeU = parseFloat(document.getElementById('charge-unit').value || 1e-6);
+        const charges = state.objects.filter(o => o.type.startsWith('charge'));
+        ctx.lineWidth = 1.2; const spacing = 35; 
+        const w = canvas.width/dpr; const h = canvas.height/dpr;
+        for (let y = spacing/2; y < h; y += spacing) {
+            for (let x = spacing/2; x < w; x += spacing) {
+                const physX = (x - state.origin.x) / scale; const physY = (state.origin.y - y) / scale;
+                let Ex = 0, Ey = 0; let draw = true;
+                charges.forEach(src => {
+                    const dx = physX - src.physX; const dy = physY - src.physY; const r = Math.hypot(dx, dy);
+                    if (r < 0.1) draw = false; 
+                    if (r >= 0.1) { const E_mag = (Ke * src.q * chargeU) / (r * r); Ex += E_mag * (dx / r); Ey += E_mag * (dy / r); }
+                });
+                if(!draw) continue;
+                const E_ext = getE_ext(physX, physY); Ex += E_ext.x; Ey += E_ext.y;
+                const mag = Math.hypot(Ex, Ey);
+                if (mag > 1e-3) {
+                    const len = 14; ctx.strokeStyle = `rgba(230, 126, 34, 0.65)`; 
+                    const dirX = Ex / mag; const dirY = Ey / mag;
+                    const endX = x + dirX * len; const endY = y - dirY * len; 
+                    const headlen = 4.5; const angle = Math.atan2(-dirY, dirX);
+                    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(endX, endY);
+                    ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
+                    ctx.moveTo(endX, endY); ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6)); ctx.stroke();
+                }
+            }
+        }
+    }
+
+    function handleStart(e) {
+        if (e.touches && e.touches.length > 1) return;
+        if (e.touches) e.preventDefault(); 
+        const c = getCoords(e);
+        if (state.tool !== 'text') finalizeText();
+
+        if (state.tool === 'move' && state.selectedObject) {
+            const b = getObjectBounds(state.selectedObject);
+            const rotateHandle = { x: b.cx + 40 * Math.sin(state.selectedObject.rotation || 0), y: b.cy - 40 * Math.cos(state.selectedObject.rotation || 0) };
+            const resizeHandle = { x: b.maxX + 10, y: b.maxY + 10 };
+            
+            if (Math.hypot(c.x - rotateHandle.x, c.y - rotateHandle.y) < 20) {
+                state.isRotating = true; state.draggedObject = state.selectedObject; return;
+            }
+            if (Math.hypot(c.x - resizeHandle.x, c.y - resizeHandle.y) < 20) {
+                state.isResizing = true; state.draggedObject = state.selectedObject; return;
+            }
+        }
+
+        if (state.tool === 'move') {
+            const hit = findObjectAt(c);
+            if (hit) {
+                state.isDragging = true; state.dragLastX = c.x; state.dragLastY = c.y;
+                if (hit.type === 'origin') { state.draggingOrigin = true; selectObject(null); }
+                else { state.draggedObject = hit; if (!state.selectedObjects.includes(hit)) { selectObject(hit); } }
+            } else { 
+                state.draggingOrigin = true;
+                state.dragLastX = c.x;
+                state.dragLastY = c.y;
+                selectObject(null); 
+            }
+            return;
+        }
+
+        if (state.tool === 'text') {
+            textPos = {x: c.x, y: c.y}; textOverlay.style.left = c.x + 'px'; textOverlay.style.top = c.y + 'px';
+            textOverlay.style.display = 'block'; textOverlay.style.color = state.currentColor;
+            setTimeout(() => textOverlay.focus(), 50); return;
+        }
+
+        if (state.tool === 'line') {
+            selectObject(null); state.isDrawingFree = true;
+            state.lineStart = c; state.currentLine = [c, {x: c.x, y: c.y}]; return;
+        }
+
+        if (state.tool === 'eraser') { state.isDrawing = true; eraseAt(c); return; }
+        
+        if (state.tool === 'draw_free' || state.tool === 'highlighter') {
+            selectObject(null); state.isDrawingFree = true;
+            const isH = state.tool === 'highlighter';
+            state.currentFreeStroke = { 
+                type: 'free_stroke', id: Date.now(), points: [c], color: state.currentColor, 
+                lineWidth: isH ? Math.max(state.lineWidth, 12) : state.lineWidth,
+                isHighlighter: isH, rotation: 0, scale: 1 
+            };
+            return;
+        }
+
+        if (state.recognitionTimer) { clearTimeout(state.recognitionTimer); state.recognitionTimer = null; }
+        state.isDrawing = true; state.currentStroke = [c]; selectObject(null);
+    }
+
+    function handleMove(e) {
+        if (e.touches) e.preventDefault();
+        const c = getCoords(e); const scaleFactor = getSafeScale();
+        const physX = (c.x - state.origin.x) / scaleFactor; const physY = (state.origin.y - c.y) / scaleFactor;
+        document.getElementById('coords-indicator').innerText = `x: ${physX.toFixed(2)} m, y: ${physY.toFixed(2)} m | V: ${getPotentialAt(c.x, c.y).toExponential(2)} V`;
+        
+        if (state.isRotating && state.draggedObject) {
+            const b = getObjectBounds(state.draggedObject);
+            state.draggedObject.rotation = Math.atan2(c.y - b.cy, c.x - b.cx) + Math.PI/2;
+            redraw(); return;
+        }
+        if (state.isResizing && state.draggedObject) {
+            const b = getObjectBounds(state.draggedObject);
+            const dist = Math.hypot(c.x - b.cx, c.y - b.cy);
+            const origDist = Math.hypot(b.w/2, b.h/2);
+            state.draggedObject.scale = Math.max(0.2, dist / origDist);
+            redraw(); return;
+        }
+
+        if (state.tool === 'eraser' && state.isDrawing) { eraseAt(c); return; }
+        if (state.draggingOrigin) {
+            state.origin.x += (c.x - state.dragLastX); state.origin.y += (c.y - state.dragLastY);
+            state.dragLastX = c.x; state.dragLastY = c.y; analizarFisica(); updateUI(); redraw(); requestSync(false); return;
+        }
+        if (state.selectionBox) { state.selectionBox.endX = c.x; state.selectionBox.endY = c.y; redraw(); return; }
+
+        if (state.isDragging && state.draggedObject) {
+            const dx = c.x - state.dragLastX; const dy = c.y - state.dragLastY;
+            const objectsToMove = (state.selectedObjects.includes(state.draggedObject) && state.selectedObjects.length > 1) ? state.selectedObjects : [state.draggedObject];
+            objectsToMove.forEach(o => {
+                if (o.type === 'text') { o.x += dx; o.y += dy; } 
+                else if (o.type === 'free_stroke') { o.points.forEach(p => { p.x += dx; p.y += dy; }); } 
+                else if (o.type !== 'trajectory') { o.x += dx; o.y += dy; o.physX = (o.x - state.origin.x) / scaleFactor; o.physY = (state.origin.y - o.y) / scaleFactor; }
+            });
+            state.dragLastX = c.x; state.dragLastY = c.y; updateFloatDelete(); redraw(); requestSync(false);
+        } 
+        else if (state.tool === 'line' && state.isDrawingFree && state.lineStart) { state.currentLine[1] = c; redraw(); }
+        else if (state.isDrawingFree && state.currentFreeStroke) { 
+            const lastPt = state.currentFreeStroke.points[state.currentFreeStroke.points.length - 1];
+            if (Math.hypot(c.x - lastPt.x, c.y - lastPt.y) > 2.5) { state.currentFreeStroke.points.push(c); redraw(); }
+        }
+        else if (state.isDrawing) { 
+            const lastPt = state.currentStroke[state.currentStroke.length - 1];
+            if (Math.hypot(c.x - lastPt.x, c.y - lastPt.y) > 3) { state.currentStroke.push(c); redraw(); }
+        }
+    }
+
+    function handleEnd(e) {
+        state.isRotating = false; state.isResizing = false;
+        if (state.draggingOrigin) { state.draggingOrigin = false; state.isDragging = false; requestSync(true); return; }
+        if (state.tool === 'eraser') { state.isDrawing = false; requestSync(true); return; }
+        if (state.selectionBox) {
+            const minX = Math.min(state.selectionBox.startX, state.selectionBox.endX), maxX = Math.max(state.selectionBox.startX, state.selectionBox.endX);
+            const minY = Math.min(state.selectionBox.startY, state.selectionBox.endY), maxY = Math.max(state.selectionBox.startY, state.selectionBox.endY);
+            state.selectedObjects = state.objects.filter(o => {
+                if (o.type === 'point' || o.type.startsWith('charge') || o.type === 'text') { return o.x >= minX && o.x <= maxX && o.y >= minY && o.y <= maxY; }
+                else if (o.type === 'free_stroke') { return o.points.some(p => p.x >= minX && p.x <= maxX && p.y >= minY && p.y <= maxY); }
+                return false;
+            });
+            state.selectedObject = state.selectedObjects.length > 0 ? state.selectedObjects[0] : null; state.selectionBox = null; updateFloatDelete(); redraw(); return;
+        }
+        if (state.isDragging) { state.isDragging = false; state.draggedObject = null; updateUI(); analizarFisica(); requestSync(true); return; }
+        if (state.tool === 'line' && state.isDrawingFree && state.lineStart) {
+            state.isDrawingFree = false;
+            if(Math.hypot(state.currentLine[0].x - state.currentLine[1].x, state.currentLine[0].y - state.currentLine[1].y) > 5) {
+                state.objects.push({ type: 'free_stroke', id: Date.now(), points: [{...state.currentLine[0]}, {...state.currentLine[1]}], color: state.currentColor, lineWidth: state.lineWidth, rotation: 0, scale: 1 });
+                window.sumarPuntos(1);
+            }
+            state.lineStart = null; state.currentLine = null; redraw(); requestSync(true); return;
+        }
+        if (state.isDrawingFree && state.currentFreeStroke) {
+            state.isDrawingFree = false; if (state.currentFreeStroke.points.length > 1) {
+                state.objects.push(state.currentFreeStroke);
+                window.sumarPuntos(1);
+            }
+            state.currentFreeStroke = null; redraw(); requestSync(true); return;
+        }
+        if (state.isDrawing) {
+            state.isDrawing = false; if (state.currentStroke.length > 5) state.rawStrokes.push([...state.currentStroke]);
+            state.currentStroke = []; state.recognitionTimer = setTimeout(() => { detectAndConvert(); state.recognitionTimer = null; }, 1000);
+            redraw(); requestSync(true);
+        }
+    }
+
+    function getObjectBounds(o) {
+        if (o.type === 'free_stroke') return getBounds(o.points);
+        if (o.type === 'text') { ctx.font = 'bold 20px "Segoe UI", Arial'; const w = ctx.measureText(o.text).width; return { minX: o.x, maxX: o.x + w, minY: o.y, maxY: o.y + 24, w, h: 24, cx: o.x + w/2, cy: o.y + 12 }; }
+        const r = 20 * (o.scale || 1);
+        return { minX: o.x - r, maxX: o.x + r, minY: o.y - r, maxY: o.y + r, w: r*2, h: r*2, cx: o.x, cy: o.y };
+    }
+
+    function findObjectAt(c) {
+        if (Math.hypot(state.origin.x - c.x, state.origin.y - c.y) < 25) return { type: 'origin' };
+        if(state.isHidden) return null; 
+        const textObj = state.objects.find(o => { if(o.type !== 'text') return false; ctx.font = '20px "Segoe UI", Arial'; const w = ctx.measureText(o.text).width; return c.x >= o.x && c.x <= o.x + w && c.y >= o.y && c.y <= o.y + 24; });
+        if(textObj) return textObj;
+        const pt = state.objects.find(o => o.type === 'point' && Math.hypot(o.x - c.x, o.y - c.y) < 30 * (o.scale || 1)); if (pt) return pt;
+        const ch = state.objects.find(o => o.type.startsWith('charge') && Math.hypot(o.x - c.x, o.y - c.y) < 30 * (o.scale || 1)); if (ch) return ch;
+        const strokeObj = state.objects.find(o => {
+            if(o.type !== 'free_stroke') return false; 
+            return o.points.some(p => Math.hypot(p.x - c.x, p.y - c.y) < 15 * (o.scale || 1));
+        });
+        if(strokeObj) return strokeObj;
+        return state.objects.find(o => { if (o.type !== 'trajectory' || !o.path || o.path.length === 0) return false; const mid = Math.floor(o.path.length/2); return Math.hypot(o.path[mid].x - c.x, o.path[mid].y - c.y) < 20; });
+    }
+
+    function selectObject(obj) { state.selectedObject = obj; state.selectedObjects = obj ? [obj] : []; document.querySelectorAll('.data-card').forEach(card => card.classList.remove('selected')); if (obj) { updateFloatDelete(); floatDelete.style.display = 'block'; if (obj.type.startsWith('charge') || obj.type === 'point') { const el = document.getElementById(`in-${obj.id}`); if(el) el.closest('.data-card').classList.add('selected'); } } else { floatDelete.style.display = 'none'; } redraw(); }
+
+    function updateFloatDelete() { if(state.selectedObjects.length === 0) return; const o = state.selectedObjects[0]; let bx, by; if (o.type === 'origin') return; if (o.type === 'trajectory' && o.path && o.path.length > 0) { const mid = Math.floor(o.path.length/2); bx = o.path[mid].x; by = o.path[mid].y - 20; } else if (o.type === 'text') { bx = o.x + 20; by = o.y - 30; } else if (o.type === 'free_stroke' && o.points.length > 0) { const minP = o.points.reduce((prev, curr) => curr.y < prev.y ? curr : prev); bx = minP.x; by = minP.y - 30; } else { bx = o.x; by = o.y - 30; } if(bx !== undefined) { floatDelete.style.left = (bx - 30) + 'px'; floatDelete.style.top = by + 'px'; } }
+
+    function deleteSelected() { if (state.selectedObjects && state.selectedObjects.length > 0) { state.selectedObjects.forEach(obj => { if (obj.type === 'point') { state.objects = state.objects.filter(o => !(o.type === 'trajectory' && (o.from === obj.id || o.to === obj.id))); } }); state.objects = state.objects.filter(o => !state.selectedObjects.includes(o)); selectObject(null); updateUI(); analizarFisica(); redraw(); requestSync(true); } }
+
+    function getBounds(pts) { if (!pts || pts.length === 0) return { minX:0, maxX:0, minY:0, maxY:0, w:0, h:0, cx:0, cy:0 }; let minX = pts[0].x, maxX = pts[0].x, minY = pts[0].y, maxY = pts[0].y; for (let i = 1; i < pts.length; i++) { if (pts[i].x < minX) minX = pts[i].x; if (pts[i].x > maxX) maxX = pts[i].x; if (pts[i].y < minY) minY = pts[i].y; if (pts[i].y > maxY) maxY = pts[i].y; } return { minX, maxX, minY, maxY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 }; }
+
+    function detectAndConvert() { try { if (!state.rawStrokes || state.rawStrokes.length === 0) return; const groups = groupStrokes(state.rawStrokes); const newObjects = []; const usedIndices = new Set(); const scaleFactor = getSafeScale(); groups.forEach(group => { if(!group || group.length === 0) return; const bounds = getGroupBounds(group); const type = classifyGroup(group, bounds); let objectCreated = false; if (type !== 'unknown') { const currentIds = state.objects.map(o=>o.id); const nextId = (currentIds.length > 0 ? Math.max(...currentIds) : 0) + 1; const px = (bounds.cx - state.origin.x) / scaleFactor, py = (state.origin.y - bounds.cy) / scaleFactor; if (type === 'point') { const pointCount = state.objects.filter(o => o.type === 'point').length + newObjects.filter(o => o.type === 'point').length; newObjects.push({ id: nextId, type: 'point', label: String.fromCharCode(65 + pointCount), x: bounds.cx, y: bounds.cy, physX: px, physY: py, rotation: 0, scale: 1 }); objectCreated = true; } else if (type.startsWith('charge')) { const qNum = state.objects.filter(o => o.type.startsWith('charge')).length + 1; newObjects.push({ id: nextId, type: type, label: `q_${qNum}`, x: bounds.cx, y: bounds.cy, physX: px, physY: py, q: type === 'charge_pos' ? 5 : -5, rotation: 0, scale: 1 }); objectCreated = true; } else if (type === 'trajectory_path') { const rawPts = []; group.forEach(i => { if(state.rawStrokes[i]) state.rawStrokes[i].forEach(p => rawPts.push(p)) }); if(rawPts.length > 2) { const pStart = findPointNear(rawPts[0]); const pEnd = findPointNear(rawPts[rawPts.length-1]); if (pStart && pEnd && pStart.id !== pEnd.id) { newObjects.push({ id: nextId, type: 'trajectory', from: pStart.id, to: pEnd.id, path: rawPts }); objectCreated = true; } } } } if (objectCreated) { group.forEach(i => usedIndices.add(i)); window.sumarPuntos(10); } else { group.forEach(i => { if(state.rawStrokes[i] && state.rawStrokes[i].length > 1) { state.objects.push({ type: 'free_stroke', id: Date.now() + i, points: state.rawStrokes[i], color: state.currentColor, lineWidth: state.lineWidth, rotation: 0, scale: 1 }); usedIndices.add(i); } }); } }); if (usedIndices.size > 0) { state.rawStrokes = state.rawStrokes.filter((_, i) => !usedIndices.has(i)); if(newObjects.length > 0) state.objects.push(...newObjects); updateUI(); analizarFisica(); } redraw(); requestSync(true); } catch(e) { state.rawStrokes = []; redraw(); } }
+
+    function findPointNear(c) { return state.objects.find(o => o.type === 'point' && Math.hypot(o.x - c.x, o.y - c.y) < 50); }
+
+    function groupStrokes(strokes) { if(!strokes) return []; const groups = []; const visited = new Set(); for(let i=0; i<strokes.length; i++) { if(visited.has(i)) continue; const g = [i]; visited.add(i); for(let j=i+1; j<strokes.length; j++) { if(visited.has(j)) continue; if(strokesClose(strokes[i], strokes[j])) { g.push(j); visited.add(j); } } groups.push(g); } return groups; }
+    function getGroupBounds(indices) { let allPts = []; indices.forEach(i => { if(state.rawStrokes[i]) state.rawStrokes[i].forEach(p => allPts.push(p)); }); return getBounds(allPts); }
+    function strokesClose(s1, s2) { if(!s1 || !s2 || s1.length === 0 || s2.length === 0) return false; const b1 = getBounds(s1); const b2 = getBounds(s2); const pad = 30; return !(b2.minX > b1.maxX + pad || b2.maxX < b1.minX - pad || b2.minY > b1.maxY + pad || b2.maxY < b1.minY - pad); }
+    function classifyGroup(indices, b) { if (!indices || indices.length === 0) return 'unknown'; const strokes = indices.map(i => state.rawStrokes[i]).filter(s => s && s.length > 0); if (strokes.length === 0) return 'unknown'; const diag = Math.hypot(b.w, b.h); if (diag < 45 && strokes.length <= 3) return 'point'; let maxL = 0; let mainStrokeIdx = -1; strokes.forEach((s, i) => { let l = 0; for(let k=0; k<s.length-1; k++) l += Math.hypot(s[k+1].x-s[k].x, s[k+1].y-s[k].y); if(l >= maxL) { maxL = l; mainStrokeIdx = i; } }); if(mainStrokeIdx === -1) return 'unknown'; const mainStroke = strokes[mainStrokeIdx]; const distEnds = Math.hypot(mainStroke[0].x - mainStroke[mainStroke.length-1].x, mainStroke[0].y - mainStroke[mainStroke.length-1].y); const isClosed = maxL > 0 && distEnds < maxL * 0.4; if (diag > 30 && !isClosed) return 'trajectory_path'; const r = b.w / (b.h || 1); if (r > 0.3 && r < 3.0 && diag > 15 && isClosed) { const innerStrokes = strokes.filter((_, i) => i !== mainStrokeIdx); if (innerStrokes.length === 0) return 'charge_pos'; if (innerStrokes.length === 1) { const s = innerStrokes[0]; const ib = getBounds(s); if (ib.w > (ib.h || 1) * 1.2) return 'charge_neg'; return 'charge_pos'; } return 'charge_pos'; } return 'unknown'; }
+
+    function analizarFisica() {
+        actualizarFilaCampo(); const charges = state.objects.filter(o => o.type.startsWith('charge')), points = state.objects.filter(o => o.type === 'point'), trajectories = state.objects.filter(o => o.type === 'trajectory');
+        const Ke = 8.99e9, scaleFactor = getSafeScale(), chargeU = parseFloat(document.getElementById('charge-unit').value || 1e-6), q0_val = parseFloat(document.getElementById('q0-input').value || 1.0), q0 = q0_val * 1e-6; 
+        charges.forEach(c => { const elQ = document.getElementById(`q-${c.id}`); if(elQ) c.q = parseFloat(elQ.value); c.physX = (c.x - state.origin.x) / scaleFactor; c.physY = (state.origin.y - c.y) / scaleFactor; });
+        const pointPotentials = {};
+        points.forEach(p => {
+            p.physX = (p.x - state.origin.x) / scaleFactor; p.physY = (state.origin.y - p.y) / scaleFactor; let V_charges = 0, chargeDetails = [];
+            charges.forEach(src => { const r = Math.hypot(p.physX - src.physX, p.physY - src.physY); if (r > 0.001) { const v_part = (Ke * src.q * chargeU) / r; V_charges += v_part; chargeDetails.push({ qLabel: src.label, qVal: src.q, r: r, v: v_part }); } });
+            p.chargeDetails = chargeDetails; let V_ext = 0; const steps = 50;
+            for(let i=0; i<steps; i++) { let t1 = i/steps, t2 = (i+1)/steps, midT = (t1+t2)/2; let E = getE_ext(p.physX * midT, p.physY * midT); V_ext -= (E.x * (p.physX/steps) + E.y * (p.physY/steps)); }
+            p.V_charges = V_charges; p.V_ext = V_ext; p.V = V_charges + V_ext; pointPotentials[p.id] = p;
+        });
+        const workResults = [];
+        trajectories.forEach(tr => {
+            const pA = pointPotentials[tr.from], pB = pointPotentials[tr.to];
+            if (pA && pB) {
+                let W_charges = q0 * (pB.V_charges - pA.V_charges), W_ext_field = 0, path = tr.path || [{x: pA.x, y: pA.y}, {x: pB.x, y: pB.y}];
+                for(let i=0; i<path.length-1; i++) { let px1 = (path[i].x - state.origin.x) / scaleFactor, py1 = (state.origin.y - path[i].y) / scaleFactor, px2 = (path[i+1].x - state.origin.x) / scaleFactor, py2 = (state.origin.y - path[i+1].y) / scaleFactor, dx = px2 - px1, dy = py2 - py1, midX = (px1 + px2)/2, midY = (py1 + py2)/2, E = getE_ext(midX, midY); W_ext_field += q0 * (E.x * dx + E.y * dy); }
+                let W_total = W_charges + W_ext_field, hasExt = document.getElementById('ex-input').value !== "0" || document.getElementById('ey-input').value !== "0", maxV = Math.max(Math.abs(pA.V), Math.abs(pB.V), 1e-10), isEqui = !hasExt && (Math.abs(pB.V - pA.V) / maxV) < 0.03; 
+                if (isEqui) { W_total = 0; }
+                workResults.push({ from: pA.label, to: pB.label, Va: pA.V, Vb: pB.V, dV: pB.V - pA.V, W: W_total, W_cargas: W_charges, W_ext: W_ext_field, q0: q0, isEqui: isEqui, hasExt: hasExt });
+            }
+        });
+        state.calculations = { points: pointPotentials, works: workResults }; updateStatement(charges.length, points.length, trajectories.length, workResults); renderLatex(); redraw();
+        if (window.verificarTareasFisica) window.verificarTareasFisica();
+    }
+
+    function renderLatex() {
+        const box = document.getElementById('latex-result'); let html = ""; const { points, works } = state.calculations; const pointList = Object.values(points || {});
+        if (pointList.length === 0) { html = "\\text{Dibuja puntos para calcular Potencial (V)}"; } 
+        else {
+            html += "\\textbf{1. Potenciales Eléctricos ($V_p$):} \\\\"; const cU = document.getElementById('charge-unit'); const exponent = cU.value === '1e-6' ? '-6' : (cU.value === '1e-9' ? '-9' : '-3');
+            pointList.forEach(p => { 
+                html += `\\underline{\\text{Punto } ${p.label} (x: ${p.physX.toFixed(2)}, y: ${p.physY.toFixed(2)})}: \\\\`;
+                if (p.chargeDetails && p.chargeDetails.length > 0) { let sumStr = p.chargeDetails.map(d => { let sign = d.qVal >= 0 ? "+" : "-"; let val = Math.abs(d.qVal); return `${sign} \\frac{${val}}{${d.r.toFixed(2)}}`; }).join(" "); if (sumStr.startsWith("+ ")) sumStr = sumStr.substring(2); html += `V_{\\text{cargas}} = k_e \\sum \\frac{q}{r} = 8.99\\times 10^9 \\left[ ${sumStr} \\right] \\times 10^{${exponent}} \\\\`; html += `V_{\\text{cargas}} = ${p.V_charges.toExponential(2)} \\text{ V} \\\\[0.3em]`; }
+                if (document.getElementById('ex-input').value !== "0" || document.getElementById('ey-input').value !== "0") { html += `V_{\\text{ext}} = ${p.V_ext.toExponential(2)} \\text{ V} \\\\`; html += `\\mathbf{V_{${p.label}}} = \\mathbf{${p.V.toExponential(2)} \\text{ V}} \\\\[0.8em]`; } 
+                else { html += `\\mathbf{V_{${p.label}} = ${p.V.toExponential(2)} \\text{ V}} \\\\[0.8em]`; }
+            });
+        }
+        if (works && works.length > 0) {
+            html += "\\textbf{2. Trabajo Externo ($W = q_0 \\Delta V$):} \\\\";
+            works.forEach(w => {
+                html += `\\underline{\\text{Trayectoria } ${w.from} \\to ${w.to}}: \\\\`;
+                if (w.isEqui) { html += `\\Delta V \\approx 0 \\Rightarrow \\mathbf{W_{\\text{neto}} = 0 \\text{ J}} \\\\[1em]`; } 
+                else { html += `\\Delta V = ${w.dV.toExponential(2)} \\text{ V} \\\\[0.3em]`; if(w.hasExt) { html += `W_{\\text{cargas}} = ${w.W_cargas.toExponential(2)} \\text{ J} \\\\ W_{\\text{ext}} = ${w.W_ext.toExponential(2)} \\text{ J} \\\\`; } html += `\\mathbf{W_{\\text{neto}} = ${w.W.toExponential(2)} \\text{ J}} \\\\[1em]`; }
+            });
+        }
+        katex.render(html, box, {displayMode:true, throwOnError:false});
+    }
+
+    function updateStatement(nQ, nP, nT, works) {
+        const box = document.getElementById('problem-statement'); const cU = document.getElementById('charge-unit'); const cUnitTxt = cU.options[cU.selectedIndex].text;
+        const hasEqui = works && works.some(w => w.isEqui), hasNormal = works && works.some(w => !w.isEqui);
+        if (hasEqui && !hasNormal) { box.innerHTML = `<strong>¡Equipotencial!</strong> $\\Delta V \\approx 0$. <strong>Trabajo neto NULO</strong> ($W=0$).`; box.style.borderLeftColor = "#2ecc71"; } 
+        else if (hasNormal) { const lastWork = works[works.length-1]; if (!lastWork.isEqui) { box.innerHTML = `<strong>Problema:</strong> Mover $q_0$ desde ${lastWork.from} hasta ${lastWork.to}. <br> <strong>Trabajo Total:</strong> $W = ${lastWork.W.toExponential(2)} \\text{ J}$`; box.style.borderLeftColor = "#9b59b6"; } } 
+        else { if (nQ === 0) { box.innerHTML = `Dibuja cargas fuente. Escala: ${cUnitTxt}`; return; } if (nP < 2) { box.innerHTML = "Coloca dos puntos (A y B)."; return; } if (nT === 0) { box.innerHTML = "Conecta los puntos con una trayectoria."; return; } }
+        renderMathInElement(box, {delimiters: [{left: "$", right: "$", display: false}]});
+    }
+
+    function updateCoord(id, axis, val, type) { let obj; if (type === 'charge') obj = state.objects.find(o => o.id == id && o.type.startsWith('charge')); else obj = state.objects.find(o => o.id == id && o.type === 'point'); if(!obj) return; const numVal = parseFloat(val); if(isNaN(numVal)) return; const scaleFactor = getSafeScale(); if (axis === 'x') { obj.x = numVal * scaleFactor + state.origin.x; } else { obj.y = state.origin.y - numVal * scaleFactor; } analizarFisica(); redraw(); requestSync(true); }
+
+    function updateUI() {
+        const container = document.getElementById('objects-container'); container.innerHTML=''; const dList = document.getElementById('detection-list'); let dHtml = "";
+        state.objects.filter(o=>o.type.startsWith('charge')).forEach(ch => { const div = document.createElement('div'); div.className='data-card'; if(state.selectedObjects.includes(ch)) div.classList.add('selected'); div.innerHTML = `<div class="data-header"><strong>Fuente ${ch.label}</strong></div><div class="input-row"><label>Q</label> <input type="number" id="q-${ch.id}" value="${ch.q}" onchange="analizarFisica(); requestSync(true);"></div><div class="input-row"><label>X(m)</label> <input type="number" step="0.1" id="in-${ch.id}" value="${(ch.physX||0).toFixed(2)}" onchange="updateCoord(${ch.id}, 'x', this.value, 'charge')"><label>Y(m)</label> <input type="number" step="0.1" value="${(ch.physY||0).toFixed(2)}" onchange="updateCoord(${ch.id}, 'y', this.value, 'charge')"></div>`; container.appendChild(div); dHtml += `<span class="badge ${ch.type==='charge_pos'?'badge-pos':'badge-neg'}">${ch.label}</span>`; });
+        state.objects.filter(o=>o.type === 'point').forEach(p => { const div = document.createElement('div'); div.className='data-card'; if (p.label === 'A') div.classList.add('is-point-A'); else if (p.label === 'B') div.classList.add('is-point-B'); if(state.selectedObjects.includes(p)) div.classList.add('selected'); div.innerHTML = `<div class="data-header"><strong>Punto ${p.label}</strong></div><div class="input-row"><label>X(m)</label> <input type="number" step="0.1" id="in-${p.id}" value="${(p.physX||0).toFixed(2)}" onchange="updateCoord(${p.id}, 'x', this.value, 'point')"><label>Y(m)</label> <input type="number" step="0.1" value="${(p.physY||0).toFixed(2)}" onchange="updateCoord(${p.id}, 'y', this.value, 'point')"></div>`; container.appendChild(div); dHtml += `<span class="badge badge-point">${p.label}</span>`; });
+        dList.innerHTML = dHtml || "<i>Nada detectado</i>";
+    }
+
+    function drawAxes() {
+        if(state.origin.x === null || state.isHidden) return;
+        ctx.save(); ctx.strokeStyle = 'rgba(52, 152, 219, 0.4)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, state.origin.y); ctx.lineTo(canvas.width/dpr, state.origin.y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(state.origin.x, 0); ctx.lineTo(state.origin.x, canvas.height/dpr); ctx.stroke(); ctx.beginPath(); ctx.arc(state.origin.x, state.origin.y, 6, 0, Math.PI*2); ctx.fillStyle = '#3498db'; ctx.fill();
+        const scaleFactor = getSafeScale();
+        if (scaleFactor >= 30) { ctx.fillStyle = 'rgba(52, 152, 219, 0.8)'; ctx.font = '11px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'top'; 
+        for(let x = state.origin.x + scaleFactor; x < canvas.width/dpr; x += scaleFactor) { ctx.fillRect(x - 1, state.origin.y - 4, 2, 8); ctx.fillText(Math.round((x - state.origin.x)/scaleFactor), x, state.origin.y + 6); } 
+        for(let x = state.origin.x - scaleFactor; x > 0; x -= scaleFactor) { ctx.fillRect(x - 1, state.origin.y - 4, 2, 8); ctx.fillText(Math.round((x - state.origin.x)/scaleFactor), x, state.origin.y + 6); } 
+        ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; 
+        for(let y = state.origin.y - scaleFactor; y > 0; y -= scaleFactor) { ctx.fillRect(state.origin.x - 4, y - 1, 8, 2); ctx.fillText(Math.round((state.origin.y - y)/scaleFactor), state.origin.x - 6, y); } 
+        for(let y = state.origin.y + scaleFactor; y < canvas.height/dpr; y += scaleFactor) { ctx.fillRect(state.origin.x - 4, y - 1, 8, 2); ctx.fillText(Math.round((state.origin.y - y)/scaleFactor), state.origin.x - 6, y); } }
+        ctx.restore();
+    }
+
+    // MEJORA: Definición y limpieza absoluta en cada frame
+    function redraw() {
+        const w = canvas.width/dpr; const h = canvas.height/dpr;
+        
+        // Limpiar absolutamente el contexto y reaplicar DPR
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+        
+        labelsOverlay.innerHTML = ''; 
+        ctx.strokeStyle = '#eee'; ctx.lineWidth=1; ctx.beginPath();
+        for(let i=0; i<w; i+=20) { ctx.moveTo(i,0); ctx.lineTo(i,h); } 
+        for(let i=0; i<h; i+=20) { ctx.moveTo(0,i); ctx.lineTo(w,i); } ctx.stroke();
+        
+        drawEquipotentials(ctx); drawVectorField(ctx); drawAxes(); 
+        
+        if (state.selectionBox) { ctx.fillStyle = 'rgba(78, 204, 163, 0.15)'; ctx.strokeStyle = '#4ecca3'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]); const x = Math.min(state.selectionBox.startX, state.selectionBox.endX), y = Math.min(state.selectionBox.startY, state.selectionBox.endY), boxW = Math.abs(state.selectionBox.endX - state.selectionBox.startX), boxH = Math.abs(state.selectionBox.endY - state.selectionBox.startY); ctx.fillRect(x, y, boxW, boxH); ctx.strokeRect(x, y, boxW, boxH); ctx.setLineDash([]); }
+        
+        if(!state.isHidden) {
+            state.objects.filter(o => o.type === 'trajectory').forEach(tr => {
+                const p1 = state.objects.find(p => p.id === tr.from), p2 = state.objects.find(p => p.id === tr.to);
+                if (p1 && p2) { 
+                    // ADICIÓN: Línea punteada restaurada
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.setLineDash([8, 8]);
+                    ctx.strokeStyle = 'rgba(155, 89, 182, 0.8)';
+                    ctx.lineWidth = 2;
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                    ctx.restore();
+
+                    // Resaltado grueso de fondo
+                    ctx.save(); 
+                    ctx.beginPath(); 
+                    ctx.strokeStyle = 'rgba(155, 89, 182, 0.15)'; 
+                    ctx.lineWidth = 15; 
+                    ctx.moveTo(p1.x, p1.y); 
+                    ctx.lineTo(p2.x, p2.y); 
+                    ctx.stroke(); 
+                    ctx.restore(); 
+                }
+                if (tr.path && tr.path.length > 2) { 
+                    ctx.save();
+                    ctx.beginPath(); 
+                    ctx.strokeStyle = '#9b59b6'; 
+                    ctx.lineWidth = 3; 
+                    drawSmoothPath(tr.path); 
+                    ctx.stroke(); 
+                    ctx.restore();
+                }
+            });
+            
+            state.rawStrokes.forEach(s => drawPath(s, '#999', 2)); 
+            if(state.currentStroke.length>0) drawPath(state.currentStroke, '#999', 2);
+            
+            if(state.currentFreeStroke) {
+                if(state.currentFreeStroke.isHighlighter) { ctx.save(); ctx.globalAlpha = 0.4; drawPath(state.currentFreeStroke.points, state.currentFreeStroke.color, state.currentFreeStroke.lineWidth); ctx.restore(); }
+                else drawPath(state.currentFreeStroke.points, state.currentFreeStroke.color, state.currentFreeStroke.lineWidth);
+            }
+            if(state.currentLine) drawPath(state.currentLine, state.currentColor, state.lineWidth);
+
+            state.objects.forEach(obj => {
+                const isSel = state.selectedObjects.includes(obj); 
+                ctx.save();
+                ctx.translate(obj.x, obj.y);
+                if (obj.rotation) ctx.rotate(obj.rotation);
+                if (obj.scale) ctx.scale(obj.scale, obj.scale);
+                ctx.translate(-obj.x, -obj.y);
+
+                ctx.shadowBlur = isSel ? 10 : 0; ctx.shadowColor = '#00ff88';
+
+                if(obj.type.startsWith('charge')) {
+                    ctx.beginPath(); ctx.arc(obj.x, obj.y, 20, 0, Math.PI*2); ctx.fillStyle = obj.type==='charge_pos' ? '#3498db' : '#e74c3c'; ctx.fill(); ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='white'; ctx.font='bold 24px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(obj.type==='charge_pos'?'+':'-', obj.x, obj.y+2); addLabel(obj.x+25, obj.y-25, obj.label);
+                } 
+                else if(obj.type === 'point') {
+                    ctx.beginPath(); ctx.arc(obj.x, obj.y, 10, 0, Math.PI*2); ctx.fillStyle = obj.label === 'A' ? '#2ecc71' : (obj.label === 'B' ? '#e67e22' : '#95a5a6'); ctx.fill(); ctx.strokeStyle='white'; ctx.lineWidth=2; ctx.stroke(); addLabel(obj.x+15, obj.y-15, obj.label);
+                }
+                else if(obj.type === 'free_stroke') { 
+                    if(obj.isHighlighter) { ctx.save(); ctx.globalAlpha = 0.4; drawPath(obj.points, obj.color, obj.lineWidth || 12); ctx.restore(); }
+                    else drawPath(obj.points, obj.color, obj.lineWidth || 3); 
+                }
+                else if(obj.type === 'text') { ctx.fillStyle = obj.color; ctx.font = 'bold 20px "Segoe UI", Arial'; ctx.fillText(obj.text, obj.x, obj.y); }
+                
+                ctx.restore();
+
+                if (isSel && state.tool === 'move') {
+                    const b = getObjectBounds(obj);
+                    ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 1; ctx.setLineDash([5, 5]);
+                    ctx.save();
+                    ctx.translate(obj.x, obj.y); if (obj.rotation) ctx.rotate(obj.rotation);
+                    ctx.strokeRect(-b.w/2 - 5, -b.h/2 - 5, b.w + 10, b.h + 10);
+                    ctx.restore(); ctx.setLineDash([]);
+                    const rotX = b.cx + 40 * Math.sin(obj.rotation || 0), rotY = b.cy - 40 * Math.cos(obj.rotation || 0);
+                    ctx.beginPath(); ctx.arc(rotX, rotY, 8, 0, Math.PI*2); ctx.fillStyle = '#3498db'; ctx.fill(); ctx.stroke();
+                    const resX = b.maxX + 10, resY = b.maxY + 10;
+                    ctx.beginPath(); ctx.arc(resX, resY, 8, 0, Math.PI*2); ctx.fillStyle = '#2ecc71'; ctx.fill(); ctx.stroke();
+                }
+            });
+        }
+    }
+
+    function drawPath(pts, color, width) { 
+        if(!pts || pts.length<2) return; ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); drawSmoothPath(pts); ctx.stroke(); 
+    }
+    function drawSmoothPath(pts) {
+        if (pts.length < 2) return; ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length - 2; i++) { const xc = (pts[i].x + pts[i + 1].x) / 2, yc = (pts[i].y + pts[i + 1].y) / 2; ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc); }
+        if (pts.length > 2) { ctx.quadraticCurveTo(pts[pts.length - 2].x, pts[pts.length - 2].y, pts[pts.length - 1].x, pts[pts.length - 1].y); } else { ctx.lineTo(pts[1].x, pts[1].y); }
+    }
+
+    function addLabel(x, y, t) { const d = document.createElement('div'); d.className='canvas-label'; d.style.left=x+'px'; d.style.top=y+'px'; katex.render(t, d, {throwOnError:false}); labelsOverlay.appendChild(d); }
+    function setTool(t, b) { finalizeText(); state.tool = t; document.querySelectorAll('.btn-tool').forEach(el=>el.classList.remove('active')); if(b) b.classList.add('active'); if(t !== 'move') selectObject(null); }
+    function undo() { if(state.rawStrokes.length>0) state.rawStrokes.pop(); else if(state.objects.length>0) { state.objects.pop(); updateUI(); analizarFisica(); } redraw(); requestSync(true); }
+    function limpiarTodo() { state.objects=[]; state.rawStrokes=[]; updateUI(); analizarFisica(); redraw(); requestSync(true); }
+    function exportarImagen() { const tC = document.createElement('canvas'); tC.width = canvas.width; tC.height = canvas.height; const tX = tC.getContext('2d'); tX.fillStyle = '#ffffff'; tX.fillRect(0,0,tC.width,tC.height); tX.drawImage(canvas, 0,0); const l = document.createElement('a'); l.download = 'Lab_Electrico.png'; l.href = tC.toDataURL(); l.click(); }
+    function eraseAt(c) {
+        const hit = findObjectAt(c);
+        if (hit && hit.type !== 'origin') {
+            if (hit.type === 'point') { const pid = hit.id; state.objects = state.objects.filter(o => !(o.type === 'trajectory' && (o.from === pid || o.to === pid))); }
+            state.selectedObjects = state.selectedObjects.filter(o => o !== hit); state.objects = state.objects.filter(o => o !== hit);
+            updateUI(); analizarFisica(); redraw();
+        }
+    }
+    
+    // --- EVENTOS DEL LIENZO PARA PERMITIR ESCRITURA Y DIBUJO ---
+    wrapper.addEventListener('mousedown', handleStart);
+    wrapper.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleEnd);
+
+    wrapper.addEventListener('touchstart', handleStart, { passive: false });
+    wrapper.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
+    // -----------------------------------------------------------
+
+    // Funciones exportadas a global para que sean llamadas desde los módulos u otros eventos
+    window.updateBoardsUI = updateBoardsUI;
+    window.updateUI = updateUI;
+    window.analizarFisica = analizarFisica;
+    window.redraw = redraw;
+
+    setTimeout(updateBoardsUI, 500);
+</script>
+
+<script type="module">
+    // --- INTEGRACIÓN CON REALTIME DATABASE (V 12.9.0) ---
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue, push, update, increment } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+    import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-auth.js";
+
+    // === CONFIGURACIÓN DE FIREBASE DE TU DOMINIO ===
+    const firebaseConfig = {
+        apiKey: "AIzaSyCI0c7KgnEAn-sV_CrHs0Er1LXL13CvQSA",
+        authDomain: "laboratorio-de-coulomb.firebaseapp.com",
+        databaseURL: "https://laboratorio-de-coulomb-default-rtdb.firebaseio.com",
+        projectId: "laboratorio-de-coulomb",
+        storageBucket: "laboratorio-de-coulomb.firebasestorage.app",
+        messagingSenderId: "525944850850",
+        appId: "1:525944850850:web:eca9c0b79809358e8d8afb"
+    };
+    
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    let currentRoomRef = null;
+    let chatRoomRef = null;
+    let isReceiving = false;
+    let unsubscribeRoom = null;
+    let unsubscribeChat = null;
+
+    // --- SISTEMA DE AUTENTICACIÓN ---
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('auth-modal').style.display = 'none';
+            document.getElementById('user-info').innerText = user.isAnonymous ? `👤 Invitado-${user.uid.slice(0,4)}` : `👤 ${user.displayName || user.email || 'Usuario'}`;
+            document.getElementById('btn-logout').style.display = 'inline-block';
+            document.getElementById('user-stats').style.display = 'inline-flex';
+            
+            if (window.iniciarGamificacion) window.iniciarGamificacion(user.uid);
+            
+            if (!currentRoomRef) window.abrirModalSala();
+        } else {
+            document.getElementById('auth-modal').style.display = 'flex';
+            document.getElementById('room-modal').style.display = 'none';
+            document.getElementById('user-info').innerText = 'No conectado';
+            document.getElementById('user-stats').style.display = 'none';
+            document.getElementById('btn-logout').style.display = 'none';
+            document.getElementById('room-info').innerText = '🌐 Sala: Ninguna';
+            document.getElementById('btn-share-room').style.display = 'none';
+            document.getElementById('chat-section').style.display = 'none';
+            
+            if (unsubscribeRoom) { unsubscribeRoom(); unsubscribeRoom = null; }
+            if (unsubscribeChat) { unsubscribeChat(); unsubscribeChat = null; }
+            currentRoomRef = null; chatRoomRef = null;
+            if (window.detenerGamificacion) window.detenerGamificacion();
+            window.limpiarTodo();
+        }
+    });
+
+    // --- EVENTOS DE INICIO DE SESIÓN ---
+    document.getElementById('btn-login-email').addEventListener('click', () => {
+        const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value;
+        const err = document.getElementById('auth-error');
+        if(!email || !password) { if(err) err.innerText = "Por favor, ingresa correo y contraseña"; return; }
+        signInWithEmailAndPassword(auth, email, password).catch(e => { if(err) err.innerText = "Error: " + e.message; });
+    });
+
+    document.getElementById('btn-register-email').addEventListener('click', () => {
+        const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value;
+        const err = document.getElementById('auth-error');
+        if(!email || !password) { if(err) err.innerText = "Por favor, ingresa correo y contraseña"; return; }
+        createUserWithEmailAndPassword(auth, email, password).catch(e => { if(err) err.innerText = "Error al registrar: " + e.message; });
+    });
+
+    document.getElementById('btn-login-google').addEventListener('click', () => {
+        signInWithPopup(auth, new GoogleAuthProvider()).catch(e => console.error(e));
+    });
+
+    document.getElementById('btn-login-guest').addEventListener('click', () => {
+        signInAnonymously(auth).catch(e => console.error(e));
+    });
+
+    window.cerrarSesion = () => signOut(auth);
+
+    // --- SISTEMA DE GAMIFICACIÓN (APUNTANDO A usuarios_potencial) ---
+    let gamificationUnsubscribe = null;
+    let gameTimerInterval = null;
+
+    window.iniciarGamificacion = function(uid) {
+        const perfilRef = ref(db, 'usuarios_potencial/' + uid);
+        window.userGameData = {
+            perfil: { puntos: 0, nivel: 1, tiempo_sesion: 0 },
+            logros: { inicio_sesion: true },
+            tareas: { tarea_1: false, tarea_2: false, tarea_3: false, tarea_4: false, tarea_5: false, tarea_6: false, tarea_7: false, tarea_8: false, tarea_9: false, tarea_10: false, tarea_11: false, tarea_12: false }
+        };
+        
+        gamificationUnsubscribe = onValue(perfilRef, (snapshot) => {
+            const data = snapshot.val();
+            if (!data) set(perfilRef, window.userGameData).catch(()=>{});
+            else { window.userGameData = data; actualizarUIPerfil(); }
+        }, (error) => { actualizarUIPerfil(); });
+
+        if (gameTimerInterval) clearInterval(gameTimerInterval);
+        gameTimerInterval = setInterval(() => {
+            if (window.userGameData && window.userGameData.perfil) {
+                window.userGameData.perfil.tiempo_sesion += 1; window.userGameData.perfil.puntos += 10;
+                actualizarUIPerfil();
+            }
+            update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { tiempo_sesion: increment(1), puntos: increment(10) }).catch(()=>{});
+        }, 60000);
+    };
+
+    window.detenerGamificacion = function() {
+        if (gamificationUnsubscribe) { gamificationUnsubscribe(); gamificationUnsubscribe = null; }
+        if (gameTimerInterval) { clearInterval(gameTimerInterval); gameTimerInterval = null; }
+        window.userGameData = null; window.interaccionesLocales = 0;
+    };
+
+    function actualizarUIPerfil() {
+        const d = window.userGameData; if (!d || !d.perfil) return;
+        const p = d.perfil;
+        document.getElementById('user-stats').innerText = `🏆 Lvl ${p.nivel} | ${p.puntos} pts`;
+        document.getElementById('ui-nivel').innerText = p.nivel; document.getElementById('ui-puntos').innerText = p.puntos; document.getElementById('ui-tiempo').innerText = p.tiempo_sesion;
+
+        const tareasDiv = document.getElementById('ui-tareas');
+        if(d.tareas) {
+            if (p.nivel === 1) {
+                tareasDiv.innerHTML = `
+                    <div class="task-item ${d.tareas.tarea_1 ? 'done' : ''}"><div class="task-check">✓</div><span>Coloca 1 carga en el lienzo</span></div>
+                    <div class="task-item ${d.tareas.tarea_2 ? 'done' : ''}"><div class="task-check">✓</div><span>Coloca 1 punto de análisis</span></div>
+                    <div class="task-item ${d.tareas.tarea_3 ? 'done' : ''}"><div class="task-check">✓</div><span>Haz 5 interacciones (Mover/Dibujar)</span></div>
+                `;
+            } else if (p.nivel === 2) {
+                tareasDiv.innerHTML = `
+                    <div class="task-item ${d.tareas.tarea_4 ? 'done' : ''}"><div class="task-check">✓</div><span>Coloca 2 cargas en el lienzo</span></div>
+                    <div class="task-item ${d.tareas.tarea_5 ? 'done' : ''}"><div class="task-check">✓</div><span>Coloca 2 puntos de análisis</span></div>
+                    <div class="task-item ${d.tareas.tarea_6 ? 'done' : ''}"><div class="task-check">✓</div><span>Haz 20 interacciones totales</span></div>
+                `;
+            } else if (p.nivel === 3) {
+                tareasDiv.innerHTML = `
+                    <div class="task-item ${d.tareas.tarea_7 ? 'done' : ''}"><div class="task-check">✓</div><span>Coloca 3 cargas en el lienzo</span></div>
+                    <div class="task-item ${d.tareas.tarea_8 ? 'done' : ''}"><div class="task-check">✓</div><span>Dibuja 1 trayectoria entre puntos</span></div>
+                    <div class="task-item ${d.tareas.tarea_9 ? 'done' : ''}"><div class="task-check">✓</div><span>Haz 50 interacciones totales</span></div>
+                `;
+            } else if (p.nivel === 4) {
+                tareasDiv.innerHTML = `
+                    <div class="task-item ${d.tareas.tarea_10 ? 'done' : ''}"><div class="task-check">✓</div><span>Coloca 4 cargas en el lienzo</span></div>
+                    <div class="task-item ${d.tareas.tarea_11 ? 'done' : ''}"><div class="task-check">✓</div><span>Dibuja 2 trayectorias</span></div>
+                    <div class="task-item ${d.tareas.tarea_12 ? 'done' : ''}"><div class="task-check">✓</div><span>Haz 100 interacciones totales</span></div>
+                `;
+            } else {
+                tareasDiv.innerHTML = `<div class="task-item done"><div class="task-check">✓</div><span>¡Has completado todas las misiones del simulador!</span></div>`;
+            }
+        }
+
+        const container = document.getElementById('ui-logros'); container.innerHTML = '';
+        if(d.logros) {
+            const dictLogros = { "inicio_sesion": "🎓 Bienvenido", "fisico_experto": "⚡ Físico Experto", "nivel_2_alcanzado": "🌟 Graduado Nivel 1", "nivel_3_alcanzado": "🚀 Investigador Nivel 2", "nivel_4_alcanzado": "🧠 Científico Nivel 3", "nivel_5_alcanzado": "👑 Nobel de Física" };
+            Object.keys(d.logros).forEach(key => { if(d.logros[key] && dictLogros[key]) container.innerHTML += `<span style="background: #e67e22; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">${dictLogros[key]}</span>`; });
+        }
+    }
+
+    window.registrarInteraccion = function() {
+        if (!auth.currentUser || !window.userGameData) return;
+        window.interaccionesLocales = (window.interaccionesLocales || 0) + 1;
+        const uid = auth.currentUser.uid;
+        const t = window.userGameData.tareas;
+
+        if (window.interaccionesLocales >= 5 && !t?.tarea_3) { t.tarea_3 = true; window.userGameData.perfil.puntos += 25; actualizarUIPerfil(); update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_3: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(25) }).catch(()=>{}); window.chequearSubidaNivel(uid); }
+        if (window.interaccionesLocales >= 20 && !t?.tarea_6) { t.tarea_6 = true; window.userGameData.perfil.puntos += 50; actualizarUIPerfil(); update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_6: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(50) }).catch(()=>{}); window.chequearSubidaNivel(uid); }
+        if (window.interaccionesLocales >= 50 && !t?.tarea_9) { t.tarea_9 = true; window.userGameData.perfil.puntos += 100; actualizarUIPerfil(); update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_9: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(100) }).catch(()=>{}); window.chequearSubidaNivel(uid); }
+        if (window.interaccionesLocales >= 100 && !t?.tarea_12) { t.tarea_12 = true; window.userGameData.perfil.puntos += 150; actualizarUIPerfil(); update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_12: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(150) }).catch(()=>{}); window.chequearSubidaNivel(uid); }
+
+        if (window.interaccionesLocales >= 50 && !window.userGameData.logros?.fisico_experto) { window.userGameData.logros.fisico_experto = true; window.userGameData.perfil.puntos += 100; actualizarUIPerfil(); update(ref(db, 'usuarios_potencial/' + uid + '/logros'), { fisico_experto: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(100) }).catch(()=>{}); }
+    };
+
+    window.verificarTareasFisica = function() {
+        if (!auth.currentUser || !window.userGameData) return;
+        const uid = auth.currentUser.uid;
+        const charges = window.appState.objects.filter(o => o.type.startsWith('charge'));
+        const points = window.appState.objects.filter(o => o.type === 'point');
+        const trajs = window.appState.objects.filter(o => o.type === 'trajectory');
+        let hizoAlgo = false; const t = window.userGameData.tareas;
+
+        if (charges.length >= 1 && !t?.tarea_1) { t.tarea_1 = true; window.userGameData.perfil.puntos += 25; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_1: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(25) }).catch(()=>{}); hizoAlgo = true; }
+        if (points.length >= 1 && !t?.tarea_2) { t.tarea_2 = true; window.userGameData.perfil.puntos += 25; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_2: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(25) }).catch(()=>{}); hizoAlgo = true; }
+
+        if (charges.length >= 2 && !t?.tarea_4) { t.tarea_4 = true; window.userGameData.perfil.puntos += 50; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_4: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(50) }).catch(()=>{}); hizoAlgo = true; }
+        if (points.length >= 2 && !t?.tarea_5) { t.tarea_5 = true; window.userGameData.perfil.puntos += 50; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_5: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(50) }).catch(()=>{}); hizoAlgo = true; }
+
+        if (charges.length >= 3 && !t?.tarea_7) { t.tarea_7 = true; window.userGameData.perfil.puntos += 100; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_7: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(100) }).catch(()=>{}); hizoAlgo = true; }
+        if (trajs.length >= 1 && !t?.tarea_8) { t.tarea_8 = true; window.userGameData.perfil.puntos += 100; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_8: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(100) }).catch(()=>{}); hizoAlgo = true; }
+
+        if (charges.length >= 4 && !t?.tarea_10) { t.tarea_10 = true; window.userGameData.perfil.puntos += 150; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_10: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(150) }).catch(()=>{}); hizoAlgo = true; }
+        if (trajs.length >= 2 && !t?.tarea_11) { t.tarea_11 = true; window.userGameData.perfil.puntos += 150; update(ref(db, 'usuarios_potencial/' + uid + '/tareas'), { tarea_11: true }).catch(()=>{}); update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { puntos: increment(150) }).catch(()=>{}); hizoAlgo = true; }
+
+        if(hizoAlgo) { actualizarUIPerfil(); window.chequearSubidaNivel(uid); }
+    };
+
+    window.chequearSubidaNivel = function(uid) {
+        setTimeout(() => {
+            if(!window.userGameData || !window.userGameData.tareas) return;
+            const t = window.userGameData.tareas; const lvl = window.userGameData.perfil?.nivel || 1;
+            if (lvl === 1 && t.tarea_1 && t.tarea_2 && t.tarea_3) {
+                window.userGameData.perfil.nivel = 2; update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { nivel: 2, puntos: increment(200) }); update(ref(db, 'usuarios_potencial/' + uid + '/logros'), { nivel_2_alcanzado: true }); alert("🌟 ¡FELICITACIONES! Has completado el Nivel 1. ¡Subiste al NIVEL 2 y ganaste 200 pts!"); actualizarUIPerfil();
+            } else if (lvl === 2 && t.tarea_4 && t.tarea_5 && t.tarea_6) {
+                window.userGameData.perfil.nivel = 3; update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { nivel: 3, puntos: increment(400) }); update(ref(db, 'usuarios_potencial/' + uid + '/logros'), { nivel_3_alcanzado: true }); alert("🚀 ¡IMPRESIONANTE! Completaste el Nivel 2. ¡Subiste al NIVEL 3 y ganaste 400 pts!"); actualizarUIPerfil();
+            } else if (lvl === 3 && t.tarea_7 && t.tarea_8 && t.tarea_9) {
+                window.userGameData.perfil.nivel = 4; update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { nivel: 4, puntos: increment(800) }); update(ref(db, 'usuarios_potencial/' + uid + '/logros'), { nivel_4_alcanzado: true }); alert("🧠 ¡ERES UN GENIO! Completaste el Nivel 3. ¡Subiste al NIVEL 4 y ganaste 800 pts!"); actualizarUIPerfil();
+            } else if (lvl === 4 && t.tarea_10 && t.tarea_11 && t.tarea_12) {
+                window.userGameData.perfil.nivel = 5; update(ref(db, 'usuarios_potencial/' + uid + '/perfil'), { nivel: 5, puntos: increment(1500) }); update(ref(db, 'usuarios_potencial/' + uid + '/logros'), { nivel_5_alcanzado: true }); alert("👑 ¡LEYENDA! Has completado el Laboratorio. ¡Alcanzaste el NIVEL MÁXIMO (5)!"); actualizarUIPerfil();
+            }
+        }, 1000);
+    };
+
+    // --- SISTEMA DE SALAS Y CONTRASEÑAS (APUNTANDO A salas_potencial) ---
+    window.intentarUnirseSala = async function() {
+        const salaId = document.getElementById('room-name').value.trim();
+        const salaPass = document.getElementById('room-pass').value.trim();
+        if (!salaId || !salaPass) return alert('Debes ingresar el nombre del cuarto y su contraseña.');
+
+        const passRef = ref(db, 'salas_potencial/' + salaId + '/password');
+        try {
+            const snapshot = await get(passRef);
+            if (snapshot.exists()) {
+                if (snapshot.val() !== salaPass) return alert('❌ Contraseña incorrecta para el cuarto: ' + salaId);
+            } else {
+                await set(passRef, salaPass); alert('✅ Nuevo cuarto creado: ' + salaId);
+            }
+            
+            document.getElementById('room-modal').style.display = 'none';
+            document.getElementById('room-info').innerText = '🌐 Sala: ' + salaId;
+            document.getElementById('btn-share-room').style.display = 'inline-block';
+            document.getElementById('chat-section').style.display = 'block';
+            
+            conectarASala(salaId);
+        } catch (error) { console.error(error); alert('Error de conexión.'); }
+    };
+
+    function conectarASala(salaId) {
+        if (unsubscribeRoom) unsubscribeRoom();
+        if (unsubscribeChat) unsubscribeChat();
+
+        currentRoomRef = ref(db, 'salas_potencial/' + salaId + '/state');
+        chatRoomRef = ref(db, 'salas_potencial/' + salaId + '/chat');
+        
+        unsubscribeRoom = onValue(currentRoomRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && !window.isSendingData) {
+                isReceiving = true;
+                window.appState.objects = data.objects || [];
+                window.appState.origin = data.origin || { x: null, y: null };
+                window.appState.rawStrokes = data.rawStrokes || [];
+                window.appState.boards = data.boards || [{ id: 1, name: "Pizarra 1", objects: [], rawStrokes: [], origin: { x: null, y: null } }];
+                window.appState.activeBoardIndex = data.activeBoardIndex !== undefined ? data.activeBoardIndex : 0;
+                
+                window.appState.selectedObjects = [];
+                document.getElementById('float-delete').style.display = 'none';
+
+                window.updateBoardsUI(); window.updateUI(); window.analizarFisica(); window.redraw();
+                setTimeout(() => { isReceiving = false; }, 50);
+            }
+        });
+
+        unsubscribeChat = onValue(chatRoomRef, (snapshot) => {
+            const chatBox = document.getElementById('chat-box'); chatBox.innerHTML = '';
+            const data = snapshot.val();
+            if (data) {
+                Object.values(data).forEach(msg => {
+                    const esMio = auth.currentUser && msg.email === auth.currentUser.email;
+                    const colorFondo = esMio ? '#2e4a3f' : '#1e3a4d';
+                    const align = esMio ? 'right' : 'left';
+                    const nick = msg.email.split('@')[0];
+                    chatBox.innerHTML += `<div style="text-align: ${align}; margin-bottom: 5px;"><span style="font-size: 0.7rem; color: #aaa;">${nick}</span><br><span style="background: ${colorFondo}; color: white; padding: 6px 10px; border-radius: 8px; display: inline-block; max-width: 90%; word-wrap: break-word; text-align: left;">${msg.text}</span></div>`;
+                });
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } else {
+                chatBox.innerHTML = '<i style="color: #666;">Sin mensajes. ¡Saluda a tu grupo!</i>';
+            }
+        });
+    }
+
+    window.enviarMensajeChat = function() {
+        const input = document.getElementById('chat-input'); const text = input.value.trim();
+        if (!text || !auth.currentUser || !chatRoomRef) return;
+        push(chatRoomRef, { email: auth.currentUser.email, text: text, timestamp: Date.now() });
+        input.value = '';
+    };
+
+    window.enviarEstadoNube = function() {
+        if (!currentRoomRef || isReceiving || !auth.currentUser) return;
+        window.isSendingData = true;
+        set(currentRoomRef, {
+            objects: window.appState.objects,
+            origin: window.appState.origin,
+            rawStrokes: window.appState.rawStrokes,
+            boards: window.appState.boards,
+            activeBoardIndex: window.appState.activeBoardIndex
+        }).then(() => { window.isSendingData = false; });
+    };
+</script>
+</body>
+</html>

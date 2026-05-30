@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taller Interactivo: Distribuciones de Carga Continua</title>
+    <!-- Bibliotecas Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls para interacción manual -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .math-tex { font-size: 1.1em; color: #2563eb; }
+        .canvas-container { position: relative; width: 100%; height: 280px; background: #000; border-radius: 0.75rem; overflow: hidden; cursor: grab; }
+        .canvas-container:active { cursor: grabbing; }
+        .drawing-layer { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 30; width: 100vw; height: 100vh; }
+        .drawing-layer.active { pointer-events: auto; cursor: crosshair; }
+        
+        /* Cargas y SVG Específicos */
+        .charge-pos { fill: #ef4444; stroke: #b91c1c; stroke-width: 1.5; transition: transform 0.2s; cursor: pointer; }
+        .charge-neg { fill: #3b82f6; stroke: #1d4ed8; stroke-width: 1.5; transition: transform 0.2s; cursor: pointer; }
+        .point-p { fill: #10b981; stroke: #059669; stroke-width: 2.5; transition: transform 0.2s; cursor: pointer; }
+        .charge-continuous { fill: #fca5a5; stroke: #ef4444; stroke-width: 1.5; opacity: 0.8; }
+        .charge-continuous-neg { fill: #93c5fd; stroke: #3b82f6; stroke-width: 1.5; opacity: 0.8; }
+        .svg-container { display: flex; justify-content: center; align-items: center; padding: 1.5rem; background: #ffffff; border-radius: 1rem; border: 1px solid #e2e8f0; min-height: 180px; box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
+        .case-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+        
+        @media print {
+            .no-print { display: none !important; }
+            .page-break { page-break-after: always; }
+            body { background: white; padding: 0; }
+            .problem-card { border: 1px solid #e2e8f0; break-inside: avoid; box-shadow: none; margin-bottom: 1rem; }
+            main { display: block !important; }
+            .svg-container { border: 1px solid #ccc; box-shadow: none; }
+        }
+        .toolbar-btn { transition: all 0.2s; }
+        .toolbar-btn:hover { transform: translateY(-1px); }
+        input[type="number"], input[type="range"] { border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px 5px; width: 100%; accent-color: #2563eb; }
+        .hint-content { display: none; margin-top: 0.5rem; }
+        .hint-content.show { display: block; }
+        .compact-text { font-size: 0.85rem; line-height: 1.5; color: #334155; }
+        .problem-text { margin-bottom: 0.75rem; padding-left: 0.5rem; border-left: 3px solid #cbd5e1; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Capa de Dibujo Global -->
+    <canvas id="globalDrawingCanvas" class="drawing-layer"></canvas>
+
+    <!-- Toolbar Superior Fija -->
+    <nav class="no-print sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 mb-6 px-4 py-3 flex flex-wrap gap-3 items-center justify-between rounded-xl shadow-sm">
+        <div class="flex items-center gap-3">
+            <h1 class="font-bold text-slate-800 text-sm md:text-base">Physics.10easy Workshop</h1>
+            <div class="h-6 w-px bg-slate-300 hidden md:block"></div>
+            <button onclick="exportToPDF()" class="toolbar-btn bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-blue-700">Exportar PDF</button>
+            <button onclick="toggleAllHints()" class="toolbar-btn bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 hover:bg-slate-200">Tips Didácticos</button>
+            <button onclick="toggleAllRotations()" class="toolbar-btn bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-md hover:bg-emerald-600">Pausar Vista 3D</button>
+        </div>
+        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+            <button id="penBtn" onclick="setDrawingMode('pen')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Lápiz">✏️</button>
+            <button id="eraserBtn" onclick="setDrawingMode('eraser')" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Borrador">🧽</button>
+            <button onclick="clearCanvas()" class="p-1.5 rounded hover:bg-white transition-colors text-sm" title="Limpiar todo">🗑️</button>
+            <button id="toggleDrawBtn" onclick="toggleDrawing()" class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-blue-600 border-l border-slate-300 ml-1">Dibujo OFF</button>
+        </div>
+    </nav>
+
+    <!-- Header Principal -->
+    <header class="text-center mb-8 border-b border-blue-100 pb-6">
+        <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Taller: Distribuciones de Carga Continua</h2>
+        <p class="text-slate-500 mt-2 text-sm">Física II • Electromagnetismo • Integración de Elementos de Carga (\(dq\))</p>
+        <div class="flex flex-wrap justify-center gap-4 md:gap-8 mt-4 text-[10px] md:text-xs font-mono text-slate-400 uppercase tracking-widest">
+            <span>Grupo: 10E-PHYS</span>
+            <span>Docente: Physics.10easy Builder</span>
+            <span>Unidad 3</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto space-y-6" id="taller-content">
+        
+        <!-- PROBLEMA 1: DENSIDADES DE CARGA -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+            <div class="flex items-start gap-4 mb-6">
+                <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0">1</span>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Conceptos: Geometría de la Carga Continua</h3>
+                    <p class="text-slate-500 text-sm">Identifique el diferencial de carga \(dq\) apropiado para cada dimensión geométrica.</p>
+                </div>
+            </div>
+
+            <div class="case-grid grid-cols-1 md:grid-cols-3">
+                <!-- Lineal -->
+                <div class="border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-center">
+                    <span class="text-[9px] font-bold text-slate-400 block mb-2 uppercase tracking-widest">1D: Densidad Lineal (\(\lambda\))</span>
+                    <svg viewBox="0 0 100 50" class="h-16 mx-auto">
+                        <line x1="10" y1="25" x2="90" y2="25" stroke="#ef4444" stroke-width="4" stroke-linecap="round" />
+                        <rect x="45" y="21" width="10" height="8" fill="#1e293b" />
+                        <text x="50" y="15" font-size="6" font-family="monospace" text-anchor="middle" font-weight="bold">dl</text>
+                        <text x="80" y="40" font-size="7" font-weight="bold" fill="#ef4444">Q</text>
+                    </svg>
+                    <div class="mt-2 text-xs font-mono text-slate-700">\( dq = \lambda \cdot dl \)</div>
+                </div>
+                <!-- Superficial -->
+                <div class="border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-center">
+                    <span class="text-[9px] font-bold text-slate-400 block mb-2 uppercase tracking-widest">2D: Densidad Superficial (\(\sigma\))</span>
+                    <svg viewBox="0 0 100 50" class="h-16 mx-auto">
+                        <polygon points="20,40 80,40 90,10 30,10" class="charge-continuous" />
+                        <polygon points="50,25 60,25 62,20 52,20" fill="#1e293b" />
+                        <text x="56" y="16" font-size="6" font-family="monospace" text-anchor="middle" font-weight="bold">dA</text>
+                        <text x="75" y="35" font-size="7" font-weight="bold" fill="#ef4444">Q</text>
+                    </svg>
+                    <div class="mt-2 text-xs font-mono text-slate-700">\( dq = \sigma \cdot dA \)</div>
+                </div>
+                <!-- Volumétrica -->
+                <div class="border border-slate-100 rounded-xl p-3 bg-slate-50/50 text-center">
+                    <span class="text-[9px] font-bold text-slate-400 block mb-2 uppercase tracking-widest">3D: Densidad Volumétrica (\(\rho\))</span>
+                    <svg viewBox="0 0 100 50" class="h-16 mx-auto">
+                        <circle cx="50" cy="25" r="20" class="charge-continuous" />
+                        <rect x="45" y="20" width="10" height="10" fill="#1e293b" rx="1" />
+                        <text x="50" y="15" font-size="6" font-family="monospace" text-anchor="middle" font-weight="bold">dV</text>
+                        <text x="60" y="35" font-size="7" font-weight="bold" fill="#ef4444">Q</text>
+                    </svg>
+                    <div class="mt-2 text-xs font-mono text-slate-700">\( dq = \rho \cdot dV \)</div>
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Regla de Integración</button>
+                <div class="hint-content p-3 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                    Para hallar el Campo Eléctrico o Potencial de un objeto continuo, dividimos el objeto en fragmentos diminutos \(dq\). Luego, sumamos las contribuciones de todos los fragmentos usando integración: 
+                    \( \vec{E} = \int \frac{k \cdot dq}{r^2} \hat{r} \) y \( V = \int \frac{k \cdot dq}{r} \).
+                </div>
+            </div>
+        </section>
+
+        <!-- GRUPO 2: PROBLEMAS CON SVG (GRID) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            
+            <!-- PROBLEMA 2: ANILLO CARGADO -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">2</span>
+                    <h3 class="text-lg font-bold">Anillo Uniformemente Cargado</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Un anillo delgado de radio \(R = 15.0\text{ cm}\) tiene una carga total \(Q = +24.0\ \mu\text{C}\) distribuida uniformemente en su longitud.</p>
+                    <ul class="space-y-1 mt-2 text-xs">
+                        <li><strong>(a)</strong> Demuestre la expresión analítica para el Campo Eléctrico \(\vec{E}\) en un punto P sobre el eje central (eje Z), a una distancia \(z\) del centro.</li>
+                        <li><strong>(b)</strong> Calcule la magnitud de \(E\) en \(z = 20.0\text{ cm}\).</li>
+                    </ul>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 200 150" class="w-full max-w-[260px]">
+                        <!-- Ejes -->
+                        <line x1="100" y1="130" x2="100" y2="20" stroke="#cbd5e1" stroke-dasharray="2" />
+                        <text x="105" y="25" font-size="10" font-family="monospace">z</text>
+                        <!-- Anillo en perspectiva -->
+                        <ellipse cx="100" cy="110" rx="60" ry="15" fill="none" stroke="#ef4444" stroke-width="4" />
+                        <!-- Punto P y dq -->
+                        <circle cx="100" cy="40" r="4" class="point-p"/><text x="110" y="45" font-weight="bold" font-size="12">P</text>
+                        <circle cx="40" cy="110" r="4" fill="#1e293b" /><text x="25" y="115" font-size="10">dq</text>
+                        <!-- Vector r -->
+                        <line x1="40" y1="110" x2="100" y2="40" stroke="#94a3b8" stroke-dasharray="3" />
+                        <text x="60" y="70" font-size="10">r</text>
+                        <!-- dE -->
+                        <line x1="100" y1="40" x2="130" y2="5" stroke="#3b82f6" stroke-width="1.5" />
+                        <polygon points="130,5 125,10 132,10" fill="#3b82f6" transform="rotate(-15, 130, 5)"/>
+                        <text x="135" y="15" font-size="10" fill="#3b82f6" font-weight="bold">dE</text>
+                        <!-- Radio R -->
+                        <line x1="100" y1="110" x2="160" y2="110" stroke="#475569" />
+                        <text x="125" y="105" font-size="10">R</text>
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista de Simetría</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        Por simetría, las componentes perpendiculares al eje Z (\(dE_x, dE_y\)) se cancelan. Solo sobrevive \(dE_z = dE \cdot \cos(\theta)\). Sustituye \(\cos(\theta) = \frac{z}{r}\) y \(r = \sqrt{R^2 + z^2}\). Como \(z\) y \(R\) son constantes para todos los \(dq\) del anillo, la integral de \(dq\) es simplemente la carga total \(Q\).
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 3: LÍNEA FINITA -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">3</span>
+                    <h3 class="text-lg font-bold">Hilo Rectilíneo Finito</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Un hilo recto de longitud \(L = 2a\) tiene una carga positiva distribuida de manera uniforme con densidad lineal \(\lambda\).</p>
+                    <p class="font-bold text-primary mt-2">Encuentre el potencial eléctrico \(V\) en un punto P situado sobre la mediatriz del hilo, a una distancia \(x\) de su centro.</p>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 250 160" class="w-full">
+                        <line x1="40" y1="80" x2="210" y2="80" stroke="#cbd5e1" stroke-dasharray="2" /> <!-- Eje X -->
+                        <line x1="50" y1="20" x2="50" y2="140" stroke="#ef4444" stroke-width="4" stroke-linecap="round" /> <!-- Hilo -->
+                        <text x="35" y="30" font-size="10">+a</text>
+                        <text x="35" y="140" font-size="10">-a</text>
+                        
+                        <circle cx="50" cy="40" r="3" fill="#1e293b" /><text x="25" y="45" font-size="10">dy</text>
+                        
+                        <circle cx="170" cy="80" r="4" class="point-p"/><text x="180" y="85" font-weight="bold" font-size="12">P</text>
+                        
+                        <line x1="50" y1="40" x2="170" y2="80" stroke="#94a3b8" stroke-dasharray="3" />
+                        <text x="100" y="55" font-size="10">r</text>
+                        <text x="100" y="95" font-size="10">x</text>
+                        <text x="60" y="65" font-size="10">y</text>
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista de Integración</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        El elemento de carga es \(dq = \lambda dy\). La distancia es \(r = \sqrt{x^2 + y^2}\). El potencial es la integral escalar \( V = \int_{-a}^{a} \frac{k \lambda dy}{\sqrt{x^2 + y^2}} \). Utilice la tabla de integrales: \(\int \frac{du}{\sqrt{u^2 + c^2}} = \ln(u + \sqrt{u^2 + c^2})\).
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 4: PLANO INFINITO -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">4</span>
+                    <h3 class="text-lg font-bold">Placa Plana y Levitación</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Una lámina horizontal muy grande (infinita) posee una densidad de carga superficial \(\sigma = -4.5 \times 10^{-9}\text{ C/m}^2\).</p>
+                    <p class="font-bold text-primary mt-2">Un protón (\(m = 1.67 \times 10^{-27}\text{ kg}\)) se suelta sobre la lámina. Determine su aceleración inicial debido al campo eléctrico y la gravedad.</p>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 250 160" class="w-full">
+                        <!-- Plano en perspectiva -->
+                        <polygon points="30,120 180,120 220,80 70,80" class="charge-continuous-neg" />
+                        <text x="40" y="110" font-size="12" font-weight="bold" fill="#1e3a8a">σ (-)</text>
+                        
+                        <!-- Protón -->
+                        <circle cx="125" cy="40" r="6" class="charge-pos"/><text x="135" y="45" font-size="10">p⁺</text>
+                        
+                        <!-- Fuerzas -->
+                        <line x1="125" y1="40" x2="125" y2="70" stroke="#3b82f6" stroke-width="2" />
+                        <polygon points="125,70 120,60 130,60" fill="#3b82f6" />
+                        <text x="135" y="65" font-size="10" fill="#1d4ed8" font-weight="bold">F_e</text>
+                        
+                        <line x1="125" y1="40" x2="125" y2="90" stroke="#059669" stroke-width="2" />
+                        <polygon points="125,90 120,80 130,80" fill="#059669" />
+                        <text x="100" y="85" font-size="10" fill="#059669" font-weight="bold">mg</text>
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        El campo eléctrico de una placa infinita es uniforme y constante a cualquier distancia: \(E = \frac{|\sigma|}{2\epsilon_0}\). Ambas fuerzas (eléctrica y gravitatoria) apuntan hacia abajo. Usa la segunda ley de Newton: \( \sum F = m \cdot a \implies qE + mg = m \cdot a\).
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 5: ESFERA SÓLIDA VOLUMÉTRICA -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">5</span>
+                    <h3 class="text-lg font-bold">Esfera Sólida (Distribución Volumétrica)</h3>
+                </div>
+                <div class="problem-text compact-text mb-4">
+                    <p>Una esfera aislante de radio \(R\) tiene una carga \(Q\) distribuida uniformemente en todo su volumen (\(\rho = cte\)).</p>
+                    <p class="font-bold text-primary mt-2">Aplicando la Ley de Gauss, encuentre la magnitud del campo eléctrico \(E\) para un radio interno \(r < R\).</p>
+                </div>
+                
+                <div class="svg-container w-full h-[180px] mt-auto">
+                    <svg viewBox="0 0 200 160" class="w-full max-w-[200px]">
+                        <!-- Esfera solida -->
+                        <circle cx="100" cy="80" r="60" fill="#fca5a5" opacity="0.5" stroke="#ef4444" stroke-width="2" />
+                        <text x="120" y="50" font-size="12" fill="#b91c1c" font-weight="bold">ρ</text>
+                        <!-- Superficie Gaussiana -->
+                        <circle cx="100" cy="80" r="35" fill="none" stroke="#10b981" stroke-dasharray="4" stroke-width="2" />
+                        <text x="75" y="100" font-size="10" fill="#059669" font-weight="bold">Sup. Gauss</text>
+                        
+                        <!-- Radios -->
+                        <line x1="100" y1="80" x2="160" y2="80" stroke="#475569" />
+                        <text x="145" y="75" font-size="10">R</text>
+                        
+                        <line x1="100" y1="80" x2="100" y2="45" stroke="#059669" />
+                        <text x="90" y="65" font-size="10">r</text>
+                        
+                        <circle cx="100" cy="80" r="3" fill="#1e293b" />
+                    </svg>
+                </div>
+                <div class="mt-4">
+                    <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista de Gauss</button>
+                    <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                        La carga encerrada \(q_{enc}\) por la superficie gaussiana imaginaria de radio \(r\) es una fracción del total: \(q_{enc} = \rho \cdot V_{gauss} = \rho \left( \frac{4}{3}\pi r^3 \right)\). Al aplicar Gauss \(\oint E \cdot dA = \frac{q_{enc}}{\epsilon_0}\), el área es \(4\pi r^2\). El campo crece linealmente con \(r\).
+                    </div>
+                </div>
+            </article>
+
+            <!-- PROBLEMA 6: ARCO DE CARGA -->
+            <article class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2 flex flex-col md:flex-row gap-6">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="bg-primary text-white w-8 h-8 rounded-lg flex items-center justify-center font-black text-sm">6</span>
+                        <h3 class="text-lg font-bold">Arco de Carga Uniforme</h3>
+                    </div>
+                    <div class="problem-text compact-text">
+                        <p>Un alambre de plástico no conductor está doblado en forma de un semicírculo de radio \(R\).</p>
+                        <p>Tiene una carga total \(+Q\) distribuida uniformemente a lo largo de su longitud.</p>
+                        <p class="font-bold text-primary mt-2">Halle el potencial eléctrico \(V\) y el campo eléctrico \(\vec{E}\) en el punto \(O\) (el centro de curvatura).</p>
+                    </div>
+                    <div class="mt-4">
+                        <button onclick="toggleHint(this)" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 no-print">💡 Ver Pista Analítica</button>
+                        <div class="hint-content p-2 bg-blue-50 rounded border border-blue-100 text-xs text-slate-700">
+                            <strong>Para el Potencial (Escalar):</strong> Todos los \(dq\) están exactamente a la misma distancia \(R\) del punto O. Por tanto, no hay que integrar vectores. La respuesta es directa: \(V = \frac{kQ}{R}\). <br><br>
+                            <strong>Para el Campo (Vectorial):</strong> Por simetría, las componentes horizontales se cancelan. Solo se integran las componentes verticales: \(dE_y = \frac{k \cdot dq}{R^2} \sin(\theta)\), donde \(dq = \lambda \cdot R \cdot d\theta\). Integra desde $0$ a $\pi$.
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1 flex flex-col justify-center">
+                    <div class="svg-container bg-slate-50 border-slate-200 rounded-xl h-[160px]">
+                        <svg viewBox="0 0 200 120" class="w-full max-w-[200px]">
+                            <!-- Ejes -->
+                            <line x1="20" y1="100" x2="180" y2="100" stroke="#cbd5e1" stroke-dasharray="2" />
+                            <line x1="100" y1="110" x2="100" y2="10" stroke="#cbd5e1" stroke-dasharray="2" />
+                            
+                            <!-- Semicirculo -->
+                            <path d="M 40 100 A 60 60 0 0 1 160 100" fill="none" stroke="#ef4444" stroke-width="4" stroke-linecap="round" />
+                            <text x="140" y="40" font-size="12" fill="#b91c1c" font-weight="bold">+λ</text>
+                            
+                            <!-- Punto O -->
+                            <circle cx="100" cy="100" r="4" class="point-p"/><text x="105" y="115" font-weight="bold" font-size="12">O</text>
+                            
+                            <!-- dq y radio -->
+                            <circle cx="57" cy="57" r="4" fill="#1e293b" /><text x="35" y="55" font-size="10">dq</text>
+                            <line x1="100" y1="100" x2="57" y2="57" stroke="#94a3b8" />
+                            <text x="85" y="75" font-size="10">R</text>
+                            
+                            <!-- Angulo -->
+                            <path d="M 80 100 A 20 20 0 0 1 85 85" fill="none" stroke="#64748b" />
+                            <text x="70" y="95" font-size="10">θ</text>
+                        </svg>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <!-- VISUALIZACIÓN AVANZADA 3D: SUPERFICIE DE POTENCIAL DEL ANILLO -->
+        <section class="problem-card bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-3">
+            <div class="flex justify-between items-start mb-2">
+                <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-[10px] font-bold tracking-wider">VISUALIZACIÓN AVANZADA 3D - PAISAJE DE POTENCIAL DE UN ANILLO</span>
+                <span class="text-slate-400 text-[10px] uppercase font-semibold">Three.js Engine</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="problem-text compact-text text-xs md:col-span-1" style="border-left-color: #6366f1;">
+                    <strong>Simulador Topográfico de Potencial (Anillo Cargado):</strong><br><br>
+                    El potencial eléctrico generado por una distribución continua se mapea en 3D calculando la superposición de infinitos puntos de carga.<br><br>
+                    En este modelo, observamos el <strong>"Cráter de Potencial"</strong> creado por un anillo cargado uniformemente en el plano XZ. La altura (eje vertical) representa la magnitud del potencial \(V\). <br><br>
+                    Note cómo el potencial alcanza un valor máximo en el borde del anillo y desciende de forma curva hacia el centro (originando un mínimo local, aunque el campo E es cero allí) y decae suavemente hacia el exterior a medida que \(1/r\).
+                </div>
+                
+                <div class="md:col-span-2 flex flex-col gap-2">
+                    <div class="canvas-container h-[300px] w-full" id="container-3dfield">
+                        <div class="absolute top-2 left-2 text-white/70 text-[10px] font-mono">Topografía de V - Anillo de Carga Continua</div>
+                        <div class="absolute bottom-2 left-2 z-10 no-print">
+                            <button onclick="toggleRotation('3dfield')" class="bg-blue-600 text-white px-2 py-1 text-[10px] rounded btn-pause shadow hover:bg-blue-700">Pausar Vista</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-20 border-t border-slate-200 bg-white py-12 text-center">
+        <div class="max-w-4xl mx-auto px-6">
+            <h4 class="text-primary font-black uppercase tracking-widest text-xs mb-4">Taller Didáctico de Física</h4>
+            <p class="text-slate-500 text-[11px] leading-relaxed max-w-xl mx-auto">
+                Taller interactivo de repaso de Electromagnetismo enfocado en técnicas de integración para distribuciones de Carga Continua (Ley de Coulomb y Ley de Gauss).
+            </p>
+            <div class="flex justify-center gap-8 mt-6 grayscale opacity-40">
+                <div class="text-[9px] font-mono">FÍSICA_II_2026</div>
+                <div class="text-[9px] font-mono">ID_DOC: CT-CONTINUA-03</div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts de Lógica y Visualización -->
+    <script>
+        const scenes = {};
+
+        // Iniciar Three.js al cargar
+        function init3D() {
+            createSceneRing('3dfield', 'container-3dfield');
+            animate();
+        }
+
+        function createSceneRing(id, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a); // Fondo oscuro
+
+            const camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 18, 22); // Cámara viendo desde arriba-lado
+            camera.lookAt(0, 0, 0);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true; 
+            controls.autoRotateSpeed = 1.0;
+
+            // Iluminación
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambient);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(10, 20, 10);
+            scene.add(dirLight);
+
+            const meshGroup = new THREE.Group();
+
+            // 1. Crear el plano base para mapear el potencial del Anillo
+            const size = 20;
+            const resolution = 150;
+            const geometry = new THREE.PlaneGeometry(size, size, resolution, resolution);
+            
+            // Rotar para que quede plano (XY a XZ)
+            geometry.rotateX(-Math.PI / 2);
+
+            const pos = geometry.attributes.position;
+            const colors = [];
+            const colorPos = new THREE.Color(0xef4444); // Rojo (Alto potencial)
+            const colorZero = new THREE.Color(0x1e293b); // Base oscura
+
+            // Aproximación de un anillo continuo usando integración discreta (muchas cargas)
+            const ringRadius = 5;
+            const numCharges = 60; 
+            const qTotal = 20;
+            const dq = qTotal / numCharges;
+            const ringCharges = [];
+
+            for(let i=0; i<numCharges; i++) {
+                let theta = (i / numCharges) * Math.PI * 2;
+                ringCharges.push(new THREE.Vector3(ringRadius * Math.cos(theta), 0, ringRadius * Math.sin(theta)));
+            }
+
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i);
+                let z = pos.getZ(i);
+
+                let V = 0;
+                // Sumar potencial de todas las cargas del anillo
+                for(let c of ringCharges) {
+                    let r = Math.sqrt(Math.pow(x - c.x, 2) + Math.pow(z - c.z, 2));
+                    r = Math.max(r, 0.3); // Prevenir pico infinito justo encima del anillo
+                    V += (dq / r);
+                }
+                
+                // Escalar altura
+                let h = V * 1.5;
+                pos.setY(i, h);
+
+                // Asignar color según altura (Potencial)
+                let vertexColor = new THREE.Color();
+                let factor = Math.min(1, h / 12);
+                vertexColor.lerpColors(colorZero, colorPos, Math.pow(factor, 0.8)); // Power for better color distribution
+                
+                colors.push(vertexColor.r, vertexColor.g, vertexColor.b);
+            }
+
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshPhongMaterial({
+                vertexColors: true,
+                side: THREE.DoubleSide,
+                flatShading: false,
+                shininess: 40,
+                transparent: true,
+                opacity: 0.95
+            });
+
+            const surfaceMesh = new THREE.Mesh(geometry, material);
+            meshGroup.add(surfaceMesh);
+
+            // 2. Anillo Visual flotando ligeramente encima para referencia
+            const ringGeom = new THREE.TorusGeometry(ringRadius, 0.15, 16, 100);
+            const ringMat = new THREE.MeshBasicMaterial({color: 0xffffff});
+            const ringMesh = new THREE.Mesh(ringGeom, ringMat);
+            ringMesh.rotation.x = Math.PI / 2;
+            ringMesh.position.y = 12; // Colocado sobre el pico del cráter
+            meshGroup.add(ringMesh);
+
+            // Plano base de referencia
+            const gridHelper = new THREE.GridHelper(20, 20, 0x475569, 0x1e293b);
+            gridHelper.position.y = -0.5;
+            meshGroup.add(gridHelper);
+
+            scene.add(meshGroup);
+
+            scenes[id] = { scene, camera, renderer, controls, meshGroup };
+            
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function rotateObject(id, angleDeg) {
+            const config = scenes[id];
+            if (!config) return;
+            const angleRad = (angleDeg * Math.PI) / 180;
+            config.meshGroup.rotation.y = angleRad;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            Object.keys(scenes).forEach(id => {
+                const s = scenes[id];
+                s.controls.update(); 
+                s.renderer.render(s.scene, s.camera);
+            });
+        }
+
+        function toggleRotation(id) {
+            scenes[id].controls.autoRotate = !scenes[id].controls.autoRotate;
+            updatePauseButtons();
+        }
+
+        function toggleAllRotations() {
+            let anyTrue = Object.values(scenes).some(s => s.controls.autoRotate);
+            Object.keys(scenes).forEach(k => scenes[k].controls.autoRotate = !anyTrue);
+            updatePauseButtons();
+        }
+
+        function updatePauseButtons() {
+            document.querySelectorAll('.btn-pause').forEach(btn => {
+                const match = btn.getAttribute('onclick').match(/'([^']+)'/);
+                if(match) {
+                    const id = match[1];
+                    const isRotating = scenes[id].controls.autoRotate;
+                    btn.innerText = isRotating ? "Pausar Vista" : "Reanudar Vista";
+                    btn.className = isRotating 
+                        ? "bg-blue-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-blue-700" 
+                        : "bg-emerald-600 text-white px-2 py-1 text-[10px] rounded shadow font-bold btn-pause no-print hover:bg-emerald-700";
+                }
+            });
+        }
+
+        // --- Lógica de Dibujo Global ---
+        const canvas = document.getElementById('globalDrawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let drawMode = 'pen';
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        function toggleDrawing() {
+            canvas.classList.toggle('active');
+            const btn = document.getElementById('toggleDrawBtn');
+            if (canvas.classList.contains('active')) {
+                btn.innerText = "Dibujo ON";
+                btn.classList.add('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                btn.innerText = "Dibujo OFF";
+                btn.classList.remove('text-blue-600', 'font-extrabold');
+                document.body.style.overflow = 'auto';
+            }
+            resizeCanvas();
+        }
+
+        function setDrawingMode(mode) {
+            drawMode = mode;
+            document.getElementById('penBtn').classList.toggle('bg-white', mode === 'pen');
+            document.getElementById('eraserBtn').classList.toggle('bg-white', mode === 'eraser');
+        }
+
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('touchstart', (e) => startDraw(e.touches[0]));
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); }, {passive: false});
+        canvas.addEventListener('touchend', endDraw);
+
+        function startDraw(e) {
+            if(!canvas.classList.contains('active')) return;
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.clientX, e.clientY);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.lineWidth = drawMode === 'pen' ? 3 : 40;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = drawMode === 'pen' ? '#dc2626' : '#f8fafc';
+            ctx.globalCompositeOperation = drawMode === 'pen' ? 'source-over' : 'destination-out';
+            ctx.lineTo(e.clientX, e.clientY);
+            ctx.stroke();
+        }
+
+        function endDraw() { isDrawing = false; }
+
+        function toggleHint(btn) { 
+            const hintElement = btn.nextElementSibling;
+            if(hintElement.classList.contains('show')) {
+                hintElement.classList.remove('show');
+            } else {
+                hintElement.classList.add('show');
+            }
+        }
+        
+        function toggleAllHints() { 
+            document.querySelectorAll('.hint-content').forEach(h => h.classList.toggle('show')); 
+        }
+
+        function exportToPDF() {
+            const element = document.body;
+            const opt = {
+                margin: 0.2,
+                filename: 'Taller_Carga_Continua.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        window.onload = () => { init3D(); resizeCanvas(); };
+        window.onresize = () => { resizeCanvas(); };
+    </script>
+</body>
+</html>

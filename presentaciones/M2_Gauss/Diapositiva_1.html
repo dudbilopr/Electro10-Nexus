@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EXGD1GSLLB"></script> <script> window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', 'G-EXGD1GSLLB'); </script>
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio: Campo Eléctrico y Diagrama de Cuerpo Libre</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MathJax -->
+    <script>
+        window.MathJax = {
+            tex: { 
+                inlineMath: [['$', '$'], ['\\(', '\\)']], 
+                displayMath: [['$$', '$$'], ['\\[', '\\]']], 
+                tags: 'none' 
+            },
+            chtml: { matchFontHeight: false }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+
+    <!-- Three.js Motor 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <style>
+        body, html {
+            margin: 0; padding: 0; width: 100vw; height: 100vh; overflow: hidden;
+            background-color: #0f172a; display: flex; justify-content: center; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none; /* Prevenir scroll en móviles al arrastrar */
+        }
+        #slide-wrapper {
+            width: 100%; height: 100%; max-width: 1920px; padding: 1.5vmin;
+            box-sizing: border-box; display: flex;
+        }
+        .slide {
+            background-color: #f8fafc; width: 100%; height: 100%;
+            border-radius: 1.5vmin; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+
+        .text-academic { font-family: 'Times New Roman', Times, serif; font-size: clamp(12px, 1.1vw, 17px); line-height: 1.4; }
+        .math-display { font-size: clamp(13px, 1.2vw, 19px); font-weight: bold; color: #1e3a8a; text-align: center; margin: 0.8vmin 0; }
+        .math-small { font-size: clamp(12px, 1.1vw, 17px); font-weight: bold; color: #1e3a8a; }
+
+        .canvas-wrapper {
+            width: 100%; height: 100%; position: relative;
+            background: radial-gradient(circle at center, #1e293b, #0f172a);
+            border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden;
+        }
+        .canvas-wrapper canvas { cursor: grab; }
+        .canvas-wrapper canvas:active { cursor: grabbing; }
+        
+        .graph-wrapper { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+        .dcl-wrapper { background: #1e293b; border: 1px solid #cbd5e1; border-radius: 0.5rem; overflow: hidden; position: relative; }
+
+        .hint-overlay {
+            position: absolute; top: 8px; left: 8px; background: rgba(255,255,255,0.95);
+            padding: 6px 12px; border-radius: 6px; font-size: clamp(10px, 0.8vw, 13px);
+            font-weight: 600; color: #1e293b; pointer-events: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 10;
+            border-left: 4px solid #3b82f6;
+        }
+
+        input[type=range] { accent-color: #2563eb; width: 100%; cursor: pointer; }
+        .control-panel { background: #e2e8f0; border-radius: 0.5rem; padding: 1vmin; margin-bottom: 1vmin; display: flex; flex-wrap: wrap; gap: 1.5vmin; align-items: center; border: 1px solid #cbd5e1; font-size: clamp(11px, 0.9vw, 15px); }
+        .control-group { display: flex; align-items: center; gap: 0.5vmin; }
+        
+        /* Tooltips css */
+        .tip-btn { cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 1.5em; height: 1.5em; border-radius: 50%; background-color: #f59e0b; color: white; font-weight: bold; font-family: sans-serif; font-size: 0.8em; margin-left: 0.5em; transition: all 0.2s; }
+        .tip-content { position: absolute; left: 100%; top: -50%; margin-left: 10px; width: max-content; max-width: 250px; background: #fffbeb; border: 1px solid #fcd34d; padding: 1vmin; border-radius: 0.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 999999; opacity: 0; visibility: hidden; transform: translateX(-10px); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); font-family: system-ui, sans-serif; font-size: clamp(11px, 0.9vw, 14px); color: #92400e; }
+        .tip-wrapper:hover .tip-content { display: none; opacity: 1; visibility: visible; transform: translateX(0); }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #94a3b8; border-radius: 10px; }
+
+        #paint-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 40; touch-action: none; pointer-events: none; }
+        .paint-mode-active { cursor: crosshair !important; pointer-events: auto !important; }
+
+        .btn-ui { padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-size: 0.85em; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+        .btn-ui:hover { opacity: 0.8; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+    <div id="slide-wrapper">
+        <div class="slide">
+            
+            <header class="flex-none bg-slate-900 text-white flex flex-col justify-center px-[3vmin] py-[1.5vmin] border-b-[0.5vmin] border-blue-500">
+                <h1 class="font-bold tracking-wide flex items-center gap-3" style="font-size: clamp(20px, 2vw, 36px);">
+                    🔬 Laboratorio Interactivo: Campo Eléctrico Dinámico 2D/3D
+                </h1>
+                <p class="text-blue-300" style="font-size: clamp(12px, 1vw, 18px);">
+                    Proporcionalidad del Campo, Topología, DCL y Escalas Visibles
+                </p>
+            </header>
+
+            <div class="flex-1 flex flex-row p-[1.5vmin] gap-[2vmin] min-h-0">
+
+                <!-- COLUMNA IZQUIERDA: TEORÍAS DINÁMICAS -->
+                <div class="w-[42%] flex flex-col text-academic overflow-y-auto pr-2 custom-scroll" id="theory-container">
+                    
+                    <!-- BASE COMÚN -->
+                    <div class="bg-slate-100 p-[1.5vmin] border-l-[0.5vmin] border-blue-600 shadow-sm rounded-r-lg mb-[1vmin]">
+                        <p class="mb-1 flex items-start">
+                            <span>El <strong>Campo Eléctrico ($\vec{E}$)</strong> es una magnitud vectorial. <strong>La densidad y cantidad de las líneas de campo es directamente proporcional a la magnitud de la carga ($|Q|$).</strong></span>
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Proporcionalidad y Topología:</strong> Si duplicas la carga, observarás el doble de líneas salir (o entrar) de ella. Además, las líneas NUNCA se cruzan en el espacio 3D ni 2D.</span>
+                            </span>
+                        </p>
+                        <div class="math-display">$$\vec{E} = \sum \frac{k Q_i}{r_i^2} \hat{r}_i \quad ; \quad \vec{F}_{neta} = q_0 \vec{E}_{neto}$$</div>
+                        <p class="text-xs text-slate-600 italic">Haz clic sobre cualquier carga para seleccionarla y modificar su magnitud y polaridad individualmente.</p>
+                    </div>
+
+                    <!-- CASO 1: VECTORES Y COMPONENTES (DCL) -->
+                    <div class="bg-emerald-50 p-[1.5vmin] border border-emerald-200 shadow-sm rounded-lg relative mb-[1vmin]">
+                        <p class="font-bold text-emerald-800 flex items-center">
+                            Fuerza, DCL y Trayectorias
+                            <span class="relative tip-wrapper inline-block ml-2 z-50">
+                                <span class="tip-btn">💡</span>
+                                <span class="tip-content"><strong>💡 Descomposición:</strong> La fuerza $\vec{F}$ puede descomponerse en $X$ e $Y$. Además, puedes animar la carga para que viaje a favor del campo o perpendicular a él (equipotencial).</span>
+                            </span>
+                        </p>
+                        <p class="mt-1 text-sm">La fuerza eléctrica resultante $\vec{F}$ es un vector que puede descomponerse trigonométricamente:</p>
+                        <div class="math-display">
+                            \begin{aligned}
+                            F_x &= |\vec{F}| \cos(\theta) \\
+                            F_y &= |\vec{F}| \sin(\theta)
+                            \end{aligned}
+                        </div>
+                        <hr class="border-emerald-200 my-2">
+                        <p class="font-bold text-sm text-emerald-900 flex items-center">
+                            ⚠️ Interpretación y Movimiento
+                        </p>
+                        <p class="text-xs">
+                            <strong>Equipotencial:</strong> Si seleccionas "Pasear Equipotencial", la carga se moverá a 90° del campo, manteniendo el campo local constante.<br>
+                            <strong>Líneas de Campo:</strong> Al "Pasear Línea de Campo", la carga acelerará siguiendo estrictamente las trayectorias curvas visibles.
+                        </p>
+                    </div>
+
+                    <!-- CASO ESPECÍFICO DINÁMICO -->
+                    <div id="teoria-dinamica" class="bg-indigo-50 p-[1.5vmin] border border-indigo-200 shadow-sm rounded-lg relative flex-1">
+                        <div id="teoria-c1" class="flex flex-col gap-1">
+                            <p class="font-bold text-indigo-800">Geometría: Carga Puntual (+Q)</p>
+                            <p class="text-sm">Modifica el deslizador "Sel. $Q$" y observa cómo la cantidad de líneas emanadas se ajusta de forma proporcional a la carga.</p>
+                        </div>
+                        <div id="teoria-c2" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">Geometría: Carga Puntual (-Q)</p>
+                            <p class="text-sm">Las líneas de campo convergen radialmente hacia el centro. Una carga de prueba positiva será atraída directamente hacia la fuente.</p>
+                        </div>
+                        <div id="teoria-c3" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">Geometría: Dipolo Eléctrico (+Q y -Q)</p>
+                            <p class="text-sm">Ajusta una de las cargas para que sea mayor que la otra. Verás cómo las líneas de la carga mayor superan en número a las de la menor, forzando a algunas líneas a escapar al infinito.</p>
+                        </div>
+                        <div id="teoria-c4" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">Geometría: Dos Cargas (+Q y +Q)</p>
+                            <p class="text-sm">Generan un plano de simetría repulsiva. Exactamente en el punto medio, el campo es nulo ($\vec{E} = 0$). Las líneas se repelen visualmente sin tocarse jamás.</p>
+                        </div>
+                        <div id="teoria-custom" class="hidden flex-col gap-1">
+                            <p class="font-bold text-indigo-800">Configuración Libre (Personalizada)</p>
+                            <p class="text-sm">Has añadido cargas manualmente o modificado una carga individual. Analiza cómo las líneas de campo en 3D se ajustan dinámicamente, manteniendo la proporcionalidad $N \propto |Q|$ y respetando la superposición.</p>
+                        </div>
+                    </div>
+
+                    <!-- CONCLUSIÓN -->
+                    <div class="bg-slate-800 text-white p-[1.5vmin] shadow-sm rounded-lg border border-slate-600 mt-[1vmin]">
+                        <p class="font-bold text-amber-400 mb-1 text-center">Datos del Sistema Interactivo</p>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs">Magnitud $\vec{E}$ Local:</span>
+                                <span id="ui-mag-e" class="font-mono font-bold text-white">0.00</span> <span class="text-xs">N/C</span>
+                            </div>
+                            <div class="bg-slate-700 p-2 rounded">
+                                <span class="block text-slate-300 text-xs">Fuerza Neta $\vec{F}$:</span>
+                                <span id="ui-mag-f" class="font-mono font-bold text-yellow-400">0.00</span> <span class="text-xs">N</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: VISUALIZACIONES Y CONTROLES -->
+                <div class="w-[58%] flex flex-col min-w-0 gap-[1vmin]">
+
+                    <!-- PANEL DE CONTROL AVANZADO -->
+                    <div class="control-panel shadow-sm relative z-20 flex-col !items-start">
+                        
+                        <!-- Fila 1 -->
+                        <div class="flex w-full gap-[1.5vmin] border-b border-slate-300 pb-1 mb-1 items-center">
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800">Vista:</label>
+                                <button id="btn-toggle-3d" class="btn-ui bg-indigo-100 text-indigo-800 border-indigo-300">Modo 2D</button>
+                            </div>
+                            
+                            <div class="control-group border-r border-slate-300 pr-3">
+                                <label class="font-bold text-slate-800">Sistema:</label>
+                                <select id="select-config" class="bg-white border border-slate-300 rounded px-1 py-0.5 font-bold text-slate-700 outline-none hover:border-blue-500 cursor-pointer">
+                                    <option value="c1">1. Puntual (+Q)</option>
+                                    <option value="c2">2. Puntual (-Q)</option>
+                                    <option value="c3">3. Dipolo (+Q, -Q)</option>
+                                    <option value="c4">4. Repulsión (+Q, +Q)</option>
+                                    <option value="custom">5. Libre</option>
+                                </select>
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-3 gap-1">
+                                <label class="font-bold text-slate-800">Cargas:</label>
+                                <button id="btn-add-pos" class="btn-ui bg-red-100 text-red-700 border-red-300" title="Agregar Carga Positiva">+Q</button>
+                                <button id="btn-add-neg" class="btn-ui bg-blue-100 text-blue-700 border-blue-300" title="Agregar Carga Negativa">-Q</button>
+                                <button id="btn-clear-custom" class="btn-ui bg-slate-200 text-slate-700 border-slate-300" title="Eliminar Todas">Limpiar</button>
+                            </div>
+                            
+                            <div class="control-group flex-1 justify-end">
+                                <select id="select-traj" class="bg-amber-50 border border-amber-300 text-amber-800 font-bold rounded px-1 py-0.5 cursor-pointer text-xs">
+                                    <option value="none">📍 Prueba: Manual</option>
+                                    <option value="equipotential">🔄 Paseo: Equipotencial</option>
+                                    <option value="field">⚡ Paseo: Línea de Campo</option>
+                                    <option value="random">🎲 Paseo: Aleatorio</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Fila 2 -->
+                        <div class="flex w-full gap-[1.5vmin] items-center">
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-red-700 text-xs md:text-sm" title="Selecciona una carga con clic para modificarla">Sel. $Q$ (μC):</label>
+                                <input type="range" id="slider-Q" min="-15" max="15" step="1" value="5" class="w-[3.5vw]">
+                                <span id="val-Q" class="font-mono font-bold w-[1.5vw] text-right text-red-600">5</span>
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-yellow-600 text-xs md:text-sm" title="Carga de prueba amarilla">Prueba $q_0$ (μC):</label>
+                                <input type="range" id="slider-q0" min="-5" max="5" step="1" value="1" class="w-[3.5vw]">
+                                <span id="val-q0" class="font-mono font-bold w-[1.5vw] text-right text-yellow-600">1</span>
+                            </div>
+
+                            <div class="control-group border-r border-slate-300 pr-2">
+                                <label class="font-bold text-indigo-600 text-xs md:text-sm" title="Escala visual de vectores">Escala:</label>
+                                <input type="range" id="slider-scale" min="0.2" max="2" step="0.1" value="1" class="w-[3vw]">
+                                <span id="val-scale" class="font-mono font-bold w-[1vw] text-right text-indigo-600">1.0</span>
+                            </div>
+
+                            <div class="control-group flex-1 justify-end gap-2 text-[10px] md:text-xs font-semibold text-slate-700">
+                                <label class="flex items-center cursor-pointer hover:text-blue-600">
+                                    <input type="checkbox" id="toggle-lines" checked class="mr-1"> Líneas
+                                </label>
+                                <label class="flex items-center cursor-pointer hover:text-blue-600">
+                                    <input type="checkbox" id="toggle-grid" checked class="mr-1"> Malla
+                                </label>
+                                <label class="flex items-center cursor-pointer text-indigo-700 border border-indigo-200 bg-indigo-50 px-1 rounded hover:bg-indigo-100">
+                                    <input type="checkbox" id="toggle-paint" class="mr-1"> ✏️
+                                </label>
+                                <button id="btn-clear-paint" class="btn-ui bg-red-100 text-red-700 border-red-300 hidden">Borrar</button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- ZONA VISUAL (3D + 2D) -->
+                    <div class="flex-1 flex gap-[1vmin] min-h-0">
+                        
+                        <!-- 3D Canvas / Paint Canvas -->
+                        <div class="w-[60%] h-full canvas-wrapper relative" id="canvas-wrapper-3d">
+                            <div class="hint-overlay shadow-md flex flex-col gap-1">
+                                <span>👆 <strong>Haz clic para seleccionar o arrastrar</strong></span>
+                                <span id="hint-3d" class="text-xs text-indigo-600 hidden">🔄 Arrastra el fondo para rotar en 3D</span>
+                            </div>
+                            
+                            <!-- Contenedor del Motor 3D -->
+                            <div id="canvas-3d" class="w-full h-full absolute top-0 left-0"></div>
+                            
+                            <!-- Pizarra Overlay (Herramienta Paint) -->
+                            <canvas id="paint-canvas"></canvas>
+                        </div>
+
+                        <!-- 2D Graph & DCL -->
+                        <div class="w-[40%] h-full flex flex-col gap-[1vmin]">
+                            
+                            <!-- Diagrama de Cuerpo Libre (DCL) -->
+                            <div class="h-[55%] dcl-wrapper p-[1vmin] flex flex-col">
+                                <div class="text-center font-bold text-emerald-400 mb-1" style="font-size: clamp(12px, 1vw, 15px);">
+                                    DCL: Descomposición Vectorial
+                                </div>
+                                <div class="flex-1 relative w-full" id="dcl-container">
+                                    <canvas id="dcl-canvas" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                                <div class="text-center text-xs text-slate-300 mt-1 font-mono flex justify-center gap-4">
+                                    <span>Fx: <span id="ui-fx" class="text-emerald-300">0.0</span></span>
+                                    <span>Fy: <span id="ui-fy" class="text-emerald-300">0.0</span></span>
+                                </div>
+                            </div>
+
+                            <!-- Gráfica Perfil del Campo -->
+                            <div class="h-[45%] graph-wrapper p-[1vmin] flex flex-col bg-slate-50">
+                                <div class="text-center font-bold text-slate-700 mb-1" style="font-size: clamp(12px, 1vw, 15px);">
+                                    Perfil $|\vec{E}|$ vs $X$
+                                </div>
+                                <div class="flex-1 relative w-full" id="graph-container">
+                                    <canvas id="graph-2d" class="absolute top-0 left-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- LÓGICA CORE: THREE.JS, INTERACCIÓN Y MATEMÁTICAS -->
+    <script>
+        // ==========================================
+        // 1. INICIALIZACIÓN DE THREE.JS Y ESCENA
+        // ==========================================
+        const cont3D = document.getElementById('canvas-3d');
+        const scene = new THREE.Scene();
+        
+        const aspect = cont3D.clientWidth / cont3D.clientHeight;
+        const cam = new THREE.PerspectiveCamera(40, aspect, 0.1, 100);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(cont3D.clientWidth, cont3D.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio); // Sharpness
+        cont3D.appendChild(renderer.domElement);
+        
+        const ctrl = new THREE.OrbitControls(cam, renderer.domElement);
+        ctrl.enableDamping = true;
+        
+        // Luces
+        scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+        const light = new THREE.DirectionalLight(0xffffff, 0.8);
+        light.position.set(5, 10, 15); 
+        scene.add(light);
+
+        // Grid estético de fondo
+        const gridHelper = new THREE.GridHelper(40, 40, 0x475569, 0x1e293b);
+        gridHelper.rotation.x = Math.PI / 2; // Plano XY
+        gridHelper.material.opacity = 0.2;
+        gridHelper.material.transparent = true;
+        gridHelper.position.z = -0.5; // Empujar atrás
+        scene.add(gridHelper);
+
+        // ==========================================
+        // 2. CONSTANTES FÍSICAS Y ESTADO
+        // ==========================================
+        const k_visual = 60; // Constante k escalada base
+        let params = {
+            config: 'c1',
+            q0: 1,  // μC (prueba)
+            is3D: false,
+            trajMode: 'none',
+            vectorScale: 1.0,
+            defaultQ: 5
+        };
+        
+        let sources = []; 
+        let testCharge = { mesh: null, q: params.q0 };
+        let selectedSource = null; 
+
+        // Materiales
+        const geoSource = new THREE.SphereGeometry(0.6, 32, 32);
+        const matPos = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.2, emissive: 0x550000 });
+        const matNeg = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.2, emissive: 0x000055 });
+        const geoTest = new THREE.SphereGeometry(0.35, 32, 32);
+        const matTest = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.1, emissive: 0x665500 });
+        
+        const sourceGroup = new THREE.Group();
+        scene.add(sourceGroup);
+
+        testCharge.mesh = new THREE.Mesh(geoTest, matTest);
+        scene.add(testCharge.mesh);
+
+        // Anillos de Selección
+        const ringGeoTest = new THREE.RingGeometry(0.45, 0.5, 32);
+        const ringMatTest = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+        const selectionRingTest = new THREE.Mesh(ringGeoTest, ringMatTest);
+        selectionRingTest.visible = false;
+        testCharge.mesh.add(selectionRingTest);
+
+        const ringGeoSource = new THREE.RingGeometry(0.85, 0.95, 32);
+        const ringMatSource = new THREE.MeshBasicMaterial({ color: 0x0ea5e9, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const selectionRingSource = new THREE.Mesh(ringGeoSource, ringMatSource);
+        selectionRingSource.visible = false;
+        scene.add(selectionRingSource); 
+
+        // Vectores y Grupos
+        const arrowE = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, 0xa855f7, 0.4, 0.2); 
+        const arrowF = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(), 1, 0x10b981, 0.5, 0.3); 
+        scene.add(arrowE);
+        scene.add(arrowF);
+
+        const matDashed = new THREE.LineDashedMaterial({ color: 0x10b981, dashSize: 0.2, gapSize: 0.1, linewidth: 2 });
+        const geoFx = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+        const lineFx = new THREE.Line(geoFx, matDashed);
+        const geoFy = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+        const lineFy = new THREE.Line(geoFy, matDashed);
+        scene.add(lineFx);
+        scene.add(lineFy);
+
+        const gridVectorsGroup = new THREE.Group();
+        scene.add(gridVectorsGroup);
+
+        const fieldLinesGroup = new THREE.Group();
+        scene.add(fieldLinesGroup);
+        const lineFieldMat = new THREE.LineBasicMaterial({ color: 0x94a3b8, transparent: true, opacity: 0.4 });
+
+        // ==========================================
+        // 3. VISTA 2D vs 3D
+        // ==========================================
+        function setupView() {
+            if (params.is3D) {
+                cam.position.set(12, -15, 15);
+                ctrl.enableRotate = true;
+                document.getElementById('btn-toggle-3d').textContent = "Modo 3D";
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-purple-100 text-purple-800 border-purple-300";
+                document.getElementById('hint-3d').classList.remove('hidden');
+            } else {
+                cam.position.set(0, 0, 22);
+                cam.rotation.set(0,0,0);
+                ctrl.enableRotate = false;
+                document.getElementById('btn-toggle-3d').textContent = "Modo 2D";
+                document.getElementById('btn-toggle-3d').className = "btn-ui bg-indigo-100 text-indigo-800 border-indigo-300";
+                document.getElementById('hint-3d').classList.add('hidden');
+            }
+            updateFieldLines(); 
+        }
+
+        document.getElementById('btn-toggle-3d').addEventListener('click', () => {
+            params.is3D = !params.is3D;
+            setupView();
+        });
+
+        // ==========================================
+        // 4. LÓGICA DE INTERACCIÓN: SELECCIÓN Y ARRASTRE
+        // ==========================================
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0); 
+        let draggedMesh = null; 
+
+        const canvasEl = renderer.domElement;
+
+        // Actualiza el UI para reflejar la carga seleccionada
+        function updateSelectionUI() {
+            if (selectedSource) {
+                let val = selectedSource.q;
+                document.getElementById('slider-Q').value = val;
+                document.getElementById('val-Q').textContent = val.toFixed(1);
+                document.getElementById('val-Q').className = `font-mono font-bold w-[1.5vw] text-right ${val >= 0 ? 'text-red-600' : 'text-blue-600'}`;
+            } else {
+                document.getElementById('slider-Q').value = params.defaultQ;
+                document.getElementById('val-Q').textContent = params.defaultQ.toFixed(1);
+                document.getElementById('val-Q').className = `font-mono font-bold w-[1.5vw] text-right ${params.defaultQ >= 0 ? 'text-red-600' : 'text-blue-600'}`;
+            }
+        }
+
+        canvasEl.addEventListener('pointerdown', (e) => {
+            if (document.getElementById('toggle-paint').checked) return; 
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, cam);
+            let draggableMeshes = [testCharge.mesh, ...sources.map(s => s.mesh)];
+            raycaster.params.Points.threshold = 0.5;
+
+            const intersects = raycaster.intersectObjects(draggableMeshes);
+
+            if (intersects.length > 0) {
+                draggedMesh = intersects[0].object;
+                
+                if (draggedMesh === testCharge.mesh) {
+                    selectionRingTest.visible = true;
+                    selectionRingSource.visible = false;
+                    selectedSource = null;
+                    params.trajMode = 'none'; 
+                    document.getElementById('select-traj').value = 'none';
+                } else {
+                    selectionRingTest.visible = false;
+                    selectedSource = sources.find(s => s.mesh === draggedMesh);
+                    selectionRingSource.visible = true;
+                    let currentScale = selectedSource.mesh.scale.x;
+                    selectionRingSource.scale.set(currentScale, currentScale, currentScale);
+                }
+                
+                updateSelectionUI();
+
+                canvasEl.setPointerCapture(e.pointerId);
+                document.body.style.cursor = 'grabbing';
+                ctrl.enabled = false; 
+            } else {
+                selectionRingTest.visible = false;
+                selectionRingSource.visible = false;
+                selectedSource = null;
+                updateSelectionUI();
+            }
+        });
+
+        canvasEl.addEventListener('pointermove', (e) => {
+            if (document.getElementById('toggle-paint').checked) return;
+
+            const rect = canvasEl.getBoundingClientRect();
+            mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+            if (draggedMesh) {
+                raycaster.setFromCamera(mouse, cam);
+                
+                if(params.is3D) {
+                     dragPlane.setFromNormalAndCoplanarPoint(cam.getWorldDirection(new THREE.Vector3()).multiplyScalar(-1), draggedMesh.position);
+                } else {
+                     dragPlane.set(new THREE.Vector3(0,0,1), 0);
+                }
+
+                const intersect = new THREE.Vector3();
+                raycaster.ray.intersectPlane(dragPlane, intersect);
+                if (intersect) {
+                    intersect.x = Math.max(-15, Math.min(15, intersect.x));
+                    intersect.y = Math.max(-10, Math.min(10, intersect.y));
+                    if(!params.is3D) intersect.z = 0;
+                    
+                    draggedMesh.position.copy(intersect);
+                    updateAllPhysics();
+                }
+            } else {
+                raycaster.setFromCamera(mouse, cam);
+                let draggableMeshes = [testCharge.mesh, ...sources.map(s => s.mesh)];
+                if (raycaster.intersectObjects(draggableMeshes).length > 0) {
+                    document.body.style.cursor = 'grab';
+                } else {
+                    document.body.style.cursor = 'default';
+                }
+            }
+        });
+
+        const onPointerUp = (e) => {
+            if (draggedMesh) {
+                if(draggedMesh === testCharge.mesh) selectionRingTest.visible = false;
+                draggedMesh = null;
+                document.body.style.cursor = 'default';
+                ctrl.enabled = true; 
+                try { canvasEl.releasePointerCapture(e.pointerId); } catch(err){}
+                updateFieldLines(); 
+            }
+        };
+
+        canvasEl.addEventListener('pointerup', onPointerUp);
+        canvasEl.addEventListener('pointercancel', onPointerUp);
+
+        // ==========================================
+        // 5. MOTOR MATEMÁTICO FÍSICO
+        // ==========================================
+        
+        function calculateE(pos) {
+            let E_total = new THREE.Vector3(0,0,0);
+            sources.forEach(source => {
+                let r_vec = new THREE.Vector3().subVectors(pos, source.mesh.position);
+                let r_dist = r_vec.length();
+                if (r_dist < 0.25) r_dist = 0.25; 
+                let r_hat = r_vec.clone().normalize();
+                let E_mag = k_visual * source.q / (r_dist * r_dist);
+                E_total.add(r_hat.multiplyScalar(E_mag));
+            });
+            return E_total;
+        }
+
+        // ==========================================
+        // 6. CONTINUOUS FIELD LINES (3D/2D Euler) + PROPORCIONALIDAD + VECTORES CORREGIDOS
+        // ==========================================
+        function updateFieldLines() {
+            fieldLinesGroup.clear();
+            if (!document.getElementById('toggle-lines').checked) return;
+
+            const step = 0.3;
+            const maxSteps = 150;
+            const radiusStart = 0.8;
+
+            sources.forEach(s => {
+                if (Math.abs(s.q) < 0.1) return; 
+                
+                // Proporcionalidad de líneas
+                let baseLines = params.is3D ? 6 : 4; 
+                let numLines = Math.max(4, Math.floor(Math.abs(s.q)) * baseLines);
+                
+                let isPositive = s.q > 0;
+
+                for (let i = 0; i < numLines; i++) {
+                    let pos = new THREE.Vector3();
+                    
+                    if (params.is3D) {
+                        let phi = Math.acos(1 - 2 * (i + 0.5) / numLines);
+                        let theta = Math.PI * (1 + Math.sqrt(5)) * i;
+                        let offset = isPositive ? 0 : 0.1;
+                        pos.set(
+                            s.mesh.position.x + radiusStart * Math.sin(phi) * Math.cos(theta + offset),
+                            s.mesh.position.y + radiusStart * Math.sin(phi) * Math.sin(theta + offset),
+                            s.mesh.position.z + radiusStart * Math.cos(phi)
+                        );
+                    } else {
+                        let angle = (i / numLines) * Math.PI * 2;
+                        let offset = isPositive ? 0 : 0.1;
+                        pos.set(
+                            s.mesh.position.x + radiusStart * Math.cos(angle + offset),
+                            s.mesh.position.y + radiusStart * Math.sin(angle + offset),
+                            0
+                        );
+                    }
+
+                    let points = [pos.clone()];
+                    
+                    for (let j = 0; j < maxSteps; j++) {
+                        let E = calculateE(pos);
+                        let mag = E.length();
+                        if (mag < 0.05) break; 
+                        
+                        let trueDir = E.clone().normalize(); // Dirección REAL del campo (siempre es un unit vector válido)
+                        let stepDir = trueDir.clone();
+                        
+                        if (!isPositive) stepDir.negate(); // Paso inverso para negativas
+                        
+                        pos.add(stepDir.multiplyScalar(step));
+                        points.push(pos.clone());
+
+                        if (pos.length() > 25) break;
+                        
+                        let hit = false;
+                        for (let other of sources) {
+                            if (other === s) continue;
+                            if ((isPositive && other.q < 0) || (!isPositive && other.q > 0)) {
+                                if (pos.distanceTo(other.mesh.position) < radiusStart * 0.9) {
+                                    hit = true; break;
+                                }
+                            }
+                        }
+                        if (hit) break;
+
+                        // CORRECCIÓN MAGISTRAL: Usamos trueDir para evitar deformar el quaternion
+                        if (j > 0 && j % 15 === 0) {
+                            let arrowLen = Math.min(1.2, Math.max(0.2, Math.pow(mag, 0.4) * 0.3)) * params.vectorScale;
+                            let color = new THREE.Color().setHSL(0.6 - Math.min(mag/80, 0.6), 0.8, 0.6);
+                            
+                            let arrow = new THREE.ArrowHelper(trueDir, pos.clone(), arrowLen, color, arrowLen*0.3, arrowLen*0.2);
+                            fieldLinesGroup.add(arrow);
+                        }
+                    }
+                    
+                    const geo = new THREE.BufferGeometry().setFromPoints(points);
+                    fieldLinesGroup.add(new THREE.Line(geo, lineFieldMat));
+                }
+            });
+        }
+
+        // ==========================================
+        // 7. ACTUALIZACIÓN LÓGICA Y VISUAL GLOBAL
+        // ==========================================
+        
+        const updateSourceVisuals = (s) => {
+            s.mesh.material = s.q >= 0 ? matPos : matNeg;
+            let scale = 0.8 + (Math.abs(s.q)/10) * 0.4;
+            s.mesh.scale.set(scale, scale, scale);
+        }
+
+        const addSourceCustom = (x, y, q) => {
+            let mesh = new THREE.Mesh(geoSource, q > 0 ? matPos : matNeg);
+            let z = params.is3D ? (Math.random()-0.5)*2 : 0;
+            mesh.position.set(x, y, z);
+            sourceGroup.add(mesh);
+            
+            let newSource = { mesh: mesh, q: q };
+            updateSourceVisuals(newSource);
+            sources.push(newSource);
+            
+            selectedSource = newSource; 
+            selectionRingSource.visible = true;
+            let currentScale = newSource.mesh.scale.x;
+            selectionRingSource.scale.set(currentScale, currentScale, currentScale);
+
+            document.getElementById('select-config').value = 'custom';
+            updateTeoriaUI('custom');
+            updateSelectionUI();
+            updateAllPhysics();
+        };
+
+        document.getElementById('btn-add-pos').addEventListener('click', () => { addSourceCustom(0,0, params.defaultQ); });
+        document.getElementById('btn-add-neg').addEventListener('click', () => { addSourceCustom(0,0, -params.defaultQ); });
+        document.getElementById('btn-clear-custom').addEventListener('click', () => {
+             sourceGroup.clear();
+             sources = [];
+             selectedSource = null;
+             selectionRingSource.visible = false;
+             updateSelectionUI();
+             updateAllPhysics();
+        });
+
+        function updateTeoriaUI(val) {
+             ['c1', 'c2', 'c3', 'c4', 'custom'].forEach(c => {
+                const el = document.getElementById('teoria-' + c);
+                if(el) {
+                    if (c === val) { el.classList.remove('hidden'); el.classList.add('flex'); } 
+                    else { el.classList.add('hidden'); el.classList.remove('flex'); }
+                }
+            });
+        }
+
+        function initConfig() {
+            sourceGroup.clear();
+            sources = [];
+            let q_mag = params.defaultQ;
+
+            const addFixedSource = (x, y, q) => {
+                let mesh = new THREE.Mesh(geoSource, q > 0 ? matPos : matNeg);
+                mesh.position.set(x, y, 0);
+                sourceGroup.add(mesh);
+                let s = { mesh: mesh, q: q };
+                updateSourceVisuals(s);
+                sources.push(s);
+            };
+
+            if (params.config === 'c1') addFixedSource(0, 0, q_mag);
+            else if (params.config === 'c2') addFixedSource(0, 0, -q_mag);
+            else if (params.config === 'c3') { addFixedSource(-3.5, 0, q_mag); addFixedSource(3.5, 0, -q_mag); }
+            else if (params.config === 'c4') { addFixedSource(-3.5, 0, q_mag); addFixedSource(3.5, 0, q_mag); }
+            
+            if (sources.length > 0) {
+                selectedSource = sources[0];
+                selectionRingSource.visible = true;
+                let currentScale = selectedSource.mesh.scale.x;
+                selectionRingSource.scale.set(currentScale, currentScale, currentScale);
+            } else {
+                selectedSource = null;
+                selectionRingSource.visible = false;
+            }
+
+            testCharge.mesh.position.set(0, 4, 0); 
+            updateTeoriaUI(params.config);
+            updateSelectionUI();
+            updateAllPhysics();
+        }
+
+        function updateBackgroundGrid() {
+            gridVectorsGroup.clear();
+            if (!document.getElementById('toggle-grid').checked) return;
+
+            const spacing = 1.4;
+            const sizeX = 12, sizeY = 8;
+            
+            for (let x = -sizeX; x <= sizeX; x += spacing) {
+                for (let y = -sizeY; y <= sizeY; y += spacing) {
+                    let pos = new THREE.Vector3(x, y, 0);
+                    
+                    let tooClose = false;
+                    sources.forEach(s => { if (pos.distanceTo(s.mesh.position) < 0.9) tooClose = true; });
+                    if (pos.distanceTo(testCharge.mesh.position) < 0.6) tooClose = true;
+                    if (tooClose) continue;
+
+                    let E = calculateE(pos);
+                    let mag = E.length();
+                    if (mag < 0.5) continue;
+
+                    let dir = E.clone().normalize();
+                    let visualLen = Math.min(Math.pow(mag/20, 0.4), spacing * 0.8) * params.vectorScale; 
+                    
+                    let color = new THREE.Color();
+                    color.setHSL(0.6 - Math.min(mag/150, 0.6), 0.8, 0.6); 
+                    
+                    let arrow = new THREE.ArrowHelper(dir, pos, visualLen, color, visualLen*0.3, visualLen*0.2);
+                    arrow.line.material.transparent = true; arrow.line.material.opacity = 0.35;
+                    arrow.cone.material.transparent = true; arrow.cone.material.opacity = 0.45;
+
+                    gridVectorsGroup.add(arrow);
+                }
+            }
+        }
+
+        function updateTestChargeLogic() {
+            testCharge.q = params.q0;
+            let pos = testCharge.mesh.position;
+            let E = calculateE(pos);
+            let magE = E.length();
+            
+            let F = E.clone().multiplyScalar(testCharge.q);
+            let magF = F.length();
+
+            if (magE > 0.1) {
+                arrowE.setDirection(E.clone().normalize());
+                arrowE.setLength(Math.min(magE / 15 + 0.8, 4) * params.vectorScale, 0.3 * params.vectorScale, 0.2 * params.vectorScale); 
+                arrowE.position.copy(pos);
+                arrowE.visible = true;
+            } else arrowE.visible = false;
+
+            if (Math.abs(testCharge.q) > 0 && magF > 0.1) {
+                arrowF.setDirection(F.clone().normalize());
+                let visLengthF = Math.min(magF / 15 + 1.2, 5) * params.vectorScale;
+                arrowF.setLength(visLengthF, 0.4 * params.vectorScale, 0.3 * params.vectorScale);
+                arrowF.position.copy(pos);
+                if (testCharge.q > 0) arrowF.position.add(new THREE.Vector3(0,0,0.2)); 
+                arrowF.visible = true;
+
+                let pEnd = pos.clone().add(F.clone().normalize().multiplyScalar(visLengthF));
+                let pX = new THREE.Vector3(pEnd.x, pos.y, 0);
+                geoFx.setFromPoints([pos, pX]); lineFx.computeLineDistances(); lineFx.visible = true;
+                geoFy.setFromPoints([pX, pEnd]); lineFy.computeLineDistances(); lineFy.visible = true;
+            } else {
+                arrowF.visible = false; lineFx.visible = false; lineFy.visible = false;
+            }
+
+            if (testCharge.q < 0) matTest.color.setHex(0x10b981); 
+            else if (testCharge.q > 0) matTest.color.setHex(0xfacc15); 
+            else matTest.color.setHex(0x9ca3af); 
+
+            document.getElementById('ui-mag-e').textContent = magE.toFixed(1);
+            document.getElementById('ui-mag-f').textContent = magF.toFixed(1);
+
+            drawDCL(F);
+        }
+
+        function updateAllPhysics() {
+            updateTestChargeLogic();
+            updateBackgroundGrid();
+            updateFieldLines(); 
+            drawGraphProfile();
+        }
+
+        // ==========================================
+        // 8. DIAGRAMA DE CUERPO LIBRE (DCL) 2D
+        // ==========================================
+        const dclCont = document.getElementById('dcl-container');
+        const dclCanvas = document.getElementById('dcl-canvas');
+        const dclCtx = dclCanvas.getContext('2d');
+
+        function resizeDCL() {
+            dclCanvas.width = dclCont.clientWidth;
+            dclCanvas.height = dclCont.clientHeight;
+            if(testCharge.mesh) updateTestChargeLogic(); 
+        }
+
+        function drawDCL(ForceVector) {
+            const w = dclCanvas.width; const h = dclCanvas.height;
+            const cx = w/2; const cy = h/2;
+            dclCtx.clearRect(0, 0, w, h);
+
+            dclCtx.beginPath(); dclCtx.strokeStyle = "#334155"; dclCtx.lineWidth = 1;
+            dclCtx.moveTo(0, cy); dclCtx.lineTo(w, cy); 
+            dclCtx.moveTo(cx, 0); dclCtx.lineTo(cx, h); 
+            dclCtx.stroke();
+            dclCtx.fillStyle = "#64748b"; dclCtx.font = "10px sans-serif";
+            dclCtx.fillText("+X", w - 15, cy - 5); dclCtx.fillText("+Y", cx + 5, 12);
+
+            let magF = ForceVector.length();
+            
+            dclCtx.beginPath(); dclCtx.arc(cx, cy, 6, 0, Math.PI*2);
+            dclCtx.fillStyle = (params.q0 < 0) ? "#10b981" : (params.q0 > 0 ? "#facc15" : "#9ca3af");
+            dclCtx.fill(); dclCtx.strokeStyle="#fff"; dclCtx.lineWidth=1; dclCtx.stroke();
+
+            if (magF < 0.01) {
+                document.getElementById('ui-fx').textContent = "0.0";
+                document.getElementById('ui-fy').textContent = "0.0";
+                return;
+            }
+
+            const maxRadius = Math.min(w, h) / 2 - 20;
+            const F_norm = ForceVector.clone().normalize();
+            const vLen = maxRadius * 0.8; 
+            
+            const endX = cx + F_norm.x * vLen;
+            const endY = cy - F_norm.y * vLen; 
+
+            dclCtx.beginPath(); dclCtx.setLineDash([3, 3]); dclCtx.strokeStyle = "#94a3b8";
+            dclCtx.moveTo(endX, cy); dclCtx.lineTo(endX, endY); 
+            dclCtx.moveTo(cx, endY); dclCtx.lineTo(endX, endY); 
+            dclCtx.stroke(); dclCtx.setLineDash([]);
+
+            dclCtx.beginPath(); dclCtx.strokeStyle = "#10b981"; dclCtx.lineWidth = 3;
+            drawArrow(dclCtx, cx, cy, endX, endY);
+            
+            dclCtx.beginPath(); dclCtx.strokeStyle = "#34d399"; dclCtx.lineWidth = 2;
+            if(Math.abs(F_norm.x) > 0.01) drawArrow(dclCtx, cx, cy, endX, cy); 
+            if(Math.abs(F_norm.y) > 0.01) drawArrow(dclCtx, cx, cy, cx, endY); 
+
+            document.getElementById('ui-fx').textContent = ForceVector.x.toFixed(1);
+            document.getElementById('ui-fy').textContent = ForceVector.y.toFixed(1);
+        }
+
+        function drawArrow(ctx, fromx, fromy, tox, toy) {
+            var headlen = 8; 
+            var dx = tox - fromx; var dy = toy - fromy;
+            var angle = Math.atan2(dy, dx);
+            ctx.moveTo(fromx, fromy); ctx.lineTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+            ctx.moveTo(tox, toy);
+            ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+            ctx.stroke();
+        }
+
+        // ==========================================
+        // 9. GRÁFICA PERFIL 2D (|E| vs X)
+        // ==========================================
+        const graphCont = document.getElementById('graph-container');
+        const graphCanvas = document.getElementById('graph-2d');
+        const gCtx = graphCanvas.getContext('2d');
+
+        function resizeGraph() {
+            graphCanvas.width = graphCont.clientWidth;
+            graphCanvas.height = graphCont.clientHeight;
+            drawGraphProfile();
+        }
+
+        function drawGraphProfile() {
+            const w = graphCanvas.width; const h = graphCanvas.height;
+            const padX = 35; const padY = 25;
+            gCtx.clearRect(0, 0, w, h);
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#94a3b8"; gCtx.lineWidth = 2;
+            gCtx.moveTo(padX, padY/2); gCtx.lineTo(padX, h - padY); 
+            gCtx.lineTo(w - padX/2, h - padY); 
+            gCtx.stroke();
+
+            gCtx.fillStyle = "#475569"; gCtx.font = "11px sans-serif";
+            gCtx.fillText("|E|", padX - 18, padY); 
+            gCtx.fillText("x", w - padX + 5, h - padY + 12);
+
+            const rangeX = 12;
+            const mapX = (x_val) => padX + ((x_val + rangeX) / (2*rangeX)) * (w - padX * 1.5);
+            
+            let maxE = 10;
+            const y_fix = testCharge.mesh ? testCharge.mesh.position.y : 0; 
+            for(let x = -rangeX; x <= rangeX; x += 0.5) {
+                let mag = calculateE(new THREE.Vector3(x, y_fix, 0)).length();
+                if (mag > maxE && mag < 500) maxE = mag; 
+            }
+            const mapY = (eVal) => (h - padY) - Math.min(eVal / maxE, 1.1) * (h - padY * 1.5);
+
+            gCtx.beginPath(); gCtx.strokeStyle = "#6366f1"; gCtx.lineWidth = 2;
+            let started = false;
+            for(let x = -rangeX; x <= rangeX; x += 0.2) {
+                let eVal = calculateE(new THREE.Vector3(x, y_fix, 0)).length();
+                let px = mapX(x); let py = mapY(eVal);
+                if (!started) { gCtx.moveTo(px, py); started = true; }
+                else gCtx.lineTo(px, py);
+            }
+            gCtx.stroke();
+
+            if(testCharge.mesh) {
+                let currentX = mapX(testCharge.mesh.position.x);
+                let currentE = calculateE(testCharge.mesh.position).length();
+                let currentY = mapY(currentE);
+                
+                gCtx.beginPath(); gCtx.setLineDash([3, 3]); gCtx.strokeStyle = "#eab308";
+                gCtx.moveTo(currentX, h - padY); gCtx.lineTo(currentX, currentY); gCtx.stroke(); gCtx.setLineDash([]);
+                
+                gCtx.beginPath(); gCtx.arc(currentX, currentY, 4, 0, Math.PI*2);
+                gCtx.fillStyle = "#eab308"; gCtx.fill();
+            }
+        }
+
+        // ==========================================
+        // 10. HERRAMIENTA PAINT / PIZARRA
+        // ==========================================
+        const paintCanvas = document.getElementById('paint-canvas');
+        const pCtx = paintCanvas.getContext('2d');
+        let isPainting = false;
+
+        function resizePaint() {
+            paintCanvas.width = paintCanvas.offsetWidth;
+            paintCanvas.height = paintCanvas.offsetHeight;
+            pCtx.lineWidth = 3; pCtx.lineCap = 'round'; pCtx.strokeStyle = '#fbbf24'; 
+        }
+
+        const startPaint = (e) => {
+            isPainting = true;
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.beginPath(); pCtx.moveTo(clientX - rect.left, clientY - rect.top);
+        };
+        const drawPaint = (e) => {
+            if (!isPainting) return;
+            e.preventDefault();
+            const rect = paintCanvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            pCtx.lineTo(clientX - rect.left, clientY - rect.top); pCtx.stroke();
+        };
+        const stopPaint = () => { isPainting = false; };
+
+        paintCanvas.addEventListener('mousedown', startPaint);
+        paintCanvas.addEventListener('mousemove', drawPaint);
+        window.addEventListener('mouseup', stopPaint);
+        paintCanvas.addEventListener('touchstart', startPaint, {passive: false});
+        paintCanvas.addEventListener('touchmove', drawPaint, {passive: false});
+        paintCanvas.addEventListener('touchend', stopPaint);
+
+        document.getElementById('btn-clear-paint').addEventListener('click', () => { pCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height); });
+        document.getElementById('toggle-paint').addEventListener('change', (e) => {
+            const btnClear = document.getElementById('btn-clear-paint');
+            if(e.target.checked) {
+                paintCanvas.classList.add('paint-mode-active'); btnClear.classList.remove('hidden'); canvasEl.style.pointerEvents = "none";
+            } else {
+                paintCanvas.classList.remove('paint-mode-active'); btnClear.classList.add('hidden'); canvasEl.style.pointerEvents = "auto";
+            }
+        });
+
+        // ==========================================
+        // 11. EVENTOS UI, BUCLE DE ANIMACIÓN Y TRAYECTORIAS
+        // ==========================================
+        document.getElementById('select-config').addEventListener('change', (e) => { params.config = e.target.value; initConfig(); });
+        
+        document.getElementById('slider-Q').addEventListener('input', (e) => { 
+            const val = parseFloat(e.target.value);
+            document.getElementById('val-Q').textContent = val.toFixed(1); 
+            document.getElementById('val-Q').className = `font-mono font-bold w-[1.5vw] text-right ${val >= 0 ? 'text-red-600' : 'text-blue-600'}`;
+            
+            if (selectedSource) {
+                selectedSource.q = val;
+                updateSourceVisuals(selectedSource);
+                
+                // Actualiza visualmente el anillo de selección
+                let currentScale = selectedSource.mesh.scale.x;
+                selectionRingSource.scale.set(currentScale, currentScale, currentScale);
+
+                updateAllPhysics();
+            } else {
+                params.defaultQ = val;
+            }
+        });
+
+        document.getElementById('slider-q0').addEventListener('input', (e) => { params.q0 = parseFloat(e.target.value); document.getElementById('val-q0').textContent = params.q0; updateAllPhysics(); });
+        
+        document.getElementById('slider-scale').addEventListener('input', (e) => {
+            params.vectorScale = parseFloat(e.target.value);
+            document.getElementById('val-scale').textContent = params.vectorScale.toFixed(1);
+            updateAllPhysics();
+        });
+
+        document.getElementById('toggle-grid').addEventListener('change', updateBackgroundGrid);
+        document.getElementById('toggle-lines').addEventListener('change', updateFieldLines);
+        
+        document.getElementById('select-traj').addEventListener('change', (e) => {
+             params.trajMode = e.target.value;
+             if(params.trajMode !== 'none') selectionRingTest.visible = true;
+             else selectionRingTest.visible = false;
+        });
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if(entry.target.id === 'canvas-wrapper-3d') {
+                    const { width, height } = entry.contentRect;
+                    cam.aspect = width / height; cam.updateProjectionMatrix(); renderer.setSize(width, height); resizePaint();
+                } else if(entry.target.id === 'dcl-container') resizeDCL(); 
+                else if(entry.target.id === 'graph-container') resizeGraph();
+            }
+        });
+        resizeObserver.observe(document.getElementById('canvas-wrapper-3d')); 
+        resizeObserver.observe(dclCont); resizeObserver.observe(graphCont);
+
+        setupView();
+        initConfig();
+        setTimeout(() => { resizePaint(); resizeDCL(); resizeGraph(); }, 100);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (params.trajMode !== 'none' && !draggedMesh) {
+                let pos = testCharge.mesh.position;
+                let E = calculateE(pos);
+                let speed = 0.08;
+                
+                if (E.length() > 0.05) {
+                    let v = new THREE.Vector3();
+                    if (params.trajMode === 'equipotential') {
+                        v.set(-E.y, E.x, 0).normalize().multiplyScalar(speed);
+                    } else if (params.trajMode === 'field') {
+                        v.copy(E).normalize().multiplyScalar(speed * Math.sign(testCharge.q || 1));
+                    } else if (params.trajMode === 'random') {
+                        v.set((Math.random()-0.5), (Math.random()-0.5), (params.is3D ? Math.random()-0.5 : 0)).normalize().multiplyScalar(speed * 1.5);
+                    }
+                    
+                    pos.add(v);
+                    
+                    pos.x = Math.max(-12, Math.min(12, pos.x));
+                    pos.y = Math.max(-8, Math.min(8, pos.y));
+                    if(!params.is3D) pos.z = 0;
+
+                    for (let s of sources) {
+                        if (pos.distanceTo(s.mesh.position) < 0.6) {
+                            document.getElementById('select-traj').value = 'none';
+                            params.trajMode = 'none';
+                            break;
+                        }
+                    }
+
+                    updateTestChargeLogic();
+                    drawGraphProfile();
+                }
+            }
+
+            if (selectedSource) {
+                selectionRingSource.position.copy(selectedSource.mesh.position);
+                if (params.is3D) {
+                    selectionRingSource.quaternion.copy(cam.quaternion); 
+                } else {
+                    selectionRingSource.rotation.set(0,0,0);
+                }
+            }
+
+            sources.forEach(s => { s.mesh.rotation.y += 0.01; s.mesh.rotation.x += 0.005; });
+            ctrl.update();
+            renderer.render(scene, cam);
+        }
+        animate();
+
+        // Tip System Global (INMUTABLE)
+        (function () {
+            let globalTip = document.createElement("div"); globalTip.className = "tip-content"; globalTip.style.position = "fixed"; globalTip.style.zIndex = "999999"; globalTip.style.pointerEvents = "none"; globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden";
+            document.body.appendChild(globalTip);
+            document.querySelectorAll(".tip-wrapper").forEach(wrapper => {
+                const localTip = wrapper.querySelector(".tip-content");
+                wrapper.addEventListener("mouseenter", () => {
+                    const rect = wrapper.getBoundingClientRect(); globalTip.innerHTML = localTip.innerHTML; globalTip.style.top = rect.top + "px"; globalTip.style.left = (rect.right + 10) + "px"; globalTip.style.opacity = "1"; globalTip.style.visibility = "visible";
+                });
+                wrapper.addEventListener("mouseleave", () => { globalTip.style.opacity = "0"; globalTip.style.visibility = "hidden"; });
+            });
+        })();
+    </script>
+</body>
+</html>

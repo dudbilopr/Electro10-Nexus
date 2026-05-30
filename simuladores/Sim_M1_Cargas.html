@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhysicsLab: Ley de Coulomb Pro</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .canvas-container { position: relative; background: #ffffff; border-radius: 12px; box-shadow: inset 0 0 10px rgba(0,0,0,0.05); }
+        canvas { display: block; touch-action: none; width: 100%; height: auto; }
+        .dragging { cursor: grabbing !important; }
+        .hovering { cursor: grab !important; }
+        .exercise-box { background-color: #fffaf0; border-left: 4px solid #f6ad55; }
+        .math-color-inherit .mjx-chtml { color: inherit !important; }
+    </style>
+</head>
+<body class="bg-slate-50 p-4 md:p-8">
+
+    <header class="max-w-6xl mx-auto text-center mb-8">
+        <h1 class="text-3xl font-bold text-slate-800">Analizador Vectorial Electrostático</h1>
+        <p class="text-slate-500">Visualización avanzada del principio de superposición de fuerzas</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Panel Izquierdo -->
+        <div class="space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <span>⚙️</span> Configuración
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Magnitud de la Carga:</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="qInput" value="10" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+                            <select id="qUnit" class="p-2 border rounded-md bg-slate-50">
+                                <option value="1e-6">µC</option>
+                                <option value="1e-9">nC</option>
+                                <option value="1e-12">pC</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Escala del Mundo (50px = ):</label>
+                        <div class="flex gap-2">
+                            <input type="number" id="dInput" value="1" class="w-full p-2 border rounded-md">
+                            <select id="dUnit" class="p-2 border rounded-md bg-slate-50">
+                                <option value="1">m</option>
+                                <option value="0.001">mm</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button onclick="addCharge()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition-all shadow-md">
+                        + Generar Nueva Carga
+                    </button>
+                    <button onclick="resetApp()" class="w-full text-red-500 text-sm hover:underline">
+                        Reiniciar simulación
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-semibold mb-2 italic">🔭 Vista Local (D.C.L.)</h2>
+                <div class="relative flex justify-center bg-slate-900 rounded-lg overflow-hidden border">
+                    <canvas id="dclCanvas" width="400" height="400"></canvas>
+                </div>
+                <div class="mt-4">
+                    <label class="text-xs font-bold text-slate-400 uppercase">Sensibilidad del Vector</label>
+                    <input type="range" id="vZoom" min="10" max="400" value="150" class="w-full">
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Central/Derecho -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="exercise-box p-6 rounded-xl shadow-sm border border-orange-100">
+                <h3 class="text-orange-700 font-bold mb-2 flex items-center gap-2">
+                    <span>📝</span> Enunciado del Problema Físico
+                </h3>
+                <div id="exerciseText" class="text-slate-700 leading-relaxed">Agregue cargas para comenzar la generación del problema.</div>
+            </div>
+
+            <div class="bg-white p-2 rounded-xl shadow-md border border-slate-200">
+                <div class="canvas-container">
+                    <canvas id="mainCanvas" width="800" height="500"></canvas>
+                </div>
+                <p class="text-[10px] text-slate-400 p-2 text-center uppercase tracking-widest">Arrastra para mover • Click derecho para seleccionar centro de análisis</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 overflow-x-auto">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <span>📍</span> Coordenadas del Sistema
+                </h3>
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-slate-400 text-xs uppercase border-b border-slate-100">
+                            <th class="py-2 px-4">ID</th>
+                            <th class="py-2 px-4">Carga (µC)</th>
+                            <th class="py-2 px-4 text-center">X (px)</th>
+                            <th class="py-2 px-4 text-center">Y (px)</th>
+                            <th class="py-2 px-4 text-right">Borrar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="chargeTableBody"></tbody>
+                </table>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h3 class="font-bold text-slate-800 mb-4">Desarrollo Matemático Paso a Paso</h3>
+                <div id="latexArea" class="space-y-4 math-color-inherit"></div>
+            </div>
+
+            <!-- TEORÍA EXPANDIDA -->
+            <div class="bg-indigo-950 p-8 rounded-xl border border-indigo-900 space-y-6 text-white">
+                <div>
+                    <h3 class="text-xl font-bold text-indigo-300 mb-2">⚡ La Ley de Coulomb</h3>
+                    <p class="text-indigo-100 leading-relaxed opacity-90 text-sm">
+                        La magnitud de la fuerza electrostática entre dos cargas puntuales ($q_1$ y $q_2$) es directamente proporcional al producto de las magnitudes de las cargas e inversamente proporcional al cuadrado de la distancia ($r$) que las separa.
+                    </p>
+                    <div class="bg-indigo-900/50 p-4 my-4 rounded-lg border border-indigo-700 text-center">
+                        $$ \vec{F}_{12} = K \frac{q_1 q_2}{r^2} \hat{r}_{12} $$
+                    </div>
+                    <ul class="text-xs text-indigo-200 space-y-2 list-disc pl-5">
+                        <li><b>$K$:</b> Constante de Coulomb $\approx 8.99 \times 10^9 \text{ N}\cdot\text{m}^2/\text{C}^2$.</li>
+                        <li><b>$\hat{r}_{12}$:</b> Vector unitario que apunta desde la carga 1 hacia la carga 2.</li>
+                        <li><b>Signos:</b> Si el producto $q_1 q_2$ es positivo, la fuerza es repulsiva; si es negativo, es atractiva.</li>
+                    </ul>
+                </div>
+
+                <div class="border-t border-indigo-800 pt-4">
+                    <h3 class="text-xl font-bold text-indigo-300 mb-2">📚 Principio de Superposición</h3>
+                    <p class="text-indigo-100 leading-relaxed opacity-90 text-sm">
+                        Cuando una carga interactúa con múltiples cargas a la vez, la fuerza neta es la <b>suma vectorial</b> de las fuerzas ejercidas por cada carga de forma individual, ignorando la presencia de las demás durante el cálculo de cada par.
+                    </p>
+                    <div class="bg-indigo-900/50 p-4 mt-4 rounded-lg border border-indigo-700 text-center">
+                        $$ \vec{F}_{neta} = \sum_{i=1}^{n} \vec{F}_i = \vec{F}_1 + \vec{F}_2 + \dots + \vec{F}_n $$
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="math-helper" style="position: absolute; visibility: hidden; pointer-events: none;"></div>
+
+<script>
+// Usamos var para permitir la reinicialización del script sin errores de "already declared"
+var K = 8.99e9;
+var canvas = document.getElementById('mainCanvas');
+var ctx = canvas.getContext('2d');
+var dclCanvas = document.getElementById('dclCanvas');
+var dclCtx = dclCanvas.getContext('2d');
+
+var charges = [];
+var selectedIdx = -1;
+var dragIdx = -1;
+var isDragging = false;
+
+var vectorColors = ["#ef4444", "#3b82f6", "#f59e0b", "#8b5cf6", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
+
+function addCharge() {
+    const qRaw = parseFloat(document.getElementById('qInput').value) || 0;
+    const unit = parseFloat(document.getElementById('qUnit').value);
+    charges.push({ x: 400, y: 250, q: qRaw * unit });
+    selectedIdx = charges.length - 1;
+    update();
+}
+
+function resetApp() {
+    charges = []; selectedIdx = -1; update();
+}
+
+function removeCharge(index) {
+    charges.splice(index, 1);
+    if (selectedIdx === index) selectedIdx = -1;
+    else if (selectedIdx > index) selectedIdx--;
+    update();
+}
+
+function updateCoord(index, axis, value) {
+    const val = parseFloat(value);
+    if (!isNaN(val)) { charges[index][axis] = val; update(); }
+}
+
+canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const hit = charges.findIndex(c => Math.hypot(c.x - x, c.y - y) < 22);
+    
+    if (e.button === 2) { 
+        if (hit !== -1) selectedIdx = hit; 
+        e.preventDefault(); 
+    } else { 
+        if (hit !== -1) { dragIdx = hit; isDragging = true; canvas.classList.add('dragging'); } 
+    }
+    update();
+});
+
+window.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    if (isDragging && dragIdx !== -1) {
+        charges[dragIdx].x = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
+        charges[dragIdx].y = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
+        update();
+    }
+});
+
+window.addEventListener('mouseup', () => { isDragging = false; dragIdx = -1; canvas.classList.remove('dragging'); });
+canvas.oncontextmenu = e => e.preventDefault();
+document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', update));
+
+async function update() {
+    renderMain();
+    await renderDCLAndMath();
+    updateTable();
+    updateExercise();
+}
+
+function renderMain() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Grilla
+    ctx.strokeStyle = "#f1f5f9"; ctx.lineWidth = 1;
+    for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+    for(let i=0; i<canvas.height; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+    if (selectedIdx !== -1 && charges[selectedIdx]) {
+        const target = charges[selectedIdx];
+        const pxToM = (parseFloat(document.getElementById('dInput').value) * parseFloat(document.getElementById('dUnit').value)) / 50;
+        
+        charges.forEach((c, i) => {
+            if (i === selectedIdx) return;
+            
+            // LÍNEA PUNTEADA DE UNIÓN
+            ctx.setLineDash([5, 5]);
+            ctx.strokeStyle = "#cbd5e1";
+            ctx.beginPath(); ctx.moveTo(target.x, target.y); ctx.lineTo(c.x, c.y); ctx.stroke();
+            ctx.setLineDash([]);
+
+            const dx = target.x - c.x, dy = target.y - c.y;
+            const r = Math.hypot(dx, dy) * pxToM;
+            if (r > 0) {
+                const F = (K * Math.abs(target.q * c.q)) / (r**2);
+                const angle = Math.atan2(dy, dx);
+                const rep = (target.q * c.q > 0) ? 1 : -1;
+                drawSimpleVector(ctx, target.x, target.y, F * Math.cos(angle) * rep, F * Math.sin(angle) * rep, vectorColors[i % vectorColors.length], 2, 45, `F${i}->${selectedIdx}`);
+            }
+        });
+    }
+
+    charges.forEach((c, i) => {
+        // Sombra de selección
+        if (i === selectedIdx) {
+            ctx.beginPath(); ctx.arc(c.x, c.y, 25, 0, 7);
+            ctx.fillStyle = "rgba(59, 130, 246, 0.2)"; ctx.fill();
+        }
+        
+        ctx.beginPath(); ctx.arc(c.x, c.y, 18, 0, 7);
+        ctx.fillStyle = c.q > 0 ? '#f87171' : '#60a5fa'; ctx.fill();
+        ctx.strokeStyle = (i === selectedIdx) ? '#1e293b' : 'rgba(0,0,0,0.1)';
+        ctx.lineWidth = (i === selectedIdx) ? 3 : 1; ctx.stroke();
+        
+        ctx.fillStyle = "white"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText("q" + i, c.x, c.y + 5);
+    });
+}
+
+async function renderDCLAndMath() {
+    dclCtx.clearRect(0, 0, dclCanvas.width, dclCanvas.height);
+    const mx = dclCanvas.width / 2;
+    const my = dclCanvas.height / 2;
+    const zoom = parseFloat(document.getElementById('vZoom').value);
+
+    // Ejes cartesianos
+    dclCtx.strokeStyle = "#334155"; dclCtx.lineWidth = 1;
+    dclCtx.beginPath(); dclCtx.moveTo(mx, 0); dclCtx.lineTo(mx, dclCanvas.height); dclCtx.moveTo(0, my); dclCtx.lineTo(dclCanvas.width, my); dclCtx.stroke();
+
+    if (selectedIdx === -1 || !charges[selectedIdx]) return;
+
+    const target = charges[selectedIdx];
+    const pxToM = (parseFloat(document.getElementById('dInput').value) * parseFloat(document.getElementById('dUnit').value)) / 50;
+    let nFx = 0, nFy = 0;
+    let htmlContent = `<div class='mb-2 text-slate-500 text-sm uppercase font-bold tracking-tighter'>Sumatoria de vectores para $q_{${selectedIdx}}$:</div>`;
+
+    for (let i = 0; i < charges.length; i++) {
+        if (i === selectedIdx) continue;
+        const c = charges[i];
+        const dx = target.x - c.x, dy = target.y - c.y;
+        const r = Math.hypot(dx, dy) * pxToM;
+        if (r <= 0) continue;
+
+        const F = (K * Math.abs(target.q * c.q)) / (r**2);
+        const ang = Math.atan2(dy, dx);
+        const rep = (target.q * c.q > 0) ? 1 : -1;
+        const fx = F * Math.cos(ang) * rep, fy = F * Math.sin(ang) * rep;
+        nFx += fx; nFy += fy;
+
+        const color = vectorColors[i % vectorColors.length];
+        
+        await drawDCLVector(dclCtx, mx, my, fx, fy, color, 2, zoom, `\\vec{F}_{${i}\\to${selectedIdx}}`, true);
+        
+        htmlContent += `<div style="color:${color}" class="p-3 bg-slate-50 rounded-lg border-l-4 border-current">
+            <div class="text-xs font-bold uppercase mb-1">Interacción con $q_{${i}}$:</div>
+            $$\\vec{F}_{${i}\\to${selectedIdx}} = (${fx.toExponential(2)}\\hat{i} ${fy>=0?'+':''}${fy.toExponential(2)}\\hat{j})\\text{ N} \\quad [|F| = ${F.toExponential(2)}\\text{ N}]$$
+        </div>`;
+    }
+
+    if (charges.length > 1) {
+        await drawDCLVector(dclCtx, mx, my, nFx, nFy, "#22c55e", 4, zoom, "\\vec{F}_R", false);
+        const total = Math.hypot(nFx, nFy);
+        const deg = (Math.atan2(nFy, nFx) * 180 / Math.PI).toFixed(1);
+        htmlContent += `<div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-900">
+                <div class="text-xs font-bold uppercase mb-2">Fuerza Resultante Final:</div>
+                $$\\vec{F}_R = \\sum \\vec{F} = (${nFx.toExponential(2)}\\hat{i} ${nFy>=0?'+':''}${nFy.toExponential(2)}\\hat{j})\\text{ N}$$
+                <div class="text-xl mt-2">$$|\\vec{F}_R| = ${total.toExponential(3)}\\text{ N} \\quad \\theta = ${deg}^\\circ$$</div>
+            </div>`;
+    }
+
+    document.getElementById('latexArea').innerHTML = htmlContent;
+    if (window.MathJax) MathJax.typesetPromise([document.getElementById('latexArea')]);
+}
+
+async function drawDCLVector(c, x, y, vx, vy, color, w, scale, latex, showAngle) {
+    const mag = Math.hypot(vx, vy);
+    if (mag === 0) return;
+    const tx = x + (vx / mag) * scale;
+    const ty = y + (vy / mag) * scale;
+    const angle = Math.atan2(ty - y, tx - x);
+
+    c.strokeStyle = color; c.fillStyle = color; c.lineWidth = w;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(tx, ty); c.stroke();
+    
+    c.beginPath(); c.moveTo(tx, ty);
+    c.lineTo(tx - 10 * Math.cos(angle - 0.4), ty - 10 * Math.sin(angle - 0.4));
+    c.lineTo(tx - 10 * Math.cos(angle + 0.4), ty - 10 * Math.sin(angle + 0.4));
+    c.fill();
+
+    const helper = document.getElementById('math-helper');
+    helper.style.color = color;
+    helper.innerHTML = `$${latex}$`;
+    await MathJax.typesetPromise([helper]);
+    const svg = helper.querySelector('svg');
+    if (svg) {
+        const svgData = new XMLSerializer().serializeToString(svg);
+        const img = new Image();
+        const svgBlob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+        const url = URL.createObjectURL(svgBlob);
+        
+        await new Promise(resolve => {
+            img.onload = () => {
+                const labelX = tx + 25 * Math.cos(angle) - (img.width/4);
+                const labelY = ty + 25 * Math.sin(angle) - (img.height/4);
+                c.drawImage(img, labelX, labelY, img.width/2, img.height/2);
+                URL.revokeObjectURL(url);
+                resolve();
+            };
+            img.src = url;
+        });
+    }
+
+    if (showAngle) {
+        c.setLineDash([2, 2]); c.strokeStyle = "rgba(255,255,255,0.3)"; c.lineWidth = 1;
+        c.beginPath(); c.moveTo(x + 40, y); c.arc(x, y, 40, 0, angle, angle < 0); c.stroke();
+        c.setLineDash([]);
+        const deg = (angle * 180 / Math.PI).toFixed(0) + "°";
+        c.fillStyle = "rgba(255,255,255,0.5)"; c.font = "10px sans-serif";
+        c.fillText(deg, x + 55 * Math.cos(angle/2), y + 55 * Math.sin(angle/2));
+    }
+}
+
+function drawSimpleVector(c, x, y, vx, vy, color, w, scale, label) {
+    const mag = Math.hypot(vx, vy);
+    if (mag === 0) return;
+    const tx = x + (vx / mag) * scale;
+    const ty = y + (vy / mag) * scale;
+    c.strokeStyle = color; c.fillStyle = color; c.lineWidth = w;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(tx, ty); c.stroke();
+    c.font = "9px sans-serif";
+    c.fillText(label, tx + 5, ty + 5);
+}
+
+function updateTable() {
+    const tbody = document.getElementById('chargeTableBody');
+    tbody.innerHTML = "";
+    charges.forEach((c, i) => {
+        const row = document.createElement('tr');
+        row.className = `border-b border-slate-50 transition-colors ${i === selectedIdx ? 'bg-blue-50' : ''}`;
+        row.innerHTML = `
+            <td class="py-2 px-4 font-bold text-slate-400">#${i}</td>
+            <td class="py-2 px-4 text-slate-700 font-medium">${(c.q * 1e6).toFixed(2)}</td>
+            <td class="py-2 px-4 text-center"><input type="number" value="${Math.round(c.x)}" onchange="updateCoord(${i}, 'x', this.value)" class="w-16 border rounded text-center text-xs p-1"></td>
+            <td class="py-2 px-4 text-center"><input type="number" value="${Math.round(c.y)}" onchange="updateCoord(${i}, 'y', this.value)" class="w-16 border rounded text-center text-xs p-1"></td>
+            <td class="py-2 px-4 text-right"><button onclick="removeCharge(${i})" class="text-slate-300 hover:text-red-500 transition-colors">✕</button></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function updateExercise() {
+    const textEl = document.getElementById('exerciseText');
+    if (charges.length < 2) {
+        textEl.innerHTML = "Agregue al menos dos cargas al plano para comenzar el análisis vectorial.";
+        return;
+    }
+    if (selectedIdx === -1) {
+        textEl.innerHTML = `Hay ${charges.length} cargas en el sistema. <b>Haga click derecho sobre una de ellas</b> para establecerla como punto de análisis (D.C.L.).`;
+        return;
+    }
+
+    const target = charges[selectedIdx];
+    const qVal = (target.q * 1e6).toFixed(2);
+    let others = charges.map((_, i) => i).filter(i => i !== selectedIdx);
+    
+    let enunciado = `Considere un sistema electrostático donde una carga de prueba $q_{${selectedIdx}} = ${qVal} \\mu C$ se encuentra fija en el punto $P(${Math.round(target.x)}, ${Math.round(target.y)})$. <br><br>`;
+    
+    enunciado += "<b>Cargas del entorno:</b><ul class='list-disc pl-5 mt-2 space-y-1'>";
+    others.forEach(idx => {
+        const c = charges[idx];
+        enunciado += `<li>Carga $q_{${idx}} = ${(c.q * 1e6).toFixed(2)} \\mu C$ ubicada en las coordenadas $(x:${Math.round(c.x)}, y:${Math.round(c.y)})$.</li>`;
+    });
+    enunciado += "</ul><br>";
+
+    if (others.length === 1) {
+        enunciado += `Calcule la fuerza electrostática resultante sobre $q_{${selectedIdx}}$ aplicando la Ley de Coulomb. Exprese su resultado en notación vectorial unitaria $(\\hat{i}, \\hat{j})$.`;
+    } else {
+        enunciado += `Haciendo uso del <b>Principio de Superposición</b>, determine la fuerza neta resultante sobre la carga $q_{${selectedIdx}}$. Para ello, calcule individualmente los vectores de fuerza ejercidos por cada carga del entorno y realice la suma vectorial correspondiente.`;
+    }
+
+    textEl.innerHTML = enunciado;
+    if (window.MathJax) MathJax.typesetPromise([textEl]);
+}
+
+update();
+</script>
+</body>
+</html>
