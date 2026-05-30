@@ -18,7 +18,7 @@ export const modulo0_presaberes = {
                         "$\\infty$"
                     ],
                     respuestaCorrecta: 1,
-                    peso: 15,
+                    peso: 5,
                     tema: "Cálculo Multivariado",
                     feedback_error: "Acercándote por la trayectoria $y = x^2$, el límite da $1/2$, pero por el eje x da $0$. Como depende de la trayectoria, no existe."
                 },
@@ -31,12 +31,12 @@ export const modulo0_presaberes = {
                         "El área encerrada por $C$"
                     ],
                     respuestaCorrecta: 2,
-                    peso: 15,
+                    peso: 10,
                     tema: "Cálculo Vectorial",
                     feedback_error: "La integral de línea de un campo conservativo sobre cualquier trayectoria cerrada siempre es 0 (Teorema Fundamental de las integrales de línea)."
                 },
                 {
-                    pregunta: "Calcula el flujo del campo vectorial $\\mathbf{F}(x,y,z) = x\\mathbf{i} + y\\mathbf{j} + z\\mathbf{k}$ a través de una esfera $S$ de radio $R$ centrada en el origen, orientada hacia afuera.",
+                    pregunta: "Calcula el flujo del campo vectorial $\\mathbf{F}(x,y,z) = x\\mathbf{i} + y\\mathbf{j} + z\\mathbf{k}$ a través de una esfera $S$ de radio $R$ orientada hacia afuera.",
                     opciones: [
                         "$4\\pi R^3$",
                         "0",
@@ -44,25 +44,77 @@ export const modulo0_presaberes = {
                         "$\\frac{4}{3}\\pi R^3$"
                     ],
                     respuestaCorrecta: 0,
-                    peso: 20,
+                    peso: 10,
                     tema: "Teorema de la Divergencia",
-                    feedback_error: "Por el Teorema de Gauss, $\\iint_S \\mathbf{F} \\cdot d\\mathbf{S} = \\iiint_V (\\nabla \\cdot \\mathbf{F}) dV$. La divergencia es $1+1+1=3$. Volumen esfera = $\\frac{4}{3}\\pi R^3$. Total: $4\\pi R^3$."
+                    feedback_error: "Por el Teorema de Gauss, $\\iint_S \\mathbf{F} \\cdot d\\mathbf{S} = \\iiint_V (\\nabla \\cdot \\mathbf{F}) dV$. La divergencia es $3$. Volumen esfera = $\\frac{4}{3}\\pi R^3$. Total: $4\\pi R^3$."
                 },
                 {
-                    pregunta: "En álgebra lineal, ¿qué nos dice que el determinante del Jacobiano sea cero en un punto dado?",
+                    pregunta: "En cinemática, si la aceleración de un cuerpo es $a(t) = 6t$ y parte del reposo en $x=0$, ¿cuál es su posición en $t=2$?",
                     opciones: [
-                        "Que la función es localmente invertible",
-                        "Que el cambio de variables deforma el espacio a volumen cero (singularidad)",
-                        "Que el sistema de ecuaciones es inconsistente",
-                        "Que el campo es irrotacional"
+                        "12",
+                        "24",
+                        "8",
+                        "16"
+                    ],
+                    respuestaCorrecta: 2,
+                    peso: 10,
+                    tema: "Cinemática",
+                    feedback_error: "$v(t) = \\int 6t dt = 3t^2$. Posición $x(t) = \\int 3t^2 dt = t^3$. En $t=2$, $x = 2^3 = 8$."
+                },
+                {
+                    pregunta: "Un bloque de masa $m$ desliza por un plano inclinado con ángulo $\\theta$ (sin fricción). ¿Cuál es su aceleración?",
+                    opciones: [
+                        "$g \\cos(\\theta)$",
+                        "$g \\sin(\\theta)$",
+                        "$mg \\sin(\\theta)$",
+                        "$g \\tan(\\theta)$"
                     ],
                     respuestaCorrecta: 1,
                     peso: 15,
-                    tema: "Álgebra Lineal",
-                    feedback_error: "Un Jacobiano nulo indica que los vectores derivados son linealmente dependientes, comprimiendo el espacio y haciendo que la transformación no sea invertible localmente."
+                    tema: "Dinámica (Leyes de Newton)",
+                    feedback_error: "La componente del peso paralela al plano es $mg \\sin(\\theta)$. Por $F=ma$, $ma = mg \\sin(\\theta) \\implies a = g \\sin(\\theta)$."
                 },
                 {
-                    pregunta: "Resuelve la Ecuación Diferencial Lineal de primer orden: $$\\frac{dy}{dx} + \\frac{2}{x}y = \\frac{\\cos(x)}{x^2}$$",
+                    pregunta: "Un cilindro sólido de masa $M$ y radio $R$ gira sobre su eje. Su momento de inercia es $I = \\frac{1}{2}MR^2$. Si se le aplica un torque neto $\\tau$, ¿qué aceleración angular $\\alpha$ adquiere?",
+                    opciones: [
+                        "$\\frac{2\\tau}{MR^2}$",
+                        "$\\frac{\\tau}{MR^2}$",
+                        "$\\frac{\\tau M}{R^2}$",
+                        "$\\tau M R^2$"
+                    ],
+                    respuestaCorrecta: 0,
+                    peso: 15,
+                    tema: "Rotación y Momento de Inercia",
+                    feedback_error: "Por la segunda ley de Newton para rotación: $\\tau = I\\alpha$. Despejando $\\alpha = \\frac{\\tau}{I} = \\frac{\\tau}{\\frac{1}{2}MR^2} = \\frac{2\\tau}{MR^2}$."
+                },
+                {
+                    pregunta: "Según la Ley de Gravitación Universal, si la distancia entre dos masas se reduce a la mitad, la fuerza de atracción gravitacional se:",
+                    opciones: [
+                        "Reduce a la mitad",
+                        "Duplica",
+                        "Cuadruplica",
+                        "Mantiene igual"
+                    ],
+                    respuestaCorrecta: 2,
+                    peso: 15,
+                    tema: "Gravitación",
+                    feedback_error: "La fuerza gravitacional es inversamente proporcional al cuadrado de la distancia ($F \\propto \\frac{1}{r^2}$). Si $r \\to r/2$, entonces $1/(r/2)^2 = 4/r^2$, por lo que la fuerza se cuadruplica."
+                },
+                {
+                    pregunta: "Dados los vectores $\\mathbf{u} = 3\\mathbf{i} + 4\\mathbf{j}$ y $\\mathbf{v} = 4\\mathbf{i} - 3\\mathbf{j}$, ¿cuál es su producto escalar $\\mathbf{u} \\cdot \\mathbf{v}$?",
+                    opciones: [
+                        "12",
+                        "0",
+                        "25",
+                        "7"
+                    ],
+                    respuestaCorrecta: 1,
+                    peso: 10,
+                    tema: "Vectores",
+                    feedback_error: "El producto escalar es $(3)(4) + (4)(-3) = 12 - 12 = 0$. Esto indica que los vectores son perpendiculares (ortogonales)."
+                },
+                {
+                    pregunta: "Resuelve la Ecuación Diferencial Lineal: $$\\frac{dy}{dx} + \\frac{2}{x}y = \\frac{\\cos(x)}{x^2}$$",
                     opciones: [
                         "$y = \\frac{\\sin(x) + C}{x^2}$",
                         "$y = \\cos(x) + C x^2$",
@@ -70,22 +122,9 @@ export const modulo0_presaberes = {
                         "$y = x^2\\sin(x) + C$"
                     ],
                     respuestaCorrecta: 0,
-                    peso: 20,
+                    peso: 10,
                     tema: "Ecuaciones Diferenciales",
-                    feedback_error: "El factor integrante es $\\mu(x) = e^{\\int (2/x)dx} = x^2$. Multiplicando, queda $(x^2y)' = \\cos(x)$. Integrando: $x^2y = \\sin(x) + C$, luego despejas $y$."
-                },
-                {
-                    pregunta: "¿Cuál es el vector gradiente $\\nabla f$ de la función $f(x,y,z) = \\ln(x^2 + y^2 + z^2)$ en el punto $(1, 0, 1)$?",
-                    opciones: [
-                        "$(1, 0, 1)$",
-                        "$(1, 1, 1)$",
-                        "$(0, 0, 0)$",
-                        "$(2, 0, 2)$"
-                    ],
-                    respuestaCorrecta: 0,
-                    peso: 15,
-                    tema: "Cálculo Diferencial",
-                    feedback_error: "$\\nabla f = \\left(\\frac{2x}{r^2}, \\frac{2y}{r^2}, \\frac{2z}{r^2}\\right)$. En $(1,0,1)$, $r^2 = 2$. Evaluando: $\\left(\\frac{2}{2}, 0, \\frac{2}{2}\\right) = (1,0,1)$."
+                    feedback_error: "El factor integrante es $\\mu(x) = x^2$. Multiplicando y resolviendo se llega a $y = \\frac{\\sin(x) + C}{x^2}$."
                 }
             ]
         }
